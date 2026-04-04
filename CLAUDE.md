@@ -1,26 +1,51 @@
-# CLAUDE.md - AI Assistant Guide for AI-Search-App
+# CLAUDE.md - AI Assistant Guide for AI DAW
 
 This document provides essential context for AI assistants working on this codebase.
 
 ## Project Overview
 
-**AI-Search-App** is an AI-powered search application. This is a new project in its initial stages.
+**AI DAW** is a browser-based Digital Audio Workstation with an AI Co-Producer. The AI handles tedious engineering tasks (gain staging, clipping detection, level balancing, frequency analysis) while human artists retain full creative control. This is NOT a prompt-to-music generator — it's a professional production and engineering tool.
+
+**Key architecture:**
+- **Audio Engine**: Tone.js + Web Audio API for playback, recording, routing
+- **AI Co-Producer**: 100% client-side analysis (FFT, RMS, spectral, beat detection) — no external APIs
+- **AI Interaction**: Layered — background auto-fix + inline suggestions + sidebar assistant
+- **State**: Zustand stores for session, transport, mixer, and AI state
+- **Rendering**: Canvas-based timeline for waveform/MIDI rendering (React DOM too slow)
 
 ## Repository Structure
 
 ```
 AI-Search-App/
-├── CLAUDE.md           # AI assistant guidelines (this file)
-├── README.md           # Project documentation
-├── package.json        # Node.js dependencies and scripts
-├── src/                # Source code
-│   ├── components/     # UI components
-│   ├── services/       # API and business logic
-│   ├── utils/          # Utility functions
-│   └── types/          # TypeScript type definitions
-├── tests/              # Test files
-├── public/             # Static assets
-└── config/             # Configuration files
+├── CLAUDE.md              # AI assistant guidelines (this file)
+├── package.json           # Node.js dependencies and scripts
+├── tsconfig.json          # TypeScript strict mode config
+├── vite.config.ts         # Vite build + Vitest config
+├── tailwind.config.js     # Tailwind with DAW dark theme
+├── index.html             # Entry point
+├── src/
+│   ├── main.tsx           # React root
+│   ├── App.tsx            # DAW layout shell
+│   ├── index.css          # Tailwind + DAW base styles
+│   ├── components/        # UI components
+│   │   ├── TransportBar   # Play/pause/stop/record/BPM
+│   │   ├── TrackList      # Track headers with mute/solo
+│   │   ├── Timeline       # Canvas waveform/MIDI timeline
+│   │   ├── MixerPanel     # Channel strips
+│   │   ├── ChannelStrip   # Volume/pan/meter per track
+│   │   ├── FileDropZone   # Drag-and-drop audio import
+│   │   ├── ui/            # Fader, Knob, PeakMeter
+│   │   └── ai/            # AISidebar, InlineSuggestion
+│   ├── services/          # Audio engine, transport, track manager
+│   │   ├── audio-engine   # Tone.js wrapper
+│   │   ├── transport-service # Play/pause/BPM/loop
+│   │   ├── track-manager  # Track audio nodes & routing
+│   │   └── ai/            # Analysis, beat detection, mix analyzer
+│   ├── stores/            # Zustand state stores
+│   ├── hooks/             # useKeyboardShortcuts
+│   ├── utils/             # ID generation, time formatting, waveform rendering
+│   └── types/             # TypeScript type definitions (audio, mixer, AI)
+└── tests/                 # Test files
 ```
 
 ## Development Commands

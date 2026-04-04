@@ -1,0 +1,110 @@
+import { useState, useCallback, type ReactNode } from 'react';
+import { loadAudioFile } from '@/services/audio-engine';
+import { useSessionStore } from '@/stores/session-store';
+import { useMixerStore } from '@/stores/mixer-store';
+import { generateId } from '@/utils/id';
+import type { AudioClip } from '@/types/audio';
+
+const ACCEPTED_TYPES = [
+  'audio/wav', 'audio/x-wav', 'audio/mp3', 'audio/mpeg',
+  'audio/flac', 'audio/ogg', 'audio/webm',
+];
+
+const ACCEPTED_EXTENSIONS = ['.wav', '.mp3', '.flac', '.ogg', '.webm'];
+
+function isAudioFile(file: File): boolean {
+  if (ACCEPTED_TYPES.includes(file.type)) return true;
+  return ACCEPTED_EXTENSIONS.some((ext) =>
+    file.name.toLowerCase().endsWith(ext),
+  );
+}
+
+interface FileDropZoneProps {
+  children: ReactNode;
+}
+
+export default function FileDropZone({ children }: FileDropZoneProps) {
+  const [dragging, setDragging] = useState(false);
+  const addAudioTrack = useSessionStore((s) => s.addAudioTrack);
+  const addClipToTrack = useSessionStore((s) => s.addClipToTrack);
+  const tracks = useSessionStore((s) => s.tracks);
+  const initStrip = useMixerStore((s) => s.initStrip);
+
+  const handleFiles = useCallback(
+    async (files: FileList) => {
+      for (const file of Array.from(files)) {
+        if (!isAudioFile(file)) continue;
+
+        try {
+          const buffer = await loadAudioFile(file);
+          let trackId: string;
+
+          if (tracks.length === 0) {
+            trackId = addAudioTrack(file.name.replace(/\.[^.]+$/, ''));
+            initStrip(trackId);
+          } else {
+            trackId = addAudioTrack(file.name.replace(/\.[^.]+$/, ''));
+            initStrip(trackId);
+          }
+
+          const clip: AudioClip = {
+            id: generateId('clip'),
+            trackId,
+            name: file.name.replace(/\.[^.]+$/, ''),
+            buffer,
+            startTime: 0,
+            duration: buffer.duration,
+            offset: 0,
+          };
+
+          addClipToTrack(trackId, clip);
+        } catch (err) {
+          console.error(`Failed to load ${file.name}:`, err);
+        }
+      }
+    },
+    [addAudioTrack, addClipToTrack, tracks.length, initStrip],
+  );
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragging(false);
+      if (e.dataTransfer.files.length > 0) {
+        handleFiles(e.dataTransfer.files);
+      }
+    },
+    [handleFiles],
+  );
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (e.currentTarget === e.target) {
+      setDragging(false);
+    }
+  }, []);
+
+  return (
+    <div
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      className="relative"
+    >
+      {children}
+      {dragging && (
+        <div className="absolute inset-0 bg-daw-accent/20 border-2
+                        border-dashed border-daw-accent z-50
+                        flex items-center justify-center">
+          <div className="text-daw-accent text-lg font-semibold">
+            Drop audio files to import
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body, #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: theme('colors.daw.bg');
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: theme('colors.daw.panel');
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: theme('colors.daw.grid');
+  }
+
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+}
+
+@layer components {
+  .daw-button {
+    @apply px-3 py-1.5 rounded text-sm font-medium transition-colors
+           bg-daw-panel text-daw-text hover:bg-daw-accent
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .daw-button-active {
+    @apply bg-daw-accent text-white;
+  }
+
+  .daw-input {
+    @apply bg-daw-bg border border-daw-grid rounded px-2 py-1 text-sm
+           text-daw-text focus:outline-none focus:border-daw-accent;
+  }
+
+  .daw-panel {
+    @apply bg-daw-surface border border-daw-grid/30;
+  }
+}
