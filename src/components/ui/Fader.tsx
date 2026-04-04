@@ -40,21 +40,27 @@ export default function Fader({
       const track = trackRef.current;
       if (!track) return;
 
-      const update = (clientY: number) => {
+      const update = (clientY: number, shiftKey: boolean) => {
         const rect = track.getBoundingClientRect();
         const pct = 1 - (clientY - rect.top) / rect.height;
-        const val = minRef.current + pct * (maxRef.current - minRef.current);
+        const range = maxRef.current - minRef.current;
+        let val = minRef.current + pct * range;
+        // Shift+drag: snap to 0.1dB increments (finer)
+        const precision = shiftKey ? 100 : 10;
+        val = Math.round(val * precision) / precision;
         onChangeRef.current(
-          Math.max(minRef.current, Math.min(maxRef.current, Math.round(val * 10) / 10)),
+          Math.max(minRef.current, Math.min(maxRef.current, val)),
         );
       };
 
       const startY = 'touches' in e ? e.touches[0]!.clientY : e.clientY;
-      update(startY);
+      const shiftKey = !('touches' in e) && (e as React.MouseEvent).shiftKey;
+      update(startY, shiftKey);
 
       const onMove = (ev: MouseEvent | TouchEvent) => {
         const y = 'touches' in ev ? ev.touches[0]!.clientY : (ev as MouseEvent).clientY;
-        update(y);
+        const shift = 'shiftKey' in ev ? ev.shiftKey : false;
+        update(y, shift);
       };
       const onUp = () => {
         document.removeEventListener('mousemove', onMove);
@@ -67,6 +73,16 @@ export default function Fader({
       document.addEventListener('mouseup', onUp);
       document.addEventListener('touchmove', onMove);
       document.addEventListener('touchend', onUp);
+    },
+    [],
+  );
+
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // Reset to 0dB (unity gain)
+      onChangeRef.current(0);
     },
     [],
   );
@@ -92,6 +108,7 @@ export default function Fader({
         style={{ width: trackW, height }}
         onMouseDown={handleMouseDown}
         onTouchStart={handleMouseDown}
+        onDoubleClick={handleDoubleClick}
       >
         {/* Fader slot (groove) */}
         <div

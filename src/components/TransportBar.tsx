@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTransportStore } from '@/stores/transport-store';
+import { useSessionStore } from '@/stores/session-store';
 import { useHistoryStore } from '@/stores/history-store';
 import { getPositionSeconds } from '@/services/transport-service';
 import { formatSeconds, formatBarsBeats } from '@/utils/format-time';
@@ -74,9 +75,21 @@ export default function TransportBar({
   onPianoRoll,
 }: TransportBarProps) {
   const {
-    state, bpm, loopEnabled,
-    play, pause, stop, toggleRecord, setBpm, toggleLoop,
+    state, bpm, loopEnabled, metronomeEnabled,
+    play, pause, stop, toggleRecord, setBpm, toggleLoop, toggleMetronome,
   } = useTransportStore();
+
+  const timeSignature = useSessionStore((s) => s.config.timeSignature);
+  const setConfig = useSessionStore((s) => s.setConfig);
+
+  const TIME_SIGS: [number, number][] = [[4, 4], [3, 4], [6, 8], [5, 4], [7, 8]];
+  const cycleTimeSig = () => {
+    const currentIdx = TIME_SIGS.findIndex(
+      ([n, d]) => n === timeSignature.numerator && d === timeSignature.denominator,
+    );
+    const next = TIME_SIGS[(currentIdx + 1) % TIME_SIGS.length]!;
+    setConfig({ timeSignature: { numerator: next[0], denominator: next[1] } });
+  };
 
   const undoCount = useHistoryStore((s) => s.undoCount);
   const redoCount = useHistoryStore((s) => s.redoCount);
@@ -249,6 +262,34 @@ export default function TransportBar({
           title="Toggle Loop"
         >
           <IconLoop />
+        </button>
+
+        {/* Metronome */}
+        <button
+          onClick={toggleMetronome}
+          className={`w-7 h-7 flex items-center justify-center rounded
+                     transition-all duration-75
+                     ${metronomeEnabled
+              ? 'text-daw-accent bg-daw-accent/10'
+              : 'text-daw-text-muted hover:text-daw-text-dim'}`}
+          title="Toggle Metronome"
+        >
+          <svg width="12" height="14" viewBox="0 0 12 14" fill="none"
+            stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
+            <path d="M3 13L5 1h2l2 12H3z" />
+            <line x1="6" y1="4" x2="9" y2="2" />
+          </svg>
+        </button>
+
+        {/* Time Signature */}
+        <button
+          onClick={cycleTimeSig}
+          className="h-7 px-1.5 flex items-center justify-center rounded
+                     text-xxs font-mono text-daw-text-muted hover:text-daw-text-dim
+                     transition-all duration-75 bg-daw-bg border border-daw-border/40"
+          title="Cycle Time Signature"
+        >
+          {timeSignature.numerator}/{timeSignature.denominator}
         </button>
       </div>
 

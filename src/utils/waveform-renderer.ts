@@ -119,6 +119,7 @@ export function drawRuler(
   pixelsPerSecond: number,
   scrollX: number,
   width: number,
+  beatsPerBar: number = 4,
 ): void {
   // Ruler background
   ctx.fillStyle = '#161616';
@@ -133,25 +134,94 @@ export function drawRuler(
   ctx.stroke();
 
   const beatInterval = 60 / bpm;
-  const barInterval = beatInterval * 4;
+  const barInterval = beatInterval * beatsPerBar;
 
   const startTime = scrollX / pixelsPerSecond;
   const endTime = startTime + width / pixelsPerSecond;
 
-  let t = Math.floor(startTime / barInterval) * barInterval;
+  // Draw beat ticks
+  let t = Math.floor(startTime / beatInterval) * beatInterval;
   while (t <= endTime) {
     const px = (t - startTime) * pixelsPerSecond;
+    const isBar = Math.abs(t % barInterval) < 0.001;
 
-    // Bar tick
-    ctx.strokeStyle = '#555';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(px, 12);
-    ctx.lineTo(px, 16);
-    ctx.stroke();
+    if (isBar) {
+      // Bar tick — tall
+      ctx.strokeStyle = '#666';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(px, 4);
+      ctx.lineTo(px, 16);
+      ctx.stroke();
 
-    t += barInterval;
+      // Bar number
+      const barNum = Math.round(t / barInterval) + 1;
+      ctx.fillStyle = '#999';
+      ctx.font = 'bold 9px Inter, sans-serif';
+      ctx.fillText(String(barNum), px + 3, 11);
+    } else {
+      // Beat tick — short
+      ctx.strokeStyle = '#444';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(px, 11);
+      ctx.lineTo(px, 16);
+      ctx.stroke();
+    }
+
+    t += beatInterval;
   }
+}
+
+export function drawLoopRegion(
+  ctx: CanvasRenderingContext2D,
+  loopStart: number,
+  loopEnd: number,
+  pixelsPerSecond: number,
+  scrollX: number,
+  height: number,
+): void {
+  const startPx = loopStart * pixelsPerSecond - scrollX;
+  const endPx = loopEnd * pixelsPerSecond - scrollX;
+
+  // Loop region overlay
+  ctx.fillStyle = 'rgba(255, 107, 53, 0.04)';
+  ctx.fillRect(startPx, 16, endPx - startPx, height - 16);
+
+  // Loop region ruler highlight
+  ctx.fillStyle = 'rgba(255, 107, 53, 0.15)';
+  ctx.fillRect(startPx, 0, endPx - startPx, 16);
+
+  // Loop bracket lines
+  ctx.strokeStyle = 'rgba(255, 107, 53, 0.5)';
+  ctx.lineWidth = 1.5;
+  // Left bracket
+  ctx.beginPath();
+  ctx.moveTo(startPx, 0);
+  ctx.lineTo(startPx, height);
+  ctx.stroke();
+  // Right bracket
+  ctx.beginPath();
+  ctx.moveTo(endPx, 0);
+  ctx.lineTo(endPx, height);
+  ctx.stroke();
+
+  // Loop markers in ruler
+  ctx.fillStyle = '#ff6b35';
+  // Left triangle
+  ctx.beginPath();
+  ctx.moveTo(startPx, 0);
+  ctx.lineTo(startPx + 6, 0);
+  ctx.lineTo(startPx, 6);
+  ctx.closePath();
+  ctx.fill();
+  // Right triangle
+  ctx.beginPath();
+  ctx.moveTo(endPx, 0);
+  ctx.lineTo(endPx - 6, 0);
+  ctx.lineTo(endPx, 6);
+  ctx.closePath();
+  ctx.fill();
 }
 
 export function drawPlayhead(

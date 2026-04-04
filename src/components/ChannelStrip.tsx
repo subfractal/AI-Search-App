@@ -1,6 +1,7 @@
 import { useSessionStore } from '@/stores/session-store';
 import { useMixerStore } from '@/stores/mixer-store';
 import { useEffectsStore } from '@/stores/effects-store';
+import { useRoutingStore } from '@/stores/routing-store';
 import Fader from './ui/Fader';
 import Knob from './ui/Knob';
 import PeakMeter from './ui/PeakMeter';
@@ -27,6 +28,15 @@ export default function ChannelStrip({ trackId }: ChannelStripProps) {
     (s) => (s.trackEffects[trackId] ?? []).length,
   );
 
+  // Sends: find return buses and sends for this track
+  const returnBuses = useRoutingStore((s) =>
+    Object.values(s.buses).filter((b) => b.type === 'return').slice(0, 2),
+  );
+  const sends = useRoutingStore((s) => s.sends);
+  const addSend = useRoutingStore((s) => s.addSend);
+  const updateSend = useRoutingStore((s) => s.updateSend);
+  const addBus = useRoutingStore((s) => s.addBus);
+
   const ghostVolume = useAIStore((s) => {
     const sug = s.suggestions.find(
       (sg) => sg.targetTrackId === trackId && sg.status === 'pending'
@@ -36,6 +46,29 @@ export default function ChannelStrip({ trackId }: ChannelStripProps) {
   });
 
   if (!track || !strip) return null;
+
+  // Get or create send for a bus
+  const getSendForBus = (busId: string) => {
+    return Object.values(sends).find(
+      (s) => s.sourceTrackId === trackId && s.busId === busId,
+    );
+  };
+
+  const handleSendChange = (busId: string, value: number) => {
+    const existing = getSendForBus(busId);
+    if (existing) {
+      updateSend(existing.id, { amount: value });
+    } else if (value > 0) {
+      const sendId = addSend(trackId, busId);
+      updateSend(sendId, { amount: value });
+    }
+  };
+
+  const handleAddReturnBus = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const busCount = returnBuses.length;
+    addBus(`Return ${String.fromCharCode(65 + busCount)}`, 'return');
+  };
 
   const isSelected = selectedTrackId === trackId;
 
@@ -72,6 +105,35 @@ export default function ChannelStrip({ trackId }: ChannelStripProps) {
                          px-1 rounded-full leading-none">
           {effectCount}FX
         </span>
+      )}
+
+      {/* Sends */}
+      {returnBuses.length > 0 ? (
+        <div className="flex gap-1 items-center">
+          {returnBuses.map((bus, i) => {
+            const send = getSendForBus(bus.id);
+            return (
+              <Knob
+                key={bus.id}
+                value={send?.amount ?? 0}
+                min={0}
+                max={1}
+                onChange={(v) => handleSendChange(bus.id, v)}
+                label={String.fromCharCode(65 + i)}
+                size={16}
+              />
+            );
+          })}
+        </div>
+      ) : (
+        <button
+          onClick={handleAddReturnBus}
+          className="text-[7px] text-daw-text-muted/40 hover:text-daw-accent/60
+                     transition-colors leading-none"
+          title="Add return bus"
+        >
+          +Snd
+        </button>
       )}
 
       {/* Pan knob */}

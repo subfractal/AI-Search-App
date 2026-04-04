@@ -1,16 +1,95 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { useSessionStore } from '@/stores/session-store';
 import { useTransportStore } from '@/stores/transport-store';
+import { useAutomationStore } from '@/stores/automation-store';
 import { getPositionSeconds, seekTo } from '@/services/transport-service';
 import { isAudioClip } from '@/types/audio';
+import type { AutomationLane } from '@/types/automation';
 import {
   drawWaveform,
   drawGrid,
   drawRuler,
   drawPlayhead,
+  drawLoopRegion,
 } from '@/utils/waveform-renderer';
 
 const TRACK_HEIGHT = 48;
+const AUTOMATION_LANE_HEIGHT = 32;
+
+function drawAutomationLane(
+  ctx: CanvasRenderingContext2D,
+  lane: AutomationLane,
+  y: number,
+  h: number,
+  pps: number,
+  scrollX: number,
+  width: number,
+) {
+  // Lane background
+  ctx.fillStyle = lane.color + '08';
+  ctx.fillRect(0, y, width, h);
+
+  // Lane label
+  ctx.fillStyle = lane.color + '80';
+  ctx.font = '8px Inter, sans-serif';
+  ctx.fillText(lane.target.toUpperCase(), 4, y + 10);
+
+  // Separator
+  ctx.strokeStyle = lane.color + '20';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(0, y + h);
+  ctx.lineTo(width, y + h);
+  ctx.stroke();
+
+  if (lane.points.length === 0) return;
+
+  // Draw automation curve
+  ctx.beginPath();
+  ctx.strokeStyle = lane.color + 'cc';
+  ctx.lineWidth = 1.5;
+
+  let started = false;
+  for (const point of lane.points) {
+    const px = point.time * pps - scrollX;
+    const normalized = (point.value - lane.minValue) / (lane.maxValue - lane.minValue);
+    const py = y + h - normalized * (h - 4) - 2;
+
+    if (!started) {
+      // Extend flat line from left edge
+      const firstNorm = (lane.points[0]!.value - lane.minValue) / (lane.maxValue - lane.minValue);
+      const firstPy = y + h - firstNorm * (h - 4) - 2;
+      ctx.moveTo(0, firstPy);
+      ctx.lineTo(px, py);
+      started = true;
+    } else {
+      ctx.lineTo(px, py);
+    }
+  }
+
+  // Extend to right edge
+  const lastPoint = lane.points[lane.points.length - 1]!;
+  const lastNorm = (lastPoint.value - lane.minValue) / (lane.maxValue - lane.minValue);
+  const lastPy = y + h - lastNorm * (h - 4) - 2;
+  ctx.lineTo(width, lastPy);
+  ctx.stroke();
+
+  // Draw points as dots
+  for (const point of lane.points) {
+    const px = point.time * pps - scrollX;
+    if (px < -5 || px > width + 5) continue;
+    const normalized = (point.value - lane.minValue) / (lane.maxValue - lane.minValue);
+    const py = y + h - normalized * (h - 4) - 2;
+
+    ctx.beginPath();
+    ctx.arc(px, py, 3, 0, Math.PI * 2);
+    ctx.fillStyle = lane.color;
+    ctx.fill();
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+  }
+}
 const PIXELS_PER_SECOND = 100;
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 10;
@@ -25,8 +104,16 @@ export default function Timeline() {
   const [followPlayhead, setFollowPlayhead] = useState(true);
 
   const tracks = useSessionStore((s) => s.tracks);
+  const config = useSessionStore((s) => s.config);
   const bpm = useTransportStore((s) => s.bpm);
+  const loopEnabled = useTransportStore((s) => s.loopEnabled);
+  const loopStart = useTransportStore((s) => s.loopStart);
+  const loopEnd = useTransportStore((s) => s.loopEnd);
   const transportState = useTransportStore((s) => s.state);
+  const automationLanes = useAutomationStore((s) => s.lanes);
+  const beatsPerBar = config.timeSignature.numerator;
+
+  const [showAutomation, setShowAutomation] = useState(false);
 
   const pps = PIXELS_PER_SECOND * zoom;
 
@@ -84,10 +171,17 @@ export default function Timeline() {
     drawGrid(ctx, bpm, 4, pps, scrollX, width, height);
 
     // Track lanes
+    let yOffset = 16;
     tracks.forEach((track, index) => {
-      const y = 16 + index * TRACK_HEIGHT - scrollY;
+      const trackLanes = showAutomation
+        ? (automationLanes[track.id] ?? []).filter((l) => l.visible)
+        : [];
+      const autoHeight = trackLanes.length * AUTOMATION_LANE_HEIGHT;
+      const totalTrackHeight = TRACK_HEIGHT + autoHeight;
+      const y = yOffset - scrollY;
+      yOffset += totalTrackHeight;
 
-      if (y + TRACK_HEIGHT < 0 || y > height) return;
+      if (y + totalTrackHeight < 0 || y > height) return;
 
       // Alternating lane backgrounds
       ctx.fillStyle = index % 2 === 0 ? '#111111' : '#0f0f0f';
@@ -97,8 +191,8 @@ export default function Timeline() {
       ctx.strokeStyle = '#1a1a1a';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(0, y + TRACK_HEIGHT);
-      ctx.lineTo(width, y + TRACK_HEIGHT);
+      ctx.moveTo(0, y + totalTrackHeight);
+      ctx.lineTo(width, y + totalTrackHeight);
       ctx.stroke();
 
       // Clips
@@ -162,17 +256,28 @@ export default function Timeline() {
           });
         }
       });
+
+      // Automation lanes
+      trackLanes.forEach((lane, laneIdx) => {
+        const laneY = y + TRACK_HEIGHT + laneIdx * AUTOMATION_LANE_HEIGHT;
+        drawAutomationLane(ctx, lane, laneY, AUTOMATION_LANE_HEIGHT, pps, scrollX, width);
+      });
     });
 
+    // Loop region (behind ruler)
+    if (loopEnabled) {
+      drawLoopRegion(ctx, loopStart, loopEnd, pps, scrollX, height);
+    }
+
     // Ruler (draw on top)
-    drawRuler(ctx, bpm, pps, scrollX, width);
+    drawRuler(ctx, bpm, pps, scrollX, width, beatsPerBar);
 
     // Playhead (draw last, on top of everything)
     const position = getPositionSeconds();
     drawPlayhead(ctx, position, pps, scrollX, height);
 
     rafRef.current = requestAnimationFrame(draw);
-  }, [tracks, bpm, pps, scrollX, scrollY]);
+  }, [tracks, bpm, pps, scrollX, scrollY, loopEnabled, loopStart, loopEnd, beatsPerBar, showAutomation, automationLanes]);
 
   useEffect(() => {
     rafRef.current = requestAnimationFrame(draw);
@@ -237,6 +342,17 @@ export default function Timeline() {
       {/* Zoom / Follow controls overlay */}
       <div className="absolute top-1 right-1 flex items-center gap-0.5 z-10
                       pointer-events-auto">
+        <button
+          onClick={(e) => { e.stopPropagation(); setShowAutomation((v) => !v); }}
+          className={`w-6 h-5 rounded text-xxs flex items-center justify-center
+                     transition-all font-bold
+                     ${showAutomation
+              ? 'bg-red-500/20 text-red-400 border border-red-500/40'
+              : 'bg-daw-bg/80 text-daw-text-muted border border-daw-border/40 hover:text-daw-text-dim'}`}
+          title={showAutomation ? 'Hide Automation' : 'Show Automation'}
+        >
+          A
+        </button>
         <button
           onClick={(e) => { e.stopPropagation(); toggleFollow(); }}
           className={`w-6 h-5 rounded text-xxs flex items-center justify-center

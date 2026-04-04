@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { TransportState } from '@/types/audio';
 import * as transport from '@/services/transport-service';
+import { setMetronomeEnabled } from '@/services/metronome-service';
 
 interface TransportStore {
   state: TransportState;
@@ -8,6 +9,7 @@ interface TransportStore {
   loopEnabled: boolean;
   loopStart: number;
   loopEnd: number;
+  metronomeEnabled: boolean;
 
   play: () => Promise<void>;
   pause: () => void;
@@ -16,6 +18,7 @@ interface TransportStore {
   setBpm: (bpm: number) => void;
   setLoop: (start: number, end: number, enabled: boolean) => void;
   toggleLoop: () => void;
+  toggleMetronome: () => void;
 }
 
 export const useTransportStore = create<TransportStore>((set, get) => ({
@@ -24,6 +27,7 @@ export const useTransportStore = create<TransportStore>((set, get) => ({
   loopEnabled: false,
   loopStart: 0,
   loopEnd: 16,
+  metronomeEnabled: false,
 
   play: async () => {
     await transport.play();
@@ -65,5 +69,11 @@ export const useTransportStore = create<TransportStore>((set, get) => ({
     const next = !loopEnabled;
     transport.setLoop(loopStart, loopEnd, next);
     set({ loopEnabled: next });
+  },
+
+  toggleMetronome: () => {
+    const next = !get().metronomeEnabled;
+    setMetronomeEnabled(next);
+    set({ metronomeEnabled: next });
   },
 }));

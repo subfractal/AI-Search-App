@@ -1,9 +1,10 @@
+import { useState } from 'react';
 import { useSessionStore } from '@/stores/session-store';
 import { useMixerStore } from '@/stores/mixer-store';
 import { useKeyStore } from '@/stores/key-store';
 import { useWarpStore } from '@/stores/warp-store';
 import { useInstrumentStore } from '@/stores/instrument-store';
-import { isAudioClip } from '@/types/audio';
+import { isAudioClip, TRACK_COLORS } from '@/types/audio';
 
 interface TrackHeaderProps {
   trackId: string;
@@ -38,6 +39,8 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
     track?.type === 'midi' ? s.instruments[trackId] : undefined,
   );
 
+  const [showColorPicker, setShowColorPicker] = useState(false);
+
   if (!track) return null;
 
   const isSelected = selectedTrackId === trackId;
@@ -56,11 +59,40 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
           : 'bg-daw-track hover:bg-daw-surface-alt'}`}
       onClick={() => selectTrack(trackId)}
     >
-      {/* Color bar */}
-      <div
-        className="w-[3px] h-8 rounded-full shrink-0"
-        style={{ backgroundColor: track.color }}
-      />
+      {/* Color bar — click to pick color */}
+      <div className="relative shrink-0">
+        <div
+          className="w-[3px] h-8 rounded-full cursor-pointer hover:w-[5px] transition-all"
+          style={{ backgroundColor: track.color }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowColorPicker((v) => !v);
+          }}
+          title="Change track color"
+        />
+        {showColorPicker && (
+          <div
+            className="absolute top-0 left-3 z-30 bg-daw-panel border border-daw-border/40
+                       rounded p-1.5 shadow-lg grid grid-cols-4 gap-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {TRACK_COLORS.map((c) => (
+              <button
+                key={c}
+                className={`w-4 h-4 rounded-full border transition-all
+                           ${c === track.color
+                    ? 'border-white scale-110'
+                    : 'border-transparent hover:border-white/40'}`}
+                style={{ backgroundColor: c }}
+                onClick={() => {
+                  updateTrack(trackId, { color: c });
+                  setShowColorPicker(false);
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Track info */}
       <div className="flex-1 min-w-0">
