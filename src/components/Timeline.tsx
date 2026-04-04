@@ -310,6 +310,84 @@ export default function Timeline() {
     }
   };
 
+  // Touch scrolling — drag to pan, pinch to zoom
+  const touchRef = useRef<{
+    startX: number;
+    startY: number;
+    scrollXStart: number;
+    scrollYStart: number;
+    pinchDist: number | null;
+    zoomStart: number;
+    moved: boolean;
+  } | null>(null);
+
+  const getTouchDist = (touches: React.TouchList | TouchList) => {
+    if (touches.length < 2) return null;
+    const dx = touches[1]!.clientX - touches[0]!.clientX;
+    const dy = touches[1]!.clientY - touches[0]!.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0]!;
+    const pinchDist = getTouchDist(e.touches);
+    touchRef.current = {
+      startX: touch.clientX,
+      startY: touch.clientY,
+      scrollXStart: scrollX,
+      scrollYStart: scrollY,
+      pinchDist,
+      zoomStart: zoom,
+      moved: false,
+    };
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchRef.current) return;
+    e.preventDefault();
+
+    const ref = touchRef.current;
+
+    // Pinch to zoom
+    if (e.touches.length >= 2) {
+      const dist = getTouchDist(e.touches);
+      if (dist && ref.pinchDist) {
+        const scale = dist / ref.pinchDist;
+        const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, ref.zoomStart * scale));
+        setZoom(newZoom);
+      }
+      return;
+    }
+
+    // Single finger pan
+    const touch = e.touches[0]!;
+    const dx = ref.startX - touch.clientX;
+    const dy = ref.startY - touch.clientY;
+
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      ref.moved = true;
+    }
+
+    setScrollX(Math.max(0, ref.scrollXStart + dx));
+    setScrollY(Math.max(0, ref.scrollYStart + dy));
+    setFollowPlayhead(false);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    // If didn't move, treat as tap to seek
+    if (touchRef.current && !touchRef.current.moved && e.changedTouches.length > 0) {
+      const touch = e.changedTouches[0]!;
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const rect = canvas.getBoundingClientRect();
+        const x = touch.clientX - rect.left + scrollX;
+        const time = x / pps;
+        seekTo(Math.max(0, time));
+      }
+    }
+    touchRef.current = null;
+  };
+
   const handleClick = (e: React.MouseEvent) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -341,9 +419,12 @@ export default function Timeline() {
     <div
       ref={containerRef}
       className="w-full h-full relative overflow-hidden cursor-crosshair
-                 bg-[#141414]"
+                 bg-[#141414] touch-none"
       onWheel={handleWheel}
       onClick={handleClick}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       <canvas ref={canvasRef} className="absolute inset-0" />
 
