@@ -3,9 +3,11 @@ import { useTransportStore } from '@/stores/transport-store';
 import { getPositionSeconds } from '@/services/transport-service';
 import { formatSeconds, formatBarsBeats } from '@/utils/format-time';
 
+import type { BottomPanel } from '@/App';
+
 interface TransportBarProps {
-  showMixer: boolean;
-  onToggleMixer: () => void;
+  activePanel: BottomPanel;
+  onTogglePanel: (panel: BottomPanel) => void;
   showAI: boolean;
   onToggleAI: () => void;
 }
@@ -55,8 +57,8 @@ function IconLoop() {
 }
 
 export default function TransportBar({
-  showMixer,
-  onToggleMixer,
+  activePanel,
+  onTogglePanel,
   showAI,
   onToggleAI,
 }: TransportBarProps) {
@@ -199,11 +201,18 @@ export default function TransportBar({
       {/* Panel toggles */}
       <div className="flex items-center gap-1">
         <button
-          onClick={onToggleMixer}
+          onClick={() => onTogglePanel('mixer')}
           className={`daw-button text-xxs px-2 py-0.5
-                     ${showMixer ? 'daw-button-active' : ''}`}
+                     ${activePanel === 'mixer' ? 'daw-button-active' : ''}`}
         >
           Mixer
+        </button>
+        <button
+          onClick={() => onTogglePanel('instrument')}
+          className={`daw-button text-xxs px-2 py-0.5
+                     ${activePanel === 'instrument' ? 'daw-button-active' : ''}`}
+        >
+          Inst
         </button>
         <button
           onClick={onToggleAI}
