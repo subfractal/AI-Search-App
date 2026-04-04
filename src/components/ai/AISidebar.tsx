@@ -7,6 +7,9 @@ import {
 } from '@/services/ai/suggestion-engine';
 import { toggleMonitoring } from '@/services/ai/realtime-monitor';
 import { analyzeGainStaging, applyGainStaging } from '@/services/ai/gain-staging';
+import { STREAMING_TARGETS } from '@/services/ai/genre-profiles';
+import { GENRE_PROFILES } from '@/services/ai/genre-profiles';
+import type { MixGenre } from '@/types/ai';
 
 export default function AISidebar() {
   const enabled = useAIStore((s) => s.enabled);
@@ -18,6 +21,8 @@ export default function AISidebar() {
   const clippingAlerts = useAIStore((s) => s.clippingAlerts);
   const monitorEnabled = useAIStore((s) => s.monitorEnabled);
   const tracks = useSessionStore((s) => s.tracks);
+  const config = useSessionStore((s) => s.config);
+  const setConfig = useSessionStore((s) => s.setConfig);
 
   const pendingSuggestions = suggestions.filter(
     (s) => s.status === 'pending',
@@ -64,6 +69,27 @@ export default function AISidebar() {
             >
               {analyzing ? 'Analyzing...' : 'Analyze Mix'}
             </button>
+          </div>
+
+          {/* Genre selector */}
+          <div className="px-2.5 py-1.5 border-b border-daw-border/10">
+            <div className="flex items-center justify-between">
+              <span className="text-xxs text-daw-text-muted">Genre Profile</span>
+              <select
+                value={config.genre}
+                onChange={(e) => setConfig({ genre: e.target.value as MixGenre })}
+                className="text-[9px] bg-daw-bg border border-daw-border/30 rounded
+                           px-1 py-0.5 text-daw-text-dim
+                           focus:outline-none focus:border-daw-ai-accent/40"
+              >
+                {Object.entries(GENRE_PROFILES).map(([key, p]) => (
+                  <option key={key} value={key}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="text-[8px] text-daw-text-muted/50 mt-0.5">
+              {GENRE_PROFILES[config.genre].description}
+            </div>
           </div>
 
           {/* Live Monitor toggle */}
@@ -159,6 +185,33 @@ export default function AISidebar() {
                       warn={lastAnalysis.overallLoudness.truePeak > -1}
                     />
                   </div>
+
+                  {/* Streaming platform compliance */}
+                  <div className="mt-2 pt-1.5 border-t border-daw-border/10">
+                    <span className="text-[7px] text-daw-text-muted/50 uppercase tracking-wider">
+                      Platform Compliance
+                    </span>
+                    <div className="mt-1 space-y-0.5">
+                      {STREAMING_TARGETS.map((platform) => {
+                        const lufsOk = lastAnalysis.overallLoudness!.integrated <= platform.integratedLufs + 1;
+                        const tpOk = lastAnalysis.overallLoudness!.truePeak <= platform.maxTruePeak;
+                        const ok = lufsOk && tpOk;
+                        return (
+                          <div key={platform.name} className="flex items-center justify-between text-[9px]">
+                            <span className="text-daw-text-muted">{platform.name}</span>
+                            <div className="flex items-center gap-1">
+                              <span className="text-[8px] text-daw-text-muted/40">
+                                {platform.integratedLufs} / {platform.maxTruePeak}
+                              </span>
+                              <span className={ok ? 'text-green-400' : 'text-red-400'}>
+                                {ok ? '\u2713' : '\u2717'}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -214,6 +267,46 @@ export default function AISidebar() {
                         </div>
                         <span className="text-[8px] text-orange-400/60">
                           {Math.round(pair.severity * 100)}%
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Phase Correlation */}
+          {lastAnalysis && lastAnalysis.phaseCorrelations.length > 0 && (
+            <div className="px-2.5 py-2 border-b border-daw-border/10">
+              <span className="daw-section-label">
+                Phase Correlation
+              </span>
+              <div className="mt-1.5 space-y-1">
+                {lastAnalysis.phaseCorrelations.map((phase) => {
+                  const track = tracks.find((t) => t.id === phase.trackId);
+                  const isWarn = phase.correlation >= 0 && phase.correlation <= 0.5;
+                  const isBad = phase.correlation < 0;
+                  return (
+                    <div key={phase.trackId} className="flex items-center gap-1.5">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xxs text-daw-text-dim truncate">
+                          {track?.name ?? phase.trackId}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-12 h-1 bg-daw-border/20 rounded overflow-hidden">
+                          <div
+                            className={`h-full rounded ${
+                              isBad ? 'bg-red-500' : isWarn ? 'bg-yellow-500' : 'bg-green-500'
+                            }`}
+                            style={{ width: `${Math.max(5, (phase.correlation + 1) * 50)}%` }}
+                          />
+                        </div>
+                        <span className={`text-[8px] font-mono w-8 text-right ${
+                          isBad ? 'text-red-400' : isWarn ? 'text-yellow-400' : 'text-green-400'
+                        }`}>
+                          {phase.correlation.toFixed(2)}
                         </span>
                       </div>
                     </div>

@@ -107,6 +107,7 @@ export interface MixAnalysis {
   frequencyBalance: FrequencyAnalysis;
   stereoWidth: number;
   maskingPairs: MaskingPair[];
+  phaseCorrelations: PhaseCorrelation[];
   timestamp: number;
 }
 
@@ -116,4 +117,41 @@ export interface AIActivityEntry {
   trackId: string | null;
   timestamp: number;
   undoable: boolean;
+}
+
+// Genre profiles for context-aware analysis
+export type MixGenre =
+  | 'pop'
+  | 'edm'
+  | 'rock'
+  | 'hip-hop'
+  | 'jazz'
+  | 'classical'
+  | 'general';
+
+export interface GenreProfile {
+  name: string;
+  targetLufs: number;
+  maxTruePeak: number;
+  dynamicRangeMin: number;
+  dynamicRangeMax: number;
+  lowEndTolerance: number;
+  highEndTolerance: number;
+  compressionThreshold: number;
+  description: string;
+}
+
+// Streaming platform loudness targets
+export interface StreamingTarget {
+  name: string;
+  integratedLufs: number;
+  maxTruePeak: number;
+  note: string;
+}
+
+// Phase correlation between stereo channels or track pairs
+export interface PhaseCorrelation {
+  trackId: string;
+  correlation: number; // -1 (out of phase) to +1 (in phase)
+  monoCompatible: boolean;
 }

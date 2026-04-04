@@ -13,6 +13,7 @@ export interface SessionConfig {
   loopStart: number;
   loopEnd: number;
   loopEnabled: boolean;
+  genre: import('@/types/ai').MixGenre;
 }
 
 export interface AudioClip {
@@ -69,6 +70,7 @@ export const DEFAULT_SESSION_CONFIG: SessionConfig = {
   loopStart: 0,
   loopEnd: 16,
   loopEnabled: false,
+  genre: 'general',
 };
 
 export function isAudioClip(clip: Clip): clip is AudioClip {

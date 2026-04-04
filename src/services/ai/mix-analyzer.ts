@@ -5,6 +5,8 @@ import type {
   LevelAnalysis,
   LoudnessResult,
   AISuggestion,
+  MixGenre,
+  PhaseCorrelation,
 } from '@/types/ai';
 import type { Track } from '@/types/audio';
 import { isAudioClip } from '@/types/audio';
@@ -12,6 +14,8 @@ import { analyzeTrack } from './analysis-engine';
 import { calculateLUFS } from './loudness-meter';
 import { analyzeAllMasking } from './masking-detector';
 import { analyzeGainStaging } from './gain-staging';
+import { getGenreProfile, STREAMING_TARGETS } from './genre-profiles';
+import { analyzePhaseCorrelation } from './phase-detector';
 import { generateId } from '@/utils/id';
 
 export function analyzeMix(
@@ -32,6 +36,17 @@ export function analyzeMix(
   const stereoWidth = estimateStereoWidth(tracks);
   const maskingPairs = analyzeAllMasking(trackAnalyses);
 
+  // Phase correlation analysis for stereo tracks
+  const phaseCorrelations: PhaseCorrelation[] = [];
+  for (const track of tracks) {
+    const audioClip = track.clips.find(isAudioClip);
+    if (audioClip && audioClip.buffer.numberOfChannels >= 2) {
+      phaseCorrelations.push(
+        analyzePhaseCorrelation(track.id, audioClip.buffer),
+      );
+    }
+  }
+
   // Calculate overall loudness from first available buffer
   let overallLoudness: LoudnessResult | null = null;
   try {
@@ -50,6 +65,7 @@ export function analyzeMix(
     frequencyBalance,
     stereoWidth,
     maskingPairs,
+    phaseCorrelations,
     timestamp: Date.now(),
   };
 }
@@ -118,8 +134,10 @@ function estimateStereoWidth(tracks: Track[]): number {
 export function generateSuggestions(
   analysis: MixAnalysis,
   tracks: Track[],
+  genre: MixGenre = 'general',
 ): AISuggestion[] {
   const suggestions: AISuggestion[] = [];
+  const profile = getGenreProfile(genre);
 
   for (const ta of analysis.tracks) {
     if (ta.level.clipping) {
@@ -368,7 +386,7 @@ export function generateSuggestions(
     }
   }
 
-  // Masking detection — flag frequency collisions between tracks
+  // Masking detection — flag frequency collisions with specific band recommendations
   if (analysis.maskingPairs.length > 0) {
     for (const pair of analysis.maskingPairs.slice(0, 3)) {
       const trackA = tracks.find((t) => t.id === pair.trackAId);
@@ -376,6 +394,24 @@ export function generateSuggestions(
       const nonDominantId =
         pair.dominantTrackId === pair.trackAId ? pair.trackBId : pair.trackAId;
       const nonDominantTrack = tracks.find((t) => t.id === nonDominantId);
+
+      // Provide specific EQ recommendations based on which bands are masked
+      const hasMud = pair.maskedBands.some((b) => b.includes('Low-Mid'));
+      const hasPresence = pair.maskedBands.some((b) => b.includes('Mid (1k'));
+      const hasLow = pair.maskedBands.some((b) => b.includes('Low ('));
+
+      let eqParams: Record<string, number | string> = { low: -3, mid: 0, high: 0, lowFrequency: 400, highFrequency: 2500 };
+      let eqAdvice = '';
+
+      if (hasMud) {
+        eqParams = { low: -4, mid: 0, high: 0, lowFrequency: 350, highFrequency: 2500 };
+        eqAdvice = 'Cut 200-500 Hz to remove mud. ';
+      } else if (hasPresence) {
+        eqParams = { low: 0, mid: -3, high: 0, lowFrequency: 400, highFrequency: 3000 };
+        eqAdvice = 'Cut 1-4 kHz to reduce presence clash. ';
+      } else if (hasLow) {
+        eqAdvice = 'Add 80 Hz high-pass filter to clean low end. ';
+      }
 
       suggestions.push({
         id: generateId('sug'),
@@ -385,49 +421,60 @@ export function generateSuggestions(
         title: `Masking: "${trackA?.name}" vs "${trackB?.name}"`,
         description:
           `Frequency collision in ${pair.maskedBands.join(', ')}. ` +
+          `${eqAdvice}` +
           `Severity: ${Math.round(pair.severity * 100)}%. ` +
-          `Consider EQ cut on "${nonDominantTrack?.name}".`,
+          `Apply EQ cut on "${nonDominantTrack?.name}".`,
         confidence: Math.min(0.85, pair.severity),
         status: 'pending',
         action: {
           type: 'addEffect',
           trackId: nonDominantId,
           effectType: 'eq',
-          effectParams: { low: -3, mid: 0, high: 0, lowFrequency: 400, highFrequency: 2500 },
+          effectParams: eqParams,
         },
         timestamp: Date.now(),
       });
     }
   }
 
-  // Loudness suggestions — LUFS-based
+  // Genre-aware loudness suggestions with streaming platform targets
   if (analysis.overallLoudness) {
     const lufs = analysis.overallLoudness.integrated;
-    if (lufs > -14) {
+    const targetLufs = profile.targetLufs;
+
+    // Check against genre-specific target
+    if (lufs > targetLufs + 3 && lufs > -Infinity) {
+      const failingPlatforms = STREAMING_TARGETS
+        .filter((p) => lufs > p.integratedLufs)
+        .map((p) => `${p.name} (${p.integratedLufs} LUFS)`)
+        .join(', ');
+
       suggestions.push({
         id: generateId('sug'),
         type: 'loudness',
         priority: 'sidebar',
         targetTrackId: null,
-        title: 'Mix is too loud for streaming',
+        title: `Mix too loud for ${profile.name}`,
         description:
           `Integrated loudness is ${lufs.toFixed(1)} LUFS. ` +
-          `Target -14 LUFS for streaming platforms (Spotify, Apple Music).`,
+          `${profile.name} target: ${targetLufs} LUFS. ` +
+          (failingPlatforms ? `Will be turned down on: ${failingPlatforms}.` : ''),
         confidence: 0.8,
         status: 'pending',
         action: null,
         timestamp: Date.now(),
       });
-    } else if (lufs < -20 && lufs > -Infinity) {
+    } else if (lufs < targetLufs - 6 && lufs > -Infinity) {
       suggestions.push({
         id: generateId('sug'),
         type: 'loudness',
         priority: 'sidebar',
         targetTrackId: null,
-        title: 'Mix is very quiet',
+        title: `Mix too quiet for ${profile.name}`,
         description:
           `Integrated loudness is ${lufs.toFixed(1)} LUFS. ` +
-          `Consider raising levels — target around -14 LUFS for streaming.`,
+          `${profile.name} target: ${targetLufs} LUFS. ` +
+          `Consider raising levels for competitive loudness.`,
         confidence: 0.7,
         status: 'pending',
         action: null,
@@ -435,17 +482,83 @@ export function generateSuggestions(
       });
     }
 
-    if (analysis.overallLoudness.truePeak > 0) {
+    // True peak ceiling enforcement — industry standard -1.0 dBTP
+    if (analysis.overallLoudness.truePeak > profile.maxTruePeak) {
+      const failingPeakPlatforms = STREAMING_TARGETS
+        .filter((p) => analysis.overallLoudness!.truePeak > p.maxTruePeak)
+        .map((p) => p.name)
+        .join(', ');
+
       suggestions.push({
         id: generateId('sug'),
         type: 'loudness',
         priority: 'auto',
         targetTrackId: null,
-        title: 'True peak exceeds 0 dBTP',
+        title: `True peak exceeds ${profile.maxTruePeak} dBTP ceiling`,
         description:
-          `True peak is +${analysis.overallLoudness.truePeak.toFixed(1)} dBTP. ` +
-          `This will cause inter-sample clipping on playback. Consider adding a limiter.`,
-        confidence: 0.9,
+          `True peak is ${analysis.overallLoudness.truePeak > 0 ? '+' : ''}${analysis.overallLoudness.truePeak.toFixed(1)} dBTP. ` +
+          `Industry standard ceiling is -1.0 dBTP to prevent inter-sample clipping. ` +
+          (failingPeakPlatforms ? `Exceeds limits for: ${failingPeakPlatforms}.` : '') +
+          ` Consider adding a limiter with -1.0 dBTP ceiling.`,
+        confidence: 0.92,
+        status: 'pending',
+        action: null,
+        timestamp: Date.now(),
+      });
+    }
+
+    // Dynamic range check — genre-aware
+    const dr = analysis.overallLevel.dynamicRange;
+    if (dr < profile.dynamicRangeMin) {
+      suggestions.push({
+        id: generateId('sug'),
+        type: 'compression',
+        priority: 'sidebar',
+        targetTrackId: null,
+        title: `Over-compressed for ${profile.name}`,
+        description:
+          `Dynamic range is ${dr.toFixed(1)} dB, below the ${profile.dynamicRangeMin} dB minimum for ${profile.name}. ` +
+          `This can sound fatiguing. Consider reducing compression or limiter settings.`,
+        confidence: 0.65,
+        status: 'pending',
+        action: null,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  // Phase correlation warnings — detect mono incompatibility
+  for (const phase of analysis.phaseCorrelations) {
+    if (!phase.monoCompatible) {
+      const track = tracks.find((t) => t.id === phase.trackId);
+      suggestions.push({
+        id: generateId('sug'),
+        type: 'general',
+        priority: 'inline',
+        targetTrackId: phase.trackId,
+        title: `Phase issue on "${track?.name ?? 'track'}"`,
+        description:
+          `Phase correlation is ${phase.correlation.toFixed(2)} (negative = out of phase). ` +
+          `This track will lose energy or cancel when summed to mono. ` +
+          `Check stereo processing or flip polarity on one channel.`,
+        confidence: 0.8,
+        status: 'pending',
+        action: null,
+        timestamp: Date.now(),
+      });
+    } else if (phase.correlation < 0.3 && phase.correlation >= 0) {
+      const track = tracks.find((t) => t.id === phase.trackId);
+      suggestions.push({
+        id: generateId('sug'),
+        type: 'general',
+        priority: 'sidebar',
+        targetTrackId: phase.trackId,
+        title: `Wide stereo on "${track?.name ?? 'track'}"`,
+        description:
+          `Phase correlation is ${phase.correlation.toFixed(2)}. Very wide stereo content ` +
+          `may not translate well to mono playback (phone speakers, PA systems). ` +
+          `Consider narrowing bass frequencies while keeping highs wide.`,
+        confidence: 0.5,
         status: 'pending',
         action: null,
         timestamp: Date.now(),

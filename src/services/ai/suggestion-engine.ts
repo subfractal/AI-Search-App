@@ -20,7 +20,7 @@ export function runAnalysis(): void {
     const analysis = analyzeMix(tracks, config.sampleRate);
     aiState.setAnalysis(analysis);
 
-    const suggestions = generateSuggestions(analysis, tracks);
+    const suggestions = generateSuggestions(analysis, tracks, config.genre);
 
     aiState.clearSuggestions();
 
