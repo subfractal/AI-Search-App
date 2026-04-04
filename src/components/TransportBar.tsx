@@ -112,202 +112,187 @@ export default function TransportBar({
   const isPlaying = state === 'playing';
   const isRecording = state === 'recording';
 
+  const PanelBtn = ({ panel, label }: { panel: BottomPanel; label: string }) => (
+    <button
+      onClick={() => panel ? onTogglePanel(panel) : undefined}
+      className={`daw-button text-xxs px-1.5 py-0.5
+                 ${activePanel === panel ? 'daw-button-active' : ''}`}
+    >
+      {label}
+    </button>
+  );
+
   return (
-    <div className="flex items-center min-h-[44px] px-2 md:px-3 gap-1.5 md:gap-2
-                    bg-daw-transport-bg border-b border-daw-border/60
-                    select-none shrink-0 flex-wrap">
-      {/* Transport controls */}
-      <div className="flex items-center gap-0.5">
-        <button
-          onClick={stop}
-          className={`w-8 h-7 flex items-center justify-center rounded
-                     transition-all duration-75
-                     ${state === 'stopped'
-              ? 'text-daw-text bg-daw-panel'
-              : 'text-daw-text-muted hover:text-daw-text-dim'}`}
-          title="Stop"
-        >
-          <IconStop />
-        </button>
-        <button
-          onClick={isPlaying ? pause : play}
-          className={`w-8 h-7 flex items-center justify-center rounded
-                     transition-all duration-75
-                     ${isPlaying
-              ? 'text-daw-transport-play bg-daw-transport-play/10'
-              : 'text-daw-text-muted hover:text-daw-text-dim'}`}
-          title={isPlaying ? 'Pause' : 'Play'}
-        >
-          {isPlaying ? <IconPause /> : <IconPlay />}
-        </button>
-        <button
-          onClick={toggleRecord}
-          className={`w-8 h-7 flex items-center justify-center rounded
-                     transition-all duration-75
-                     ${isRecording
-              ? 'text-daw-transport-record bg-daw-transport-record/10 animate-pulse'
-              : 'text-daw-text-muted hover:text-daw-transport-record/60'}`}
-          title="Record"
-        >
-          <IconRecord />
-        </button>
-      </div>
-
-      <div className="daw-divider mx-1" />
-
-      {/* Undo / Redo */}
-      <div className="flex items-center gap-0.5">
-        <button
-          onClick={undo}
-          disabled={undoCount === 0}
-          className="w-7 h-7 flex items-center justify-center rounded
-                     text-daw-text-muted hover:text-daw-text-dim transition-all
-                     disabled:opacity-20"
-          title="Undo"
-        >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
-            stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-            <path d="M3 4l-2 2 2 2" />
-            <path d="M1 6h7a3 3 0 010 6H6" />
-          </svg>
-        </button>
-        <button
-          onClick={redo}
-          disabled={redoCount === 0}
-          className="w-7 h-7 flex items-center justify-center rounded
-                     text-daw-text-muted hover:text-daw-text-dim transition-all
-                     disabled:opacity-20"
-          title="Redo"
-        >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
-            stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-            <path d="M9 4l2 2-2 2" />
-            <path d="M11 6H4a3 3 0 000 6h2" />
-          </svg>
-        </button>
-      </div>
-
-      <div className="daw-divider mx-1" />
-
-      {/* Position displays */}
-      <div className="flex items-center gap-3">
-        <div className="flex flex-col items-center min-w-[70px]">
-          <span className="text-xxs text-daw-text-muted leading-none mb-0.5">
-            TIME
-          </span>
-          <span className="text-sm font-mono tabular-nums text-daw-text leading-none">
-            {formatSeconds(position)}
-          </span>
+    <div className="bg-daw-transport-bg border-b border-daw-border/60
+                    select-none shrink-0">
+      {/* Row 1: Transport controls + position */}
+      <div className="flex items-center h-10 px-2 gap-1.5">
+        {/* Transport controls */}
+        <div className="flex items-center gap-0.5">
+          <button
+            onClick={stop}
+            className={`w-8 h-7 flex items-center justify-center rounded
+                       transition-all duration-75
+                       ${state === 'stopped'
+                ? 'text-daw-text bg-daw-panel'
+                : 'text-daw-text-muted hover:text-daw-text-dim'}`}
+            title="Stop"
+          >
+            <IconStop />
+          </button>
+          <button
+            onClick={isPlaying ? pause : play}
+            className={`w-8 h-7 flex items-center justify-center rounded
+                       transition-all duration-75
+                       ${isPlaying
+                ? 'text-daw-transport-play bg-daw-transport-play/10'
+                : 'text-daw-text-muted hover:text-daw-text-dim'}`}
+            title={isPlaying ? 'Pause' : 'Play'}
+          >
+            {isPlaying ? <IconPause /> : <IconPlay />}
+          </button>
+          <button
+            onClick={toggleRecord}
+            className={`w-8 h-7 flex items-center justify-center rounded
+                       transition-all duration-75
+                       ${isRecording
+                ? 'text-daw-transport-record bg-daw-transport-record/10 animate-pulse'
+                : 'text-daw-text-muted hover:text-daw-transport-record/60'}`}
+            title="Record"
+          >
+            <IconRecord />
+          </button>
         </div>
 
-        <div className="flex flex-col items-center min-w-[60px]">
-          <span className="text-xxs text-daw-text-muted leading-none mb-0.5">
-            BARS
-          </span>
-          <span className="text-sm font-mono tabular-nums text-daw-text leading-none">
-            {formatBarsBeats(position, bpm, 4)}
-          </span>
+        {/* Undo / Redo */}
+        <div className="flex items-center gap-0.5 ml-1">
+          <button
+            onClick={undo}
+            disabled={undoCount === 0}
+            className="w-6 h-7 flex items-center justify-center rounded
+                       text-daw-text-muted hover:text-daw-text-dim transition-all
+                       disabled:opacity-20"
+            title="Undo"
+          >
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none"
+              stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <path d="M3 4l-2 2 2 2" />
+              <path d="M1 6h7a3 3 0 010 6H6" />
+            </svg>
+          </button>
+          <button
+            onClick={redo}
+            disabled={redoCount === 0}
+            className="w-6 h-7 flex items-center justify-center rounded
+                       text-daw-text-muted hover:text-daw-text-dim transition-all
+                       disabled:opacity-20"
+            title="Redo"
+          >
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none"
+              stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <path d="M9 4l2 2-2 2" />
+              <path d="M11 6H4a3 3 0 000 6h2" />
+            </svg>
+          </button>
         </div>
+
+        {/* Position displays */}
+        <div className="flex items-center gap-2 ml-1">
+          <div className="flex flex-col items-center">
+            <span className="text-xxs text-daw-text-muted leading-none mb-0.5">
+              TIME
+            </span>
+            <span className="text-xs font-mono tabular-nums text-daw-text leading-none">
+              {formatSeconds(position)}
+            </span>
+          </div>
+          <div className="flex flex-col items-center">
+            <span className="text-xxs text-daw-text-muted leading-none mb-0.5">
+              BARS
+            </span>
+            <span className="text-xs font-mono tabular-nums text-daw-text leading-none">
+              {formatBarsBeats(position, bpm, 4)}
+            </span>
+          </div>
+        </div>
+
+        {/* BPM */}
+        <div className="flex flex-col items-center ml-1">
+          <span className="text-xxs text-daw-text-muted leading-none mb-0.5">
+            BPM
+          </span>
+          <input
+            type="number"
+            value={bpmInput}
+            onChange={(e) => setBpmInput(e.target.value)}
+            onBlur={handleBpmChange}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur();
+            }}
+            className="w-10 text-center text-xs font-mono bg-daw-bg
+                       border border-daw-border/60 rounded px-0.5 py-0
+                       text-daw-accent focus:outline-none focus:border-daw-accent/50
+                       leading-tight"
+            min={20}
+            max={999}
+          />
+        </div>
+
+        {/* Loop */}
+        <button
+          onClick={toggleLoop}
+          className={`w-7 h-7 flex items-center justify-center rounded
+                     transition-all duration-75
+                     ${loopEnabled
+              ? 'text-daw-accent bg-daw-accent/10'
+              : 'text-daw-text-muted hover:text-daw-text-dim'}`}
+          title="Toggle Loop"
+        >
+          <IconLoop />
+        </button>
       </div>
 
-      <div className="daw-divider mx-1" />
-
-      {/* BPM */}
-      <div className="flex flex-col items-center">
-        <span className="text-xxs text-daw-text-muted leading-none mb-0.5">
-          BPM
-        </span>
-        <input
-          type="number"
-          value={bpmInput}
-          onChange={(e) => setBpmInput(e.target.value)}
-          onBlur={handleBpmChange}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') e.currentTarget.blur();
-          }}
-          className="w-12 text-center text-sm font-mono bg-daw-bg
-                     border border-daw-border/60 rounded px-1 py-0
-                     text-daw-accent focus:outline-none focus:border-daw-accent/50
-                     leading-tight"
-          min={20}
-          max={999}
-        />
-      </div>
-
-      {/* Loop */}
-      <button
-        onClick={toggleLoop}
-        className={`w-8 h-7 flex items-center justify-center rounded
-                   transition-all duration-75
-                   ${loopEnabled
-            ? 'text-daw-accent bg-daw-accent/10'
-            : 'text-daw-text-muted hover:text-daw-text-dim'}`}
-        title="Toggle Loop"
-      >
-        <IconLoop />
-      </button>
-
-      <div className="flex-1" />
-
-      {/* Panel toggles */}
-      <div className="flex items-center gap-1 flex-wrap justify-end">
+      {/* Row 2: Panel toggles — always visible, scrollable */}
+      <div className="flex items-center h-7 px-2 gap-1 border-t border-daw-border/20
+                      overflow-x-auto scrollbar-none">
         <button
           onClick={onToggleTracks}
-          className={`daw-button text-xxs px-2 py-0.5
+          className={`daw-button text-xxs px-1.5 py-0.5 shrink-0
                      ${showTracks ? 'daw-button-active' : ''}`}
-          title="Toggle Track List"
         >
           Trk
         </button>
-        <button
-          onClick={() => onTogglePanel('mixer')}
-          className={`daw-button text-xxs px-2 py-0.5
-                     ${activePanel === 'mixer' ? 'daw-button-active' : ''}`}
-        >
-          Mixer
-        </button>
-        <button
-          onClick={() => onTogglePanel('instrument')}
-          className={`daw-button text-xxs px-2 py-0.5
-                     ${activePanel === 'instrument' ? 'daw-button-active' : ''}`}
-        >
-          Inst
-        </button>
-        <button
-          onClick={() => onTogglePanel('effects')}
-          className={`daw-button text-xxs px-2 py-0.5
-                     ${activePanel === 'effects' ? 'daw-button-active' : ''}`}
-        >
-          FX
-        </button>
+        <PanelBtn panel="mixer" label="Mixer" />
+        <PanelBtn panel="instrument" label="Inst" />
+        <PanelBtn panel="effects" label="FX" />
         <button
           onClick={onPianoRoll}
-          className={`daw-button text-xxs px-2 py-0.5
+          className={`daw-button text-xxs px-1.5 py-0.5 shrink-0
                      ${activePanel === 'piano-roll' ? 'daw-button-active' : ''}`}
-          title="Piano Roll"
         >
           Roll
         </button>
 
-        <div className="daw-divider mx-0.5" />
+        <div className="daw-divider mx-0.5 shrink-0" />
 
         <button
           onClick={onExport}
-          className="daw-button text-xxs px-2 py-0.5"
-          title="Export / Bounce"
+          className="daw-button text-xxs px-1.5 py-0.5 shrink-0"
         >
           Export
         </button>
         <button
           onClick={onHistory}
-          className="daw-button text-xxs px-2 py-0.5"
-          title="History"
+          className="daw-button text-xxs px-1.5 py-0.5 shrink-0"
         >
           Hist
         </button>
+
+        <div className="flex-1" />
+
         <button
           onClick={onToggleAI}
-          className={`daw-button text-xxs px-2 py-0.5
+          className={`daw-button text-xxs px-1.5 py-0.5 shrink-0
                      ${showAI
               ? 'bg-daw-ai-suggestion text-white border-daw-ai-suggestion'
               : ''}`}

@@ -6,6 +6,11 @@ export async function initAudioContext(): Promise<void> {
   if (audioContextStarted) return;
   await Tone.start();
   audioContextStarted = true;
+  console.log('[DAW] Audio context started:', Tone.getContext().state);
+}
+
+export function isAudioReady(): boolean {
+  return audioContextStarted;
 }
 
 export function getAudioContext(): AudioContext {
@@ -13,12 +18,15 @@ export function getAudioContext(): AudioContext {
 }
 
 export async function loadAudioFile(file: File): Promise<AudioBuffer> {
+  // Ensure audio context is started before decoding
+  await initAudioContext();
   const arrayBuffer = await file.arrayBuffer();
   const ctx = getAudioContext();
   return ctx.decodeAudioData(arrayBuffer);
 }
 
 export async function loadAudioFromUrl(url: string): Promise<AudioBuffer> {
+  await initAudioContext();
   const response = await fetch(url);
   const arrayBuffer = await response.arrayBuffer();
   const ctx = getAudioContext();

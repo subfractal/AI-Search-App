@@ -88,7 +88,7 @@ export default function App() {
           {showAI && (
             <div className={`border-l border-daw-border/30 shrink-0
                             ${isMobile
-                ? 'absolute right-0 top-11 bottom-0 w-64 z-30 bg-daw-ai-bg shadow-xl'
+                ? 'absolute right-0 top-[68px] bottom-0 w-64 z-30 bg-daw-ai-bg shadow-xl'
                 : 'w-60'}`}
             >
               <AISidebar />
