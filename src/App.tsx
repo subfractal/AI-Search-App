@@ -75,11 +75,11 @@ export default function App() {
   useKeyboardShortcuts();
   const { isMobile, height: screenH } = useScreenSize();
 
-  const minPanelH = isMobile ? 120 : 160;
-  const maxPanelH = Math.floor(screenH * 0.6);
+  const minPanelH = isMobile ? 100 : 140;
+  const maxPanelH = Math.floor(screenH * 0.5);
   const defaultPanelH = isMobile
-    ? Math.min(Math.max(160, Math.floor(screenH * 0.35)), 280)
-    : 220;
+    ? Math.min(Math.max(140, Math.floor(screenH * 0.25)), 220)
+    : 200;
 
   const { height: panelH, onDragStart } = useResizablePanel(defaultPanelH, minPanelH, maxPanelH);
 

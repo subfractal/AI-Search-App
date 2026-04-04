@@ -31,14 +31,14 @@ export default function Knob({
   const normalizedValue = (value - min) / (max - min);
   const rotation = normalizedValue * 270 - 135;
 
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      startY.current = e.clientY;
+  const startDrag = useCallback(
+    (clientY: number) => {
+      startY.current = clientY;
       startValue.current = value;
 
-      const onMove = (ev: MouseEvent) => {
-        const delta = (startY.current - ev.clientY) / 100;
+      const onMove = (ev: MouseEvent | TouchEvent) => {
+        const y = 'touches' in ev ? ev.touches[0]!.clientY : (ev as MouseEvent).clientY;
+        const delta = (startY.current - y) / 100;
         const range = maxRef.current - minRef.current;
         const newVal = startValue.current + delta * range;
         const clamped = Math.max(minRef.current, Math.min(maxRef.current, newVal));
@@ -48,12 +48,33 @@ export default function Knob({
       const onUp = () => {
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup', onUp);
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', onUp);
       };
 
       document.addEventListener('mousemove', onMove);
       document.addEventListener('mouseup', onUp);
+      document.addEventListener('touchmove', onMove, { passive: false });
+      document.addEventListener('touchend', onUp);
     },
     [value],
+  );
+
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      startDrag(e.clientY);
+    },
+    [startDrag],
+  );
+
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      startDrag(e.touches[0]!.clientY);
+    },
+    [startDrag],
   );
 
   const r = size / 2 - 2;
@@ -63,12 +84,13 @@ export default function Knob({
   const cy = size / 2;
 
   return (
-    <div className="flex flex-col items-center gap-0.5">
+    <div className="flex flex-col items-center gap-0.5 touch-none select-none">
       <svg
         width={size}
         height={size}
         className="cursor-pointer"
         onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
       >
         {/* Background track */}
         <circle
