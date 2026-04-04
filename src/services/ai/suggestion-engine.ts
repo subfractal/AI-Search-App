@@ -1,8 +1,11 @@
 import { useSessionStore } from '@/stores/session-store';
 import { useAIStore } from '@/stores/ai-store';
 import { useMixerStore } from '@/stores/mixer-store';
+import { useEffectsStore } from '@/stores/effects-store';
 import { analyzeMix, generateSuggestions } from './mix-analyzer';
 import { generateId } from '@/utils/id';
+import type { SuggestionAction } from '@/types/ai';
+import type { EffectType, EffectParams } from '@/types/effects';
 
 export function runAnalysis(): void {
   const aiState = useAIStore.getState();
@@ -64,12 +67,11 @@ export function rejectSuggestion(suggestionId: string): void {
   useAIStore.getState().rejectSuggestion(suggestionId);
 }
 
-function applyAction(
-  action: { type: string; trackId: string; value?: number } | null,
-): void {
+function applyAction(action: SuggestionAction | null): void {
   if (!action) return;
 
   const mixer = useMixerStore.getState();
+  const effects = useEffectsStore.getState();
 
   switch (action.type) {
     case 'setVolume':
@@ -90,6 +92,25 @@ function applyAction(
       break;
     case 'mute':
       mixer.toggleMute(action.trackId);
+      break;
+    case 'unmute':
+      mixer.toggleMute(action.trackId);
+      break;
+    case 'addEffect':
+      if (action.effectType && action.trackId) {
+        effects.addEffect(
+          action.trackId,
+          action.effectType as EffectType,
+          action.effectParams as EffectParams | undefined,
+        );
+      }
+      break;
+    case 'batch':
+      if (action.actions) {
+        for (const subAction of action.actions) {
+          applyAction(subAction);
+        }
+      }
       break;
   }
 }

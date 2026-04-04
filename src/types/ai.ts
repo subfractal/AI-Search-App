@@ -25,9 +25,14 @@ export interface AISuggestion {
 }
 
 export interface SuggestionAction {
-  type: 'setVolume' | 'setPan' | 'mute' | 'unmute';
+  type: 'setVolume' | 'setPan' | 'mute' | 'unmute' | 'addEffect' | 'batch';
   trackId: string;
   value?: number;
+  // For addEffect actions
+  effectType?: string;
+  effectParams?: Record<string, number | string>;
+  // For batch actions (multiple changes at once)
+  actions?: SuggestionAction[];
 }
 
 export interface LevelAnalysis {

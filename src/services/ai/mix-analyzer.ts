@@ -159,40 +159,106 @@ export function generateSuggestions(
     }
   }
 
+  // Low end buildup — add high-pass filter to tracks with heavy low end
   if (analysis.frequencyBalance.low - analysis.frequencyBalance.mid > 10) {
-    suggestions.push({
-      id: generateId('sug'),
-      type: 'eq',
-      priority: 'sidebar',
-      targetTrackId: null,
-      title: 'Low end buildup',
-      description:
-        'The mix has significant low-frequency energy compared to mids. ' +
-        'Consider high-passing some tracks below 80 Hz to clean up the low end.',
-      confidence: 0.65,
-      status: 'pending',
-      action: null,
-      timestamp: Date.now(),
-    });
+    // Find tracks contributing most low end
+    const lowEndTracks = analysis.tracks
+      .filter((t) => t.frequency.low > t.frequency.mid + 6)
+      .map((t) => t.trackId);
+
+    const filterActions: AISuggestion['action'][] = lowEndTracks.map((trackId) => ({
+      type: 'addEffect' as const,
+      trackId,
+      effectType: 'filter',
+      effectParams: { frequency: 80, type: 'highpass', Q: 0.7, rolloff: -12 },
+    }));
+
+    if (filterActions.length > 0) {
+      const targetNames = lowEndTracks
+        .map((id) => tracks.find((t) => t.id === id)?.name)
+        .filter(Boolean);
+      suggestions.push({
+        id: generateId('sug'),
+        type: 'eq',
+        priority: 'sidebar',
+        targetTrackId: lowEndTracks[0] ?? null,
+        title: 'Low end buildup',
+        description:
+          `Excessive low-frequency energy detected. ` +
+          `Will add 80 Hz high-pass filter to: ${targetNames.join(', ') || 'affected tracks'}.`,
+        confidence: 0.65,
+        status: 'pending',
+        action: filterActions.length === 1
+          ? filterActions[0]!
+          : { type: 'batch', trackId: lowEndTracks[0]!, actions: filterActions as AISuggestion['action'][] as import('@/types/ai').SuggestionAction[] },
+        timestamp: Date.now(),
+      });
+    } else {
+      // Generic — apply EQ cut on all tracks
+      const batchActions = tracks
+        .filter((t) => !t.mute && t.clips.length > 0)
+        .map((t) => ({
+          type: 'addEffect' as const,
+          trackId: t.id,
+          effectType: 'eq',
+          effectParams: { low: -6, mid: 0, high: 0, lowFrequency: 400, highFrequency: 2500 },
+        }));
+      suggestions.push({
+        id: generateId('sug'),
+        type: 'eq',
+        priority: 'sidebar',
+        targetTrackId: null,
+        title: 'Low end buildup',
+        description:
+          'The mix has significant low-frequency energy. ' +
+          'Will reduce low EQ by 6 dB across tracks to clean up the mix.',
+        confidence: 0.65,
+        status: 'pending',
+        action: { type: 'batch', trackId: '', actions: batchActions },
+        timestamp: Date.now(),
+      });
+    }
   }
 
+  // Harsh highs — add EQ cut on high frequencies
   if (analysis.frequencyBalance.high - analysis.frequencyBalance.mid > 8) {
+    const harshTracks = analysis.tracks
+      .filter((t) => t.frequency.high > t.frequency.mid + 5)
+      .map((t) => t.trackId);
+
+    const eqActions = (harshTracks.length > 0
+      ? harshTracks
+      : tracks.filter((t) => !t.mute && t.clips.length > 0).map((t) => t.id)
+    ).map((trackId) => ({
+      type: 'addEffect' as const,
+      trackId,
+      effectType: 'eq',
+      effectParams: { low: 0, mid: 0, high: -4, lowFrequency: 400, highFrequency: 2500 },
+    }));
+
+    const targetNames = (harshTracks.length > 0 ? harshTracks : [])
+      .map((id) => tracks.find((t) => t.id === id)?.name)
+      .filter(Boolean);
+
     suggestions.push({
       id: generateId('sug'),
       type: 'eq',
       priority: 'sidebar',
-      targetTrackId: null,
+      targetTrackId: harshTracks[0] ?? null,
       title: 'Harsh high frequencies',
       description:
-        'High-frequency energy is elevated relative to the midrange. ' +
-        'This can cause listener fatigue. Consider taming the highs.',
+        'High-frequency energy is elevated. ' +
+        `Will cut highs by 4 dB${targetNames.length > 0 ? ` on: ${targetNames.join(', ')}` : ' across tracks'} to reduce harshness.`,
       confidence: 0.6,
       status: 'pending',
-      action: null,
+      action: eqActions.length === 1
+        ? eqActions[0]!
+        : { type: 'batch', trackId: eqActions[0]?.trackId ?? '', actions: eqActions },
       timestamp: Date.now(),
     });
   }
 
+  // Narrow stereo — spread tracks with calculated pan positions
   const activeTracks = tracks.filter(
     (t) => !t.mute && t.clips.length > 0,
   );
@@ -200,6 +266,22 @@ export function generateSuggestions(
     (t) => Math.abs(t.pan) < 0.1,
   );
   if (activeTracks.length >= 3 && allCentered) {
+    // Create pan spread: leave first track center, alternate L/R
+    const panActions = activeTracks.slice(1).map((track, i) => ({
+      type: 'setPan' as const,
+      trackId: track.id,
+      value: i % 2 === 0 ? -0.4 - (i * 0.1) : 0.4 + (i * 0.1),
+    }));
+
+    // Clamp pan values to [-1, 1]
+    for (const a of panActions) {
+      a.value = Math.max(-1, Math.min(1, a.value));
+    }
+
+    const trackNames = activeTracks.slice(1)
+      .map((t, i) => `${t.name} ${panActions[i]!.value < 0 ? 'L' : 'R'}`)
+      .join(', ');
+
     suggestions.push({
       id: generateId('sug'),
       type: 'pan',
@@ -207,13 +289,65 @@ export function generateSuggestions(
       targetTrackId: null,
       title: 'Narrow stereo image',
       description:
-        'All tracks are panned center. Spreading some elements ' +
-        'left and right will create a wider, more engaging mix.',
+        `All ${activeTracks.length} tracks are centered. Will spread: ${trackNames} ` +
+        'for a wider, more engaging mix.',
       confidence: 0.8,
       status: 'pending',
-      action: null,
+      action: { type: 'batch', trackId: '', actions: panActions },
       timestamp: Date.now(),
     });
+  }
+
+  // Dynamic range — suggest compressor if dynamic range is very high
+  for (const ta of analysis.tracks) {
+    if (ta.level.dynamicRange > 30 && !ta.level.clipping) {
+      const track = tracks.find((t) => t.id === ta.trackId);
+      suggestions.push({
+        id: generateId('sug'),
+        type: 'compression',
+        priority: 'sidebar',
+        targetTrackId: ta.trackId,
+        title: `Wide dynamics on "${track?.name ?? 'track'}"`,
+        description:
+          `Dynamic range is ${ta.level.dynamicRange.toFixed(0)} dB. ` +
+          'Will add a gentle compressor to even out the levels.',
+        confidence: 0.6,
+        status: 'pending',
+        action: {
+          type: 'addEffect',
+          trackId: ta.trackId,
+          effectType: 'compressor',
+          effectParams: { threshold: -20, ratio: 3, attack: 0.01, release: 0.2, knee: 10 },
+        },
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  // Noise floor — suggest if noise floor is high
+  for (const ta of analysis.tracks) {
+    if (ta.noiseFloor > -30) {
+      const track = tracks.find((t) => t.id === ta.trackId);
+      suggestions.push({
+        id: generateId('sug'),
+        type: 'noise',
+        priority: 'sidebar',
+        targetTrackId: ta.trackId,
+        title: `High noise floor on "${track?.name ?? 'track'}"`,
+        description:
+          `Noise floor at ${ta.noiseFloor.toFixed(0)} dB. ` +
+          'Will add a gate filter to reduce background noise in quiet sections.',
+        confidence: 0.55,
+        status: 'pending',
+        action: {
+          type: 'addEffect',
+          trackId: ta.trackId,
+          effectType: 'filter',
+          effectParams: { frequency: 200, type: 'highpass', Q: 0.5, rolloff: -12 },
+        },
+        timestamp: Date.now(),
+      });
+    }
   }
 
   return suggestions;
