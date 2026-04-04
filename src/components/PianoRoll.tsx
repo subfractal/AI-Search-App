@@ -15,17 +15,16 @@ interface PianoRollProps {
 type Tool = 'draw' | 'select' | 'erase';
 type SnapValue = '1/4' | '1/8' | '1/16' | '1/32';
 
-const NOTE_HEIGHT = 14;
-const PIANO_WIDTH = 40;
-const VELOCITY_HEIGHT = 60;
-const TOOLBAR_HEIGHT = 36;
+const PIANO_WIDTH = 48;
+const VELOCITY_HEIGHT = 50;
+const TOOLBAR_HEIGHT = 32;
 const MIN_PITCH = 24;   // C1
 const MAX_PITCH = 96;   // C7
 const TOTAL_NOTES = MAX_PITCH - MIN_PITCH + 1;
 const DEFAULT_PPS = 120;
 const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 8;
-const RESIZE_HANDLE_PX = 6;
+const RESIZE_HANDLE_PX = 8;
 
 const BLACK_KEYS = new Set([1, 3, 6, 8, 10]);
 
@@ -46,16 +45,25 @@ function getSnapDuration(bpm: number, snap: SnapValue): number {
   return (60 / bpm) / SNAP_DIVISORS[snap];
 }
 
+// Detect mobile for sizing
+function isTouchDevice() {
+  return window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+}
+
 export default function PianoRoll({ trackId, clip, onClose }: PianoRollProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number>(0);
+
+  const isTouch = useMemo(isTouchDevice, []);
+  const noteHeight = isTouch ? 22 : 16;
 
   const [tool, setTool] = useState<Tool>('draw');
   const [snap, setSnap] = useState<SnapValue>('1/16');
   const [zoom, setZoom] = useState(1);
   const [scrollX, setScrollX] = useState(0);
   const [scrollY, setScrollY] = useState(0);
+  const [octave, setOctave] = useState(4); // Current view octave (C4 centered)
   const [notes, setNotes] = useState<MidiNote[]>(() => [...clip.notes]);
   const [selectedNotes, setSelectedNotes] = useState<Set<number>>(new Set());
   const [dragState, setDragState] = useState<{
@@ -80,13 +88,22 @@ export default function PianoRoll({ trackId, clip, onClose }: PianoRollProps) {
 
   const pps = DEFAULT_PPS * zoom;
 
-  // Center initial scroll around C3-C5
-  useEffect(() => {
+  // Jump to octave
+  const jumpToOctave = useCallback((oct: number) => {
+    const clamped = Math.max(1, Math.min(7, oct));
+    setOctave(clamped);
+    const midPitch = clamped * 12; // C of that octave
     const container = containerRef.current;
     if (!container) return;
     const gridH = container.getBoundingClientRect().height - VELOCITY_HEIGHT;
-    const midY = (MAX_PITCH - 60) * NOTE_HEIGHT - gridH / 2;
-    setScrollY(Math.max(0, midY));
+    const targetY = (MAX_PITCH - midPitch) * noteHeight - gridH / 2;
+    setScrollY(Math.max(0, targetY));
+  }, [noteHeight]);
+
+  // Center initial scroll
+  useEffect(() => {
+    jumpToOctave(4);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Sync notes back to store
@@ -104,8 +121,8 @@ export default function PianoRoll({ trackId, clip, onClose }: PianoRollProps) {
   }, [notes]);
 
   const pitchFromY = useCallback((y: number): number => {
-    return MAX_PITCH - Math.floor((y + scrollY) / NOTE_HEIGHT);
-  }, [scrollY]);
+    return MAX_PITCH - Math.floor((y + scrollY) / noteHeight);
+  }, [scrollY, noteHeight]);
 
   const timeFromX = useCallback((x: number): number => {
     return (x - PIANO_WIDTH + scrollX) / pps;
@@ -133,45 +150,41 @@ export default function PianoRoll({ trackId, clip, onClose }: PianoRollProps) {
     if (!ctx) return;
     ctx.scale(dpr, dpr);
 
-    // Background
     ctx.fillStyle = '#0d0d0d';
     ctx.fillRect(0, 0, width, totalHeight);
 
-    // --- Grid area (clipped) ---
+    // --- Grid area ---
     ctx.save();
     ctx.beginPath();
     ctx.rect(PIANO_WIDTH, 0, gridWidth, gridHeight);
     ctx.clip();
 
-    // Note row backgrounds
     for (let pitch = MIN_PITCH; pitch <= MAX_PITCH; pitch++) {
-      const y = (MAX_PITCH - pitch) * NOTE_HEIGHT - scrollY;
-      if (y + NOTE_HEIGHT < 0 || y > gridHeight) continue;
+      const y = (MAX_PITCH - pitch) * noteHeight - scrollY;
+      if (y + noteHeight < 0 || y > gridHeight) continue;
 
       const isBlack = BLACK_KEYS.has(pitch % 12);
       ctx.fillStyle = isBlack ? '#111111' : '#151515';
-      ctx.fillRect(PIANO_WIDTH, y, gridWidth, NOTE_HEIGHT);
+      ctx.fillRect(PIANO_WIDTH, y, gridWidth, noteHeight);
 
-      // Row separator
       ctx.strokeStyle = '#1e1e1e';
       ctx.lineWidth = 0.5;
       ctx.beginPath();
-      ctx.moveTo(PIANO_WIDTH, y + NOTE_HEIGHT);
-      ctx.lineTo(width, y + NOTE_HEIGHT);
+      ctx.moveTo(PIANO_WIDTH, y + noteHeight);
+      ctx.lineTo(width, y + noteHeight);
       ctx.stroke();
 
-      // Thicker line at C notes
       if (pitch % 12 === 0) {
         ctx.strokeStyle = '#333333';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(PIANO_WIDTH, y + NOTE_HEIGHT);
-        ctx.lineTo(width, y + NOTE_HEIGHT);
+        ctx.moveTo(PIANO_WIDTH, y + noteHeight);
+        ctx.lineTo(width, y + noteHeight);
         ctx.stroke();
       }
     }
 
-    // Vertical gridlines: subdivisions (16th notes), beats, bars
+    // Vertical grid
     const beatDuration = 60 / bpm;
     const subdivDuration = beatDuration / 4;
     const startSubdiv = Math.floor((scrollX / pps) / subdivDuration);
@@ -201,7 +214,6 @@ export default function PianoRoll({ trackId, clip, onClose }: PianoRollProps) {
       ctx.lineTo(x, gridHeight);
       ctx.stroke();
 
-      // Bar numbers
       if (isBar) {
         ctx.fillStyle = '#555555';
         ctx.font = '9px Inter, sans-serif';
@@ -209,8 +221,7 @@ export default function PianoRoll({ trackId, clip, onClose }: PianoRollProps) {
       }
     }
 
-    // --- Render notes ---
-    // Apply drag transforms for live preview
+    // --- Notes ---
     let renderedNotes = notes;
     if (dragState && dragState.type !== 'draw') {
       const ds = dragState;
@@ -218,7 +229,7 @@ export default function PianoRoll({ trackId, clip, onClose }: PianoRollProps) {
         if (!selectedNotes.has(i)) return note;
         if (ds.type === 'move') {
           const dx = (ds.currentX - ds.startX) / pps;
-          const dy = Math.round((ds.startY - ds.currentY) / NOTE_HEIGHT);
+          const dy = Math.round((ds.startY - ds.currentY) / noteHeight);
           return {
             ...note,
             startTime: snapTime(Math.max(0, note.startTime + dx), bpm, snap),
@@ -239,9 +250,9 @@ export default function PianoRoll({ trackId, clip, onClose }: PianoRollProps) {
 
     renderedNotes.forEach((note, i) => {
       const x = xFromTime(note.startTime);
-      const y = (MAX_PITCH - note.pitch) * NOTE_HEIGHT - scrollY;
+      const y = (MAX_PITCH - note.pitch) * noteHeight - scrollY;
       const w = Math.max(4, note.duration * pps);
-      const h = NOTE_HEIGHT - 1;
+      const h = noteHeight - 1;
 
       if (x + w < PIANO_WIDTH || x > width) return;
       if (y + h < 0 || y > gridHeight) return;
@@ -265,14 +276,20 @@ export default function PianoRoll({ trackId, clip, onClose }: PianoRollProps) {
         ctx.stroke();
       }
 
-      // Resize handle indicator
-      if (w > 10) {
+      // Note name on large notes
+      if (w > 30 && h >= 14) {
+        ctx.fillStyle = '#ffffffcc';
+        ctx.font = `${Math.min(10, h - 4)}px Inter, sans-serif`;
+        ctx.fillText(midiToNoteName(note.pitch), x + 3, y + h - 3);
+      }
+
+      if (w > 12) {
         ctx.fillStyle = '#ffffff18';
         ctx.fillRect(x + w - RESIZE_HANDLE_PX, y + 0.5, RESIZE_HANDLE_PX, h);
       }
     });
 
-    // Draw-in-progress note preview
+    // Draw preview
     if (dragState?.type === 'draw' && dragState.drawPitch != null) {
       const t1 = timeFromX(Math.min(dragState.startX, dragState.currentX));
       const t2 = timeFromX(Math.max(dragState.startX, dragState.currentX));
@@ -281,11 +298,11 @@ export default function PianoRoll({ trackId, clip, onClose }: PianoRollProps) {
       const minDur = getSnapDuration(bpm, snap);
       const drawDur = Math.max(minDur, snappedEnd - snappedStart);
       const dx = xFromTime(snappedStart);
-      const dy = (MAX_PITCH - dragState.drawPitch) * NOTE_HEIGHT - scrollY;
+      const dy = (MAX_PITCH - dragState.drawPitch) * noteHeight - scrollY;
 
       ctx.fillStyle = trackColor + '88';
       ctx.beginPath();
-      ctx.roundRect(dx, dy + 0.5, drawDur * pps, NOTE_HEIGHT - 1, 2);
+      ctx.roundRect(dx, dy + 0.5, drawDur * pps, noteHeight - 1, 2);
       ctx.fill();
       ctx.strokeStyle = '#ffffffcc';
       ctx.lineWidth = 1;
@@ -301,30 +318,33 @@ export default function PianoRoll({ trackId, clip, onClose }: PianoRollProps) {
     ctx.clip();
 
     for (let pitch = MIN_PITCH; pitch <= MAX_PITCH; pitch++) {
-      const y = (MAX_PITCH - pitch) * NOTE_HEIGHT - scrollY;
-      if (y + NOTE_HEIGHT < 0 || y > gridHeight) continue;
+      const y = (MAX_PITCH - pitch) * noteHeight - scrollY;
+      if (y + noteHeight < 0 || y > gridHeight) continue;
 
       const isBlack = BLACK_KEYS.has(pitch % 12);
       ctx.fillStyle = isBlack ? '#1a1a1a' : '#2a2a2a';
-      ctx.fillRect(0, y, PIANO_WIDTH, NOTE_HEIGHT);
+      ctx.fillRect(0, y, PIANO_WIDTH, noteHeight);
 
-      // Border
       ctx.strokeStyle = '#111111';
       ctx.lineWidth = 0.5;
       ctx.beginPath();
-      ctx.moveTo(0, y + NOTE_HEIGHT);
-      ctx.lineTo(PIANO_WIDTH, y + NOTE_HEIGHT);
+      ctx.moveTo(0, y + noteHeight);
+      ctx.lineTo(PIANO_WIDTH, y + noteHeight);
       ctx.stroke();
 
-      // Label C notes
+      // Label every C and the note name for readability
       if (pitch % 12 === 0) {
-        ctx.fillStyle = '#aaaaaa';
-        ctx.font = '9px Inter, sans-serif';
-        ctx.fillText(midiToNoteName(pitch), 4, y + NOTE_HEIGHT - 3);
+        ctx.fillStyle = '#bbbbbb';
+        ctx.font = `bold ${Math.min(11, noteHeight - 4)}px Inter, sans-serif`;
+        ctx.fillText(midiToNoteName(pitch), 4, y + noteHeight - 3);
+      } else if (noteHeight >= 18) {
+        // Show note names when rows are big enough
+        ctx.fillStyle = '#555555';
+        ctx.font = `${Math.min(9, noteHeight - 5)}px Inter, sans-serif`;
+        ctx.fillText(midiToNoteName(pitch), 4, y + noteHeight - 4);
       }
     }
 
-    // Right border for piano
     ctx.strokeStyle = '#333333';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -356,7 +376,6 @@ export default function PianoRoll({ trackId, clip, onClose }: PianoRollProps) {
     ctx.lineTo(width, velY);
     ctx.stroke();
 
-    // Velocity bars
     ctx.save();
     ctx.beginPath();
     ctx.rect(PIANO_WIDTH, velY, gridWidth, VELOCITY_HEIGHT);
@@ -377,7 +396,6 @@ export default function PianoRoll({ trackId, clip, onClose }: PianoRollProps) {
 
     ctx.restore();
 
-    // Velocity label
     ctx.fillStyle = '#555555';
     ctx.font = '8px Inter, sans-serif';
     ctx.fillText('VEL', 4, velY + 12);
@@ -386,6 +404,7 @@ export default function PianoRoll({ trackId, clip, onClose }: PianoRollProps) {
   }, [
     notes, selectedNotes, scrollX, scrollY, pps, bpm,
     snap, trackColor, dragState, timeFromX, xFromTime,
+    noteHeight,
   ]);
 
   useEffect(() => {
@@ -409,15 +428,30 @@ export default function PianoRoll({ trackId, clip, onClose }: PianoRollProps) {
     return null;
   }, [notes, pitchFromY, xFromTime]);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+  // Unified pointer handler for mouse + touch
+  const getCanvasPos = useCallback((e: MouseEvent | TouchEvent | React.MouseEvent | React.TouchEvent) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    let clientX: number, clientY: number;
+    if ('touches' in e) {
+      if (e.touches.length === 0) return null;
+      clientX = e.touches[0]!.clientX;
+      clientY = e.touches[0]!.clientY;
+    } else {
+      clientX = (e as MouseEvent).clientX;
+      clientY = (e as MouseEvent).clientY;
+    }
+    return { x: clientX - rect.left, y: clientY - rect.top };
+  }, []);
+
+  const handlePointerDown = useCallback((x: number, y: number, isRightClick = false) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
     const gridHeight = rect.height - VELOCITY_HEIGHT;
 
-    // Piano keyboard click
+    // Piano key click
     if (x < PIANO_WIDTH && y < gridHeight) {
       const pitch = pitchFromY(y);
       if (pitch >= MIN_PITCH && pitch <= MAX_PITCH) {
@@ -428,9 +462,8 @@ export default function PianoRoll({ trackId, clip, onClose }: PianoRollProps) {
 
     if (x < PIANO_WIDTH || y >= gridHeight) return;
 
-    // Right-click: delete
-    if (e.button === 2) {
-      e.preventDefault();
+    // Right-click / erase
+    if (isRightClick || tool === 'erase') {
       const hit = findNoteAt(x, y);
       if (hit) {
         setNotes((prev) => prev.filter((_, i) => i !== hit.index));
@@ -446,97 +479,56 @@ export default function PianoRoll({ trackId, clip, onClose }: PianoRollProps) {
       return;
     }
 
-    if (tool === 'erase') {
-      const hit = findNoteAt(x, y);
-      if (hit) {
-        setNotes((prev) => prev.filter((_, i) => i !== hit.index));
-        setSelectedNotes(new Set());
+    const hit = findNoteAt(x, y);
+
+    if (hit) {
+      if (!selectedNotes.has(hit.index)) {
+        setSelectedNotes(new Set([hit.index]));
       }
+
+      const original = notes[hit.index];
+      if (!original) return;
+
+      setDragState({
+        type: hit.isResize ? 'resize' : 'move',
+        startX: x,
+        startY: y,
+        currentX: x,
+        currentY: y,
+        noteIndex: hit.index,
+        originalNote: { ...original },
+      });
       return;
     }
 
-    if (tool === 'select' || tool === 'draw') {
-      const hit = findNoteAt(x, y);
+    // Empty space — draw
+    if (tool === 'draw') {
+      const pitch = pitchFromY(y);
+      if (pitch < MIN_PITCH || pitch > MAX_PITCH) return;
 
-      if (hit) {
-        // Clicked on a note: select and start drag
-        if (e.shiftKey && tool === 'select') {
-          setSelectedNotes((prev) => {
-            const next = new Set(prev);
-            if (next.has(hit.index)) next.delete(hit.index);
-            else next.add(hit.index);
-            return next;
-          });
-        } else if (!selectedNotes.has(hit.index)) {
-          setSelectedNotes(new Set([hit.index]));
-        }
-
-        const original = notes[hit.index];
-        if (!original) return;
-
-        setDragState({
-          type: hit.isResize ? 'resize' : 'move',
-          startX: x,
-          startY: y,
-          currentX: x,
-          currentY: y,
-          noteIndex: hit.index,
-          originalNote: { ...original },
-        });
-        return;
-      }
-
-      // Empty space
-      if (tool === 'draw') {
-        const pitch = pitchFromY(y);
-        if (pitch < MIN_PITCH || pitch > MAX_PITCH) return;
-
-        triggerNote(trackId, midiToNoteName(pitch), '8n');
-        setDragState({
-          type: 'draw',
-          startX: x,
-          startY: y,
-          currentX: x,
-          currentY: y,
-          drawPitch: pitch,
-        });
-        setSelectedNotes(new Set());
-      } else {
-        if (!e.shiftKey) setSelectedNotes(new Set());
-      }
+      triggerNote(trackId, midiToNoteName(pitch), '8n');
+      setDragState({
+        type: 'draw',
+        startX: x,
+        startY: y,
+        currentX: x,
+        currentY: y,
+        drawPitch: pitch,
+      });
+      setSelectedNotes(new Set());
+    } else {
+      setSelectedNotes(new Set());
     }
   }, [tool, notes, selectedNotes, findNoteAt, pitchFromY, trackId]);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    if (!dragState) {
-      // Update cursor
-      if (x < PIANO_WIDTH) {
-        canvas.style.cursor = 'pointer';
-      } else if (tool === 'erase') {
-        canvas.style.cursor = 'crosshair';
-      } else {
-        const hit = findNoteAt(x, y);
-        if (hit) {
-          canvas.style.cursor = hit.isResize ? 'ew-resize' : 'grab';
-        } else {
-          canvas.style.cursor = tool === 'draw' ? 'crosshair' : 'default';
-        }
-      }
-      return;
-    }
-
+  const handlePointerMove = useCallback((x: number, y: number) => {
+    if (!dragState) return;
     setDragState((prev) =>
       prev ? { ...prev, currentX: x, currentY: y } : null,
     );
-  }, [dragState, tool, findNoteAt]);
+  }, [dragState]);
 
-  const handleMouseUp = useCallback(() => {
+  const handlePointerUp = useCallback(() => {
     if (!dragState) return;
 
     if (dragState.type === 'draw' && dragState.drawPitch != null) {
@@ -556,22 +548,16 @@ export default function PianoRoll({ trackId, clip, onClose }: PianoRollProps) {
       setNotes((prev) => [...prev, newNote]);
       setSelectedNotes(new Set([notes.length]));
     } else if (dragState.type === 'move' || dragState.type === 'resize') {
-      // Apply drag transforms permanently
       setNotes((prev) =>
         prev.map((note, i) => {
           if (!selectedNotes.has(i)) return note;
           if (dragState.type === 'move') {
             const dx = (dragState.currentX - dragState.startX) / pps;
-            const dy = Math.round(
-              (dragState.startY - dragState.currentY) / NOTE_HEIGHT,
-            );
+            const dy = Math.round((dragState.startY - dragState.currentY) / noteHeight);
             return {
               ...note,
               startTime: snapTime(Math.max(0, note.startTime + dx), bpm, snap),
-              pitch: Math.max(
-                MIN_PITCH,
-                Math.min(MAX_PITCH, note.pitch + dy),
-              ),
+              pitch: Math.max(MIN_PITCH, Math.min(MAX_PITCH, note.pitch + dy)),
             };
           }
           if (dragState.type === 'resize') {
@@ -579,10 +565,7 @@ export default function PianoRoll({ trackId, clip, onClose }: PianoRollProps) {
             const minDur = getSnapDuration(bpm, snap);
             return {
               ...note,
-              duration: Math.max(
-                minDur,
-                snapTime(note.duration + dx, bpm, snap),
-              ),
+              duration: Math.max(minDur, snapTime(note.duration + dx, bpm, snap)),
             };
           }
           return note;
@@ -591,7 +574,57 @@ export default function PianoRoll({ trackId, clip, onClose }: PianoRollProps) {
     }
 
     setDragState(null);
-  }, [dragState, timeFromX, bpm, snap, notes.length, selectedNotes, pps]);
+  }, [dragState, timeFromX, bpm, snap, notes.length, selectedNotes, pps, noteHeight]);
+
+  // Mouse events
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    const pos = getCanvasPos(e);
+    if (!pos) return;
+    if (e.button === 2) { e.preventDefault(); }
+    handlePointerDown(pos.x, pos.y, e.button === 2);
+  }, [getCanvasPos, handlePointerDown]);
+
+  const onMouseMove = useCallback((e: React.MouseEvent) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const pos = getCanvasPos(e);
+    if (!pos) return;
+
+    if (!dragState) {
+      if (pos.x < PIANO_WIDTH) {
+        canvas.style.cursor = 'pointer';
+      } else if (tool === 'erase') {
+        canvas.style.cursor = 'crosshair';
+      } else {
+        const hit = findNoteAt(pos.x, pos.y);
+        canvas.style.cursor = hit
+          ? (hit.isResize ? 'ew-resize' : 'grab')
+          : (tool === 'draw' ? 'crosshair' : 'default');
+      }
+      return;
+    }
+    handlePointerMove(pos.x, pos.y);
+  }, [dragState, tool, findNoteAt, getCanvasPos, handlePointerMove]);
+
+  // Touch events
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    const pos = getCanvasPos(e);
+    if (!pos) return;
+    handlePointerDown(pos.x, pos.y);
+  }, [getCanvasPos, handlePointerDown]);
+
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    const pos = getCanvasPos(e);
+    if (!pos) return;
+    handlePointerMove(pos.x, pos.y);
+  }, [getCanvasPos, handlePointerMove]);
+
+  const onTouchEnd = useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    handlePointerUp();
+  }, [handlePointerUp]);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     if (e.ctrlKey || e.metaKey) {
@@ -600,11 +633,11 @@ export default function PianoRoll({ trackId, clip, onClose }: PianoRollProps) {
     } else {
       setScrollX((s) => Math.max(0, s + e.deltaX * 0.5));
       setScrollY((s) => {
-        const maxY = TOTAL_NOTES * NOTE_HEIGHT - 200;
+        const maxY = TOTAL_NOTES * noteHeight - 200;
         return Math.max(0, Math.min(maxY, s + e.deltaY));
       });
     }
-  }, []);
+  }, [noteHeight]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -638,119 +671,104 @@ export default function PianoRoll({ trackId, clip, onClose }: PianoRollProps) {
     e.preventDefault();
   }, []);
 
-  const zoomIn = useCallback(() => {
-    setZoom((z) => Math.min(MAX_ZOOM, z * 1.25));
-  }, []);
-
-  const zoomOut = useCallback(() => {
-    setZoom((z) => Math.max(MIN_ZOOM, z / 1.25));
-  }, []);
-
   return (
     <div className="flex flex-col w-full h-full bg-daw-bg">
       {/* Toolbar */}
       <div
-        className="flex items-center gap-2 px-3 bg-daw-surface border-b
-                   border-daw-border shrink-0"
+        className="flex items-center gap-1 px-2 bg-daw-surface border-b
+                   border-daw-border shrink-0 overflow-x-auto scrollbar-none"
         style={{ height: TOOLBAR_HEIGHT }}
       >
         {/* Tool buttons */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 shrink-0">
+          {([
+            ['draw', 'Draw', 'M10 2l2 2-8 8H2v-2l8-8z'],
+            ['select', 'Select', 'M3 2l8 5-4 1-1 4-3-10z'],
+            ['erase', 'Erase', 'M2 10l4-4 4 4H2zM6 6l4-4 2 2-4 4'],
+          ] as const).map(([t, title, path]) => (
+            <button
+              key={t}
+              className={`daw-button text-xxs px-1.5 py-0.5 ${
+                tool === t ? 'daw-button-active' : ''
+              }`}
+              onClick={() => setTool(t as Tool)}
+              title={title}
+            >
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none"
+                stroke="currentColor" strokeWidth="1.5">
+                <path d={path} />
+              </svg>
+            </button>
+          ))}
+        </div>
+
+        <div className="daw-divider mx-0.5 shrink-0" />
+
+        {/* Snap */}
+        <select
+          className="bg-daw-panel text-daw-text text-[10px] px-1 py-0.5
+                     border border-daw-border rounded outline-none shrink-0"
+          value={snap}
+          onChange={(e) => setSnap(e.target.value as SnapValue)}
+        >
+          <option value="1/4">1/4</option>
+          <option value="1/8">1/8</option>
+          <option value="1/16">1/16</option>
+          <option value="1/32">1/32</option>
+        </select>
+
+        <div className="daw-divider mx-0.5 shrink-0" />
+
+        {/* Octave navigation */}
+        <div className="flex items-center gap-0.5 shrink-0">
           <button
-            className={`daw-button text-xxs px-2 py-1 ${
-              tool === 'draw' ? 'daw-button-active' : ''
-            }`}
-            onClick={() => setTool('draw')}
-            title="Draw (B)"
+            className="daw-button text-xxs px-1 py-0.5"
+            onClick={() => jumpToOctave(octave - 1)}
+            disabled={octave <= 1}
           >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"
-              stroke="currentColor" strokeWidth="1.5">
-              <path d="M10 2l2 2-8 8H2v-2l8-8z" />
-            </svg>
+            &#9660;
           </button>
+          <span className="text-[10px] text-daw-text-dim w-6 text-center font-mono">
+            C{octave}
+          </span>
           <button
-            className={`daw-button text-xxs px-2 py-1 ${
-              tool === 'select' ? 'daw-button-active' : ''
-            }`}
-            onClick={() => setTool('select')}
-            title="Select (V)"
+            className="daw-button text-xxs px-1 py-0.5"
+            onClick={() => jumpToOctave(octave + 1)}
+            disabled={octave >= 7}
           >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"
-              stroke="currentColor" strokeWidth="1.5">
-              <path d="M3 2l8 5-4 1-1 4-3-10z" />
-            </svg>
-          </button>
-          <button
-            className={`daw-button text-xxs px-2 py-1 ${
-              tool === 'erase' ? 'daw-button-active' : ''
-            }`}
-            onClick={() => setTool('erase')}
-            title="Erase (E)"
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"
-              stroke="currentColor" strokeWidth="1.5">
-              <path d="M2 10l4-4 4 4H2zM6 6l4-4 2 2-4 4" />
-            </svg>
+            &#9650;
           </button>
         </div>
 
-        <div className="w-px h-5 bg-daw-border" />
+        <div className="daw-divider mx-0.5 shrink-0" />
 
-        {/* Snap selector */}
-        <div className="flex items-center gap-1">
-          <span className="text-xxs text-daw-text-dim">Snap:</span>
-          <select
-            className="bg-daw-panel text-daw-text text-xxs px-1 py-0.5
-                       border border-daw-border rounded outline-none
-                       focus:border-daw-accent"
-            value={snap}
-            onChange={(e) => setSnap(e.target.value as SnapValue)}
-          >
-            <option value="1/4">1/4</option>
-            <option value="1/8">1/8</option>
-            <option value="1/16">1/16</option>
-            <option value="1/32">1/32</option>
-          </select>
-        </div>
-
-        <div className="w-px h-5 bg-daw-border" />
-
-        {/* Zoom controls */}
-        <div className="flex items-center gap-1">
+        {/* Zoom */}
+        <div className="flex items-center gap-0.5 shrink-0">
           <button
-            className="daw-button text-xxs px-1.5 py-0.5"
-            onClick={zoomOut}
-            title="Zoom out"
+            className="daw-button text-xxs px-1 py-0.5"
+            onClick={() => setZoom((z) => Math.max(MIN_ZOOM, z / 1.25))}
           >
             -
           </button>
-          <span className="text-xxs text-daw-text-dim w-10 text-center">
+          <span className="text-[10px] text-daw-text-dim w-7 text-center font-mono">
             {Math.round(zoom * 100)}%
           </span>
           <button
-            className="daw-button text-xxs px-1.5 py-0.5"
-            onClick={zoomIn}
-            title="Zoom in"
+            className="daw-button text-xxs px-1 py-0.5"
+            onClick={() => setZoom((z) => Math.min(MAX_ZOOM, z * 1.25))}
           >
             +
           </button>
         </div>
 
-        <div className="w-px h-5 bg-daw-border" />
+        <div className="flex-1 min-w-[4px]" />
 
-        <span className="text-xxs text-daw-text-dim ml-1">
-          {clip.name}
-        </span>
-
-        <div className="flex-1" />
-
-        <span className="text-xxs text-daw-text-muted mr-2">
-          {notes.length} notes
+        <span className="text-[10px] text-daw-text-muted shrink-0">
+          {notes.length}n
         </span>
         <button
-          className="daw-button text-xxs px-2 py-0.5"
+          className="daw-button text-[10px] px-1.5 py-0.5 shrink-0"
           onClick={onClose}
-          title="Close piano roll"
         >
           Close
         </button>
@@ -759,17 +777,20 @@ export default function PianoRoll({ trackId, clip, onClose }: PianoRollProps) {
       {/* Canvas */}
       <div
         ref={containerRef}
-        className="flex-1 min-h-0 relative overflow-hidden"
+        className="flex-1 min-h-0 relative overflow-hidden touch-none"
         onWheel={handleWheel}
         onContextMenu={handleContextMenu}
       >
         <canvas
           ref={canvasRef}
           className="absolute inset-0"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
+          onMouseDown={onMouseDown}
+          onMouseMove={onMouseMove}
+          onMouseUp={handlePointerUp}
+          onMouseLeave={handlePointerUp}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
         />
       </div>
     </div>
