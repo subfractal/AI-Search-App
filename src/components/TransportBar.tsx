@@ -11,6 +11,8 @@ interface TransportBarProps {
   onTogglePanel: (panel: BottomPanel) => void;
   showAI: boolean;
   onToggleAI: () => void;
+  showTracks?: boolean;
+  onToggleTracks?: () => void;
   onExport?: () => void;
   onHistory?: () => void;
   onPianoRoll?: () => void;
@@ -65,6 +67,8 @@ export default function TransportBar({
   onTogglePanel,
   showAI,
   onToggleAI,
+  showTracks,
+  onToggleTracks,
   onExport,
   onHistory,
   onPianoRoll,
@@ -109,8 +113,9 @@ export default function TransportBar({
   const isRecording = state === 'recording';
 
   return (
-    <div className="flex items-center h-11 px-3 gap-2 bg-daw-transport-bg
-                    border-b border-daw-border/60 select-none shrink-0">
+    <div className="flex items-center min-h-[44px] px-2 md:px-3 gap-1.5 md:gap-2
+                    bg-daw-transport-bg border-b border-daw-border/60
+                    select-none shrink-0 flex-wrap">
       {/* Transport controls */}
       <div className="flex items-center gap-0.5">
         <button
@@ -245,7 +250,15 @@ export default function TransportBar({
       <div className="flex-1" />
 
       {/* Panel toggles */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 flex-wrap justify-end">
+        <button
+          onClick={onToggleTracks}
+          className={`daw-button text-xxs px-2 py-0.5
+                     ${showTracks ? 'daw-button-active' : ''}`}
+          title="Toggle Track List"
+        >
+          Trk
+        </button>
         <button
           onClick={() => onTogglePanel('mixer')}
           className={`daw-button text-xxs px-2 py-0.5
