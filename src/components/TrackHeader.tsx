@@ -1,5 +1,9 @@
 import { useSessionStore } from '@/stores/session-store';
 import { useMixerStore } from '@/stores/mixer-store';
+import { useKeyStore } from '@/stores/key-store';
+import { useWarpStore } from '@/stores/warp-store';
+import { useInstrumentStore } from '@/stores/instrument-store';
+import { isAudioClip } from '@/types/audio';
 
 interface TrackHeaderProps {
   trackId: string;
@@ -16,9 +20,32 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
   const toggleMute = useMixerStore((s) => s.toggleMute);
   const toggleSolo = useMixerStore((s) => s.toggleSolo);
 
+  // Key detection for audio clips
+  const firstAudioClip = track?.clips.find(isAudioClip);
+  const keyResult = useKeyStore((s) =>
+    firstAudioClip ? s.keys[firstAudioClip.id] : undefined,
+  );
+  const detectKey = useKeyStore((s) => s.detectKey);
+
+  // Warp status
+  const warpConfig = useWarpStore((s) => {
+    if (!firstAudioClip) return undefined;
+    return s.configs[firstAudioClip.id];
+  });
+
+  // Instrument name for MIDI tracks
+  const instrument = useInstrumentStore((s) =>
+    track?.type === 'midi' ? s.instruments[trackId] : undefined,
+  );
+
   if (!track) return null;
 
   const isSelected = selectedTrackId === trackId;
+
+  // Auto-detect key when audio clip exists
+  if (firstAudioClip && !keyResult) {
+    detectKey(firstAudioClip.id, firstAudioClip.buffer);
+  }
 
   return (
     <div
@@ -45,7 +72,8 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
           onChange={(e) => updateTrack(trackId, { name: e.target.value })}
           onClick={(e) => e.stopPropagation()}
         />
-        <div className="flex items-center gap-1.5 mt-0.5">
+        <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+          {/* Type badge */}
           <span
             className="text-xxs uppercase tracking-wide px-1 py-px rounded
                        bg-daw-bg/60 leading-none"
@@ -53,6 +81,38 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
           >
             {track.type}
           </span>
+
+          {/* Instrument badge for MIDI */}
+          {instrument && (
+            <span className="text-xxs px-1 py-px rounded bg-daw-accent/10
+                           text-daw-accent leading-none">
+              {instrument.name}
+            </span>
+          )}
+
+          {/* Key badge for audio */}
+          {keyResult && (
+            <span
+              className="text-xxs px-1 py-px rounded leading-none font-medium"
+              style={{
+                backgroundColor: 'rgba(83, 192, 240, 0.15)',
+                color: '#53c0f0',
+              }}
+              title={`${keyResult.fullName} (${keyResult.camelotCode})`}
+            >
+              {keyResult.key}{keyResult.scale === 'minor' ? 'm' : ''}
+            </span>
+          )}
+
+          {/* Warp indicator */}
+          {warpConfig?.enabled && (
+            <span className="text-xxs px-1 py-px rounded bg-amber-500/15
+                           text-amber-400 leading-none"
+              title={`Warped from ${warpConfig.originalBpm.toFixed(0)} BPM`}
+            >
+              W
+            </span>
+          )}
         </div>
       </div>
 

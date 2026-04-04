@@ -1,5 +1,6 @@
 import { useSessionStore } from '@/stores/session-store';
 import { useMixerStore } from '@/stores/mixer-store';
+import { useEffectsStore } from '@/stores/effects-store';
 import Fader from './ui/Fader';
 import Knob from './ui/Knob';
 import PeakMeter from './ui/PeakMeter';
@@ -19,6 +20,10 @@ export default function ChannelStrip({ trackId }: ChannelStripProps) {
   const toggleMute = useMixerStore((s) => s.toggleMute);
   const toggleSolo = useMixerStore((s) => s.toggleSolo);
   const updateTrack = useSessionStore((s) => s.updateTrack);
+
+  const effectCount = useEffectsStore(
+    (s) => (s.trackEffects[trackId] ?? []).length,
+  );
 
   const suggestions = useAIStore((s) =>
     s.suggestions.filter(
@@ -47,6 +52,13 @@ export default function ChannelStrip({ trackId }: ChannelStripProps) {
           {track.name}
         </span>
       </div>
+
+      {/* Effects indicator */}
+      {effectCount > 0 && (
+        <span className="text-xxs text-daw-accent/60 leading-none">
+          FX×{effectCount}
+        </span>
+      )}
 
       {/* Pan knob */}
       <Knob

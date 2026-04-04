@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTransportStore } from '@/stores/transport-store';
+import { useHistoryStore } from '@/stores/history-store';
 import { getPositionSeconds } from '@/services/transport-service';
 import { formatSeconds, formatBarsBeats } from '@/utils/format-time';
 
@@ -10,6 +11,9 @@ interface TransportBarProps {
   onTogglePanel: (panel: BottomPanel) => void;
   showAI: boolean;
   onToggleAI: () => void;
+  onExport?: () => void;
+  onHistory?: () => void;
+  onPianoRoll?: () => void;
 }
 
 function IconStop() {
@@ -61,11 +65,19 @@ export default function TransportBar({
   onTogglePanel,
   showAI,
   onToggleAI,
+  onExport,
+  onHistory,
+  onPianoRoll,
 }: TransportBarProps) {
   const {
     state, bpm, loopEnabled,
     play, pause, stop, toggleRecord, setBpm, toggleLoop,
   } = useTransportStore();
+
+  const undoCount = useHistoryStore((s) => s.undoCount);
+  const redoCount = useHistoryStore((s) => s.redoCount);
+  const undo = useHistoryStore((s) => s.undo);
+  const redo = useHistoryStore((s) => s.redo);
 
   const [position, setPosition] = useState(0);
   const [bpmInput, setBpmInput] = useState(String(bpm));
@@ -133,6 +145,40 @@ export default function TransportBar({
           title="Record"
         >
           <IconRecord />
+        </button>
+      </div>
+
+      <div className="daw-divider mx-1" />
+
+      {/* Undo / Redo */}
+      <div className="flex items-center gap-0.5">
+        <button
+          onClick={undo}
+          disabled={undoCount === 0}
+          className="w-7 h-7 flex items-center justify-center rounded
+                     text-daw-text-muted hover:text-daw-text-dim transition-all
+                     disabled:opacity-20"
+          title="Undo"
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+            stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <path d="M3 4l-2 2 2 2" />
+            <path d="M1 6h7a3 3 0 010 6H6" />
+          </svg>
+        </button>
+        <button
+          onClick={redo}
+          disabled={redoCount === 0}
+          className="w-7 h-7 flex items-center justify-center rounded
+                     text-daw-text-muted hover:text-daw-text-dim transition-all
+                     disabled:opacity-20"
+          title="Redo"
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+            stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <path d="M9 4l2 2-2 2" />
+            <path d="M11 6H4a3 3 0 000 6h2" />
+          </svg>
         </button>
       </div>
 
@@ -213,6 +259,38 @@ export default function TransportBar({
                      ${activePanel === 'instrument' ? 'daw-button-active' : ''}`}
         >
           Inst
+        </button>
+        <button
+          onClick={() => onTogglePanel('effects')}
+          className={`daw-button text-xxs px-2 py-0.5
+                     ${activePanel === 'effects' ? 'daw-button-active' : ''}`}
+        >
+          FX
+        </button>
+        <button
+          onClick={onPianoRoll}
+          className={`daw-button text-xxs px-2 py-0.5
+                     ${activePanel === 'piano-roll' ? 'daw-button-active' : ''}`}
+          title="Piano Roll"
+        >
+          Roll
+        </button>
+
+        <div className="daw-divider mx-0.5" />
+
+        <button
+          onClick={onExport}
+          className="daw-button text-xxs px-2 py-0.5"
+          title="Export / Bounce"
+        >
+          Export
+        </button>
+        <button
+          onClick={onHistory}
+          className="daw-button text-xxs px-2 py-0.5"
+          title="History"
+        >
+          Hist
         </button>
         <button
           onClick={onToggleAI}
