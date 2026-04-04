@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { WarpConfig, WarpMarker, WarpMode } from '@/types/warp';
+import type { WarpConfig, WarpMarker, WarpMode, StretchState } from '@/types/warp';
 import { DEFAULT_WARP_CONFIG } from '@/types/warp';
 import { generateId } from '@/utils/id';
 
@@ -9,7 +9,10 @@ interface WarpStore {
   initWarpConfig: (clipId: string, config?: Partial<WarpConfig>) => void;
   setEnabled: (clipId: string, enabled: boolean) => void;
   setMode: (clipId: string, mode: WarpMode) => void;
+  setStretchState: (clipId: string, state: StretchState) => void;
   setOriginalBpm: (clipId: string, bpm: number) => void;
+  setAnchorTime: (clipId: string, time: number) => void;
+  setBarCount: (clipId: string, bars: number) => void;
   addMarker: (clipId: string, sourceTime: number, targetTime: number) => void;
   updateMarker: (
     clipId: string,
@@ -61,6 +64,17 @@ export const useWarpStore = create<WarpStore>((set, get) => ({
     }));
   },
 
+  setStretchState: (clipId: string, stretchState: StretchState) => {
+    const existing = get().configs[clipId];
+    if (!existing) return;
+    set((state: WarpStore) => ({
+      configs: {
+        ...state.configs,
+        [clipId]: { ...existing, stretchState },
+      },
+    }));
+  },
+
   setOriginalBpm: (clipId: string, bpm: number) => {
     const existing = get().configs[clipId];
     if (!existing) return;
@@ -68,6 +82,28 @@ export const useWarpStore = create<WarpStore>((set, get) => ({
       configs: {
         ...state.configs,
         [clipId]: { ...existing, originalBpm: bpm },
+      },
+    }));
+  },
+
+  setAnchorTime: (clipId: string, anchorTime: number) => {
+    const existing = get().configs[clipId];
+    if (!existing) return;
+    set((state: WarpStore) => ({
+      configs: {
+        ...state.configs,
+        [clipId]: { ...existing, anchorTime },
+      },
+    }));
+  },
+
+  setBarCount: (clipId: string, barCount: number) => {
+    const existing = get().configs[clipId];
+    if (!existing) return;
+    set((state: WarpStore) => ({
+      configs: {
+        ...state.configs,
+        [clipId]: { ...existing, barCount: Math.max(1, barCount) },
       },
     }));
   },
@@ -136,14 +172,20 @@ export const useWarpStore = create<WarpStore>((set, get) => ({
       targetTime: idx * beatInterval,
     }));
 
+    const anchorTime = beats.length > 0 ? beats[0]! : 0;
+    const barCount = Math.max(1, Math.round(beats.length / 4));
+
     set((state: WarpStore) => ({
       configs: {
         ...state.configs,
         [clipId]: {
           enabled: true,
           mode: state.configs[clipId]?.mode ?? 'beats',
+          stretchState: beats.length > 8 ? 'fluid' : 'steady',
           originalBpm: detectedBpm,
           originalBpmConfidence: 0,
+          anchorTime,
+          barCount,
           markers,
           autoWarped: true,
         },

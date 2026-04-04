@@ -1,6 +1,46 @@
 import type { WarpConfig, WarpMarker, WarpMode } from '@/types/warp';
-import { detectBpm, detectBeats } from '@/services/ai/beat-detector';
+import { detectBpm, detectBeats, detectTransients } from '@/services/ai/beat-detector';
 import { generateId } from '@/utils/id';
+
+/**
+ * Detect the first significant transient in the buffer — the "Origin Strike"
+ * or anchor point. This is the temporal zero from which all warping is measured.
+ */
+export function detectAnchorPoint(buffer: AudioBuffer): number {
+  const transients = detectTransients(buffer);
+  if (transients.length === 0) return 0;
+
+  // The first strong transient is the anchor/downbeat.
+  // If the first transient is very close to 0 (< 50ms), it's likely
+  // a genuine downbeat. Otherwise, look for the first transient that
+  // follows a quiet gap — indicating the actual musical start.
+  const first = transients[0]!;
+  if (first < 0.05) return first;
+
+  // Check if there's a louder transient within the first second
+  // that might be the true downbeat after a pickup note
+  const data = buffer.getChannelData(0);
+  const sampleRate = buffer.sampleRate;
+
+  let bestEnergy = 0;
+  let bestTime = first;
+
+  for (const t of transients) {
+    if (t > 1.0) break; // only check first second
+    const sampleIdx = Math.floor(t * sampleRate);
+    const windowEnd = Math.min(sampleIdx + 512, data.length);
+    let energy = 0;
+    for (let i = sampleIdx; i < windowEnd; i++) {
+      energy += data[i]! * data[i]!;
+    }
+    if (energy > bestEnergy) {
+      bestEnergy = energy;
+      bestTime = t;
+    }
+  }
+
+  return bestTime;
+}
 
 /**
  * Run beat detection on a buffer and produce a WarpConfig that aligns
@@ -13,6 +53,7 @@ export function analyzeAndAutoWarp(
 ): WarpConfig {
   const { bpm, confidence } = detectBpm(buffer);
   const beats = detectBeats(buffer);
+  const anchorTime = detectAnchorPoint(buffer);
 
   const beatInterval = 60 / sessionBpm;
   const markers: WarpMarker[] = beats.map((beatTime, idx) => ({
@@ -21,11 +62,17 @@ export function analyzeAndAutoWarp(
     targetTime: idx * beatInterval,
   }));
 
+  const barCount = Math.max(1, Math.round(beats.length / 4));
+  const stretchState = beats.length > 8 ? 'fluid' as const : 'steady' as const;
+
   return {
     enabled: true,
     mode: 'beats',
+    stretchState,
     originalBpm: bpm,
     originalBpmConfidence: confidence,
+    anchorTime,
+    barCount,
     markers,
     autoWarped: true,
   };
