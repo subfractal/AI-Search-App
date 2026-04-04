@@ -15,8 +15,8 @@ export default function HistoryPanel({ open, onClose }: HistoryPanelProps) {
   const redoEntries = historyService.getRedoStack();
 
   return (
-    <div className="absolute right-2 top-12 z-50 w-64 rounded border
-                    border-daw-border bg-daw-panel shadow-lg">
+    <div className="absolute right-2 top-[72px] z-50 w-[min(90vw,16rem)] rounded border
+                    border-daw-border bg-daw-panel shadow-lg max-h-[70vh] overflow-y-auto">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-1.5
                       border-b border-daw-border">

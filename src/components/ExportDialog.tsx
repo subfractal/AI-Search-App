@@ -93,7 +93,7 @@ export default function ExportDialog({ open, onClose }: ExportDialogProps) {
       />
 
       {/* Dialog */}
-      <div className="relative z-10 w-[380px] rounded-lg
+      <div className="relative z-10 w-[90vw] max-w-[380px] rounded-lg
                       bg-daw-surface border border-daw-border
                       shadow-xl shadow-black/50">
         {/* Header */}

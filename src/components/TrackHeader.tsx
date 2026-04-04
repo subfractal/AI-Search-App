@@ -49,8 +49,8 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
 
   return (
     <div
-      className={`group flex items-center gap-2 px-2.5 py-0 border-b
-                  border-daw-border/20 cursor-pointer transition-colors h-[60px]
+      className={`group flex items-center gap-1.5 px-2 py-1 border-b
+                  border-daw-border/20 cursor-pointer transition-colors min-h-[48px]
                   ${isSelected
           ? 'bg-daw-track-selected'
           : 'bg-daw-track hover:bg-daw-surface-alt'}`}
