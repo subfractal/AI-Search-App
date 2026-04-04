@@ -1,4 +1,5 @@
 import type { LevelAnalysis, FrequencyAnalysis, TrackAnalysis } from '@/types/ai';
+import { calculateLUFS } from './loudness-meter';
 
 export function analyzeLevels(buffer: AudioBuffer): LevelAnalysis {
   const data = buffer.getChannelData(0);
@@ -161,10 +162,18 @@ export function analyzeTrack(
   buffer: AudioBuffer,
   sampleRate: number,
 ): TrackAnalysis {
+  let loudness = null;
+  try {
+    loudness = calculateLUFS(buffer);
+  } catch {
+    // Loudness calculation may fail on very short buffers
+  }
+
   return {
     trackId,
     level: analyzeLevels(buffer),
     frequency: analyzeFrequencySpectrum(buffer, sampleRate),
+    loudness,
     silenceRegions: detectSilence(buffer),
     noiseFloor: estimateNoiseFloor(buffer),
   };

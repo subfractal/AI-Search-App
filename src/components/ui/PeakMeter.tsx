@@ -5,12 +5,14 @@ interface PeakMeterProps {
   trackId: string;
   width?: number;
   height?: number;
+  truePeakDb?: number;
 }
 
 export default function PeakMeter({
   trackId,
   width = 8,
   height = 100,
+  truePeakDb,
 }: PeakMeterProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
@@ -84,13 +86,21 @@ export default function PeakMeter({
       ctx.fillStyle = peakHoldRef.current > 0.92 ? '#ef4444' : '#fff';
       ctx.fillRect(1, peakY, width - 2, 1);
 
+      // True peak indicator (red line) if provided
+      if (truePeakDb !== undefined && truePeakDb > -60) {
+        const tpNorm = Math.max(0, Math.min(1, (truePeakDb + 60) / 66));
+        const tpY = height - tpNorm * height;
+        ctx.fillStyle = truePeakDb > -1 ? '#ef4444' : '#ff6b35';
+        ctx.fillRect(0, tpY, width, 1);
+      }
+
       rafRef.current = requestAnimationFrame(draw);
     };
 
     sizedRef.current = false;
     rafRef.current = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [trackId, width, height]);
+  }, [trackId, width, height, truePeakDb]);
 
   return (
     <canvas

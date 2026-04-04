@@ -3,6 +3,7 @@ import type {
   AISuggestion,
   AIActivityEntry,
   MixAnalysis,
+  RealtimeLevel,
 } from '@/types/ai';
 
 interface AIStore {
@@ -11,6 +12,9 @@ interface AIStore {
   activityLog: AIActivityEntry[];
   lastAnalysis: MixAnalysis | null;
   analyzing: boolean;
+  realtimeLevels: Record<string, RealtimeLevel>;
+  clippingAlerts: string[];
+  monitorEnabled: boolean;
 
   setEnabled: (enabled: boolean) => void;
   addSuggestion: (suggestion: AISuggestion) => void;
@@ -21,6 +25,9 @@ interface AIStore {
   logActivity: (entry: AIActivityEntry) => void;
   setAnalysis: (analysis: MixAnalysis) => void;
   setAnalyzing: (analyzing: boolean) => void;
+  setRealtimeLevels: (levels: Record<string, RealtimeLevel>) => void;
+  setClippingAlerts: (trackIds: string[]) => void;
+  setMonitorEnabled: (enabled: boolean) => void;
 }
 
 export const useAIStore = create<AIStore>((set) => ({
@@ -29,6 +36,9 @@ export const useAIStore = create<AIStore>((set) => ({
   activityLog: [],
   lastAnalysis: null,
   analyzing: false,
+  realtimeLevels: {},
+  clippingAlerts: [],
+  monitorEnabled: false,
 
   setEnabled: (enabled) => set({ enabled }),
 
@@ -67,4 +77,7 @@ export const useAIStore = create<AIStore>((set) => ({
 
   setAnalysis: (analysis) => set({ lastAnalysis: analysis }),
   setAnalyzing: (analyzing) => set({ analyzing }),
+  setRealtimeLevels: (levels) => set({ realtimeLevels: levels }),
+  setClippingAlerts: (trackIds) => set({ clippingAlerts: trackIds }),
+  setMonitorEnabled: (enabled) => set({ monitorEnabled: enabled }),
 }));

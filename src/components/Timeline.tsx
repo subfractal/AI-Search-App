@@ -2,9 +2,11 @@ import { useRef, useEffect, useCallback, useState } from 'react';
 import { useSessionStore } from '@/stores/session-store';
 import { useTransportStore } from '@/stores/transport-store';
 import { useAutomationStore } from '@/stores/automation-store';
+import { useAIStore } from '@/stores/ai-store';
 import { getPositionSeconds, seekTo } from '@/services/transport-service';
 import { isAudioClip } from '@/types/audio';
 import type { AutomationLane } from '@/types/automation';
+import InlineSuggestion from '@/components/ai/InlineSuggestion';
 import {
   drawWaveform,
   drawGrid,
@@ -112,9 +114,15 @@ export default function Timeline() {
   const loopEnd = useTransportStore((s) => s.loopEnd);
   const transportState = useTransportStore((s) => s.state);
   const automationLanes = useAutomationStore((s) => s.lanes);
+  const aiSuggestions = useAIStore((s) => s.suggestions);
   const beatsPerBar = config.timeSignature.numerator;
 
   const [showAutomation, setShowAutomation] = useState(false);
+
+  // Inline suggestions: only pending inline-priority ones with a target track
+  const inlineSuggestions = aiSuggestions.filter(
+    (s) => s.priority === 'inline' && s.status === 'pending' && s.targetTrackId,
+  );
 
   const pps = PIXELS_PER_SECOND * zoom;
 
@@ -427,6 +435,25 @@ export default function Timeline() {
       onTouchEnd={handleTouchEnd}
     >
       <canvas ref={canvasRef} className="absolute inset-0" />
+
+      {/* Inline AI suggestions overlaid on tracks */}
+      {inlineSuggestions.map((suggestion) => {
+        const trackIndex = tracks.findIndex(
+          (t) => t.id === suggestion.targetTrackId,
+        );
+        if (trackIndex < 0) return null;
+        const topPx = RULER_HEIGHT + trackIndex * TRACK_HEIGHT - scrollY + 4;
+        return (
+          <InlineSuggestion
+            key={suggestion.id}
+            suggestion={suggestion}
+            style={{
+              top: topPx,
+              right: 140,
+            }}
+          />
+        );
+      })}
 
       {/* Controls overlay */}
       <div className="absolute top-[24px] right-1 flex items-center gap-0.5 z-10

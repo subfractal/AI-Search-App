@@ -3,11 +3,15 @@ import type {
   TrackAnalysis,
   FrequencyAnalysis,
   LevelAnalysis,
+  LoudnessResult,
   AISuggestion,
 } from '@/types/ai';
 import type { Track } from '@/types/audio';
 import { isAudioClip } from '@/types/audio';
 import { analyzeTrack } from './analysis-engine';
+import { calculateLUFS } from './loudness-meter';
+import { analyzeAllMasking } from './masking-detector';
+import { analyzeGainStaging } from './gain-staging';
 import { generateId } from '@/utils/id';
 
 export function analyzeMix(
@@ -26,12 +30,26 @@ export function analyzeMix(
   const overallLevel = aggregateLevels(trackAnalyses);
   const frequencyBalance = aggregateFrequency(trackAnalyses);
   const stereoWidth = estimateStereoWidth(tracks);
+  const maskingPairs = analyzeAllMasking(trackAnalyses);
+
+  // Calculate overall loudness from first available buffer
+  let overallLoudness: LoudnessResult | null = null;
+  try {
+    const firstClip = tracks.flatMap((t) => t.clips).find(isAudioClip);
+    if (firstClip) {
+      overallLoudness = calculateLUFS(firstClip.buffer);
+    }
+  } catch {
+    // Loudness calculation may fail
+  }
 
   return {
     tracks: trackAnalyses,
     overallLevel,
+    overallLoudness,
     frequencyBalance,
     stereoWidth,
+    maskingPairs,
     timestamp: Date.now(),
   };
 }
@@ -344,6 +362,125 @@ export function generateSuggestions(
           trackId: ta.trackId,
           effectType: 'filter',
           effectParams: { frequency: 200, type: 'highpass', Q: 0.5, rolloff: -12 },
+        },
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  // Masking detection — flag frequency collisions between tracks
+  if (analysis.maskingPairs.length > 0) {
+    for (const pair of analysis.maskingPairs.slice(0, 3)) {
+      const trackA = tracks.find((t) => t.id === pair.trackAId);
+      const trackB = tracks.find((t) => t.id === pair.trackBId);
+      const nonDominantId =
+        pair.dominantTrackId === pair.trackAId ? pair.trackBId : pair.trackAId;
+      const nonDominantTrack = tracks.find((t) => t.id === nonDominantId);
+
+      suggestions.push({
+        id: generateId('sug'),
+        type: 'masking',
+        priority: 'inline',
+        targetTrackId: nonDominantId,
+        title: `Masking: "${trackA?.name}" vs "${trackB?.name}"`,
+        description:
+          `Frequency collision in ${pair.maskedBands.join(', ')}. ` +
+          `Severity: ${Math.round(pair.severity * 100)}%. ` +
+          `Consider EQ cut on "${nonDominantTrack?.name}".`,
+        confidence: Math.min(0.85, pair.severity),
+        status: 'pending',
+        action: {
+          type: 'addEffect',
+          trackId: nonDominantId,
+          effectType: 'eq',
+          effectParams: { low: -3, mid: 0, high: 0, lowFrequency: 400, highFrequency: 2500 },
+        },
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  // Loudness suggestions — LUFS-based
+  if (analysis.overallLoudness) {
+    const lufs = analysis.overallLoudness.integrated;
+    if (lufs > -14) {
+      suggestions.push({
+        id: generateId('sug'),
+        type: 'loudness',
+        priority: 'sidebar',
+        targetTrackId: null,
+        title: 'Mix is too loud for streaming',
+        description:
+          `Integrated loudness is ${lufs.toFixed(1)} LUFS. ` +
+          `Target -14 LUFS for streaming platforms (Spotify, Apple Music).`,
+        confidence: 0.8,
+        status: 'pending',
+        action: null,
+        timestamp: Date.now(),
+      });
+    } else if (lufs < -20 && lufs > -Infinity) {
+      suggestions.push({
+        id: generateId('sug'),
+        type: 'loudness',
+        priority: 'sidebar',
+        targetTrackId: null,
+        title: 'Mix is very quiet',
+        description:
+          `Integrated loudness is ${lufs.toFixed(1)} LUFS. ` +
+          `Consider raising levels — target around -14 LUFS for streaming.`,
+        confidence: 0.7,
+        status: 'pending',
+        action: null,
+        timestamp: Date.now(),
+      });
+    }
+
+    if (analysis.overallLoudness.truePeak > 0) {
+      suggestions.push({
+        id: generateId('sug'),
+        type: 'loudness',
+        priority: 'auto',
+        targetTrackId: null,
+        title: 'True peak exceeds 0 dBTP',
+        description:
+          `True peak is +${analysis.overallLoudness.truePeak.toFixed(1)} dBTP. ` +
+          `This will cause inter-sample clipping on playback. Consider adding a limiter.`,
+        confidence: 0.9,
+        status: 'pending',
+        action: null,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  // Gain staging suggestion
+  if (analysis.tracks.length >= 2) {
+    const gainResult = analyzeGainStaging(analysis.tracks);
+    const tracksNeedingAdjustment = gainResult.tracks.filter(
+      (t) => Math.abs(t.adjustment) > 2,
+    );
+    if (tracksNeedingAdjustment.length > 0) {
+      const batchActions = tracksNeedingAdjustment.map((t) => ({
+        type: 'setVolume' as const,
+        trackId: t.trackId,
+        value: t.suggestedVolume,
+      }));
+
+      suggestions.push({
+        id: generateId('sug'),
+        type: 'gain-staging',
+        priority: 'sidebar',
+        targetTrackId: null,
+        title: 'Gain staging needed',
+        description:
+          `${tracksNeedingAdjustment.length} track(s) need level adjustment for proper headroom. ` +
+          `Target: -6 dBFS peak per track.`,
+        confidence: 0.75,
+        status: 'pending',
+        action: {
+          type: 'batch',
+          trackId: '',
+          actions: batchActions,
         },
         timestamp: Date.now(),
       });
