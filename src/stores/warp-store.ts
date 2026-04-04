@@ -30,8 +30,8 @@ interface WarpStore {
 export const useWarpStore = create<WarpStore>((set, get) => ({
   configs: {},
 
-  initWarpConfig: (clipId, config) => {
-    set((state) => ({
+  initWarpConfig: (clipId: string, config?: Partial<WarpConfig>) => {
+    set((state: WarpStore) => ({
       configs: {
         ...state.configs,
         [clipId]: { ...DEFAULT_WARP_CONFIG, ...config },
@@ -39,10 +39,10 @@ export const useWarpStore = create<WarpStore>((set, get) => ({
     }));
   },
 
-  setEnabled: (clipId, enabled) => {
+  setEnabled: (clipId: string, enabled: boolean) => {
     const existing = get().configs[clipId];
     if (!existing) return;
-    set((state) => ({
+    set((state: WarpStore) => ({
       configs: {
         ...state.configs,
         [clipId]: { ...existing, enabled },
@@ -50,10 +50,10 @@ export const useWarpStore = create<WarpStore>((set, get) => ({
     }));
   },
 
-  setMode: (clipId, mode) => {
+  setMode: (clipId: string, mode: WarpMode) => {
     const existing = get().configs[clipId];
     if (!existing) return;
-    set((state) => ({
+    set((state: WarpStore) => ({
       configs: {
         ...state.configs,
         [clipId]: { ...existing, mode },
@@ -61,10 +61,10 @@ export const useWarpStore = create<WarpStore>((set, get) => ({
     }));
   },
 
-  setOriginalBpm: (clipId, bpm) => {
+  setOriginalBpm: (clipId: string, bpm: number) => {
     const existing = get().configs[clipId];
     if (!existing) return;
-    set((state) => ({
+    set((state: WarpStore) => ({
       configs: {
         ...state.configs,
         [clipId]: { ...existing, originalBpm: bpm },
@@ -72,7 +72,7 @@ export const useWarpStore = create<WarpStore>((set, get) => ({
     }));
   },
 
-  addMarker: (clipId, sourceTime, targetTime) => {
+  addMarker: (clipId: string, sourceTime: number, targetTime: number) => {
     const existing = get().configs[clipId];
     if (!existing) return;
 
@@ -82,61 +82,61 @@ export const useWarpStore = create<WarpStore>((set, get) => ({
       targetTime,
     };
 
-    set((state) => ({
+    set((state: WarpStore) => ({
       configs: {
         ...state.configs,
         [clipId]: {
           ...existing,
           markers: [...existing.markers, marker].sort(
-            (a, b) => a.sourceTime - b.sourceTime,
+            (a: WarpMarker, b: WarpMarker) => a.sourceTime - b.sourceTime,
           ),
         },
       },
     }));
   },
 
-  updateMarker: (clipId, markerId, updates) => {
+  updateMarker: (clipId: string, markerId: string, updates: Partial<WarpMarker>) => {
     const existing = get().configs[clipId];
     if (!existing) return;
 
-    set((state) => ({
+    set((state: WarpStore) => ({
       configs: {
         ...state.configs,
         [clipId]: {
           ...existing,
           markers: existing.markers
-            .map((m) => (m.id === markerId ? { ...m, ...updates } : m))
-            .sort((a, b) => a.sourceTime - b.sourceTime),
+            .map((m: WarpMarker) => (m.id === markerId ? { ...m, ...updates } : m))
+            .sort((a: WarpMarker, b: WarpMarker) => a.sourceTime - b.sourceTime),
         },
       },
     }));
   },
 
-  removeMarker: (clipId, markerId) => {
+  removeMarker: (clipId: string, markerId: string) => {
     const existing = get().configs[clipId];
     if (!existing) return;
 
-    set((state) => ({
+    set((state: WarpStore) => ({
       configs: {
         ...state.configs,
         [clipId]: {
           ...existing,
-          markers: existing.markers.filter((m) => m.id !== markerId),
+          markers: existing.markers.filter((m: WarpMarker) => m.id !== markerId),
         },
       },
     }));
   },
 
-  autoWarp: (clipId, detectedBpm, beats, sessionBpm) => {
+  autoWarp: (clipId: string, detectedBpm: number, beats: number[], sessionBpm: number) => {
     const beatInterval = 60 / sessionBpm;
 
-    const markers: WarpMarker[] = beats.map((beatTime, idx) => ({
+    const markers: WarpMarker[] = beats.map((beatTime: number, idx: number) => ({
       id: generateId('wm'),
       sourceTime: beatTime,
       targetTime: idx * beatInterval,
     }));
 
-    set((state) => ({
+    set((state: WarpStore) => ({
       configs: {
         ...state.configs,
         [clipId]: {
@@ -151,11 +151,11 @@ export const useWarpStore = create<WarpStore>((set, get) => ({
     }));
   },
 
-  clearMarkers: (clipId) => {
+  clearMarkers: (clipId: string) => {
     const existing = get().configs[clipId];
     if (!existing) return;
 
-    set((state) => ({
+    set((state: WarpStore) => ({
       configs: {
         ...state.configs,
         [clipId]: { ...existing, markers: [], autoWarped: false },
@@ -163,8 +163,8 @@ export const useWarpStore = create<WarpStore>((set, get) => ({
     }));
   },
 
-  removeConfig: (clipId) => {
-    set((state) => {
+  removeConfig: (clipId: string) => {
+    set((state: WarpStore) => {
       const rest = { ...state.configs };
       delete rest[clipId];
       return { configs: rest };

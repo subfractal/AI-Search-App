@@ -11,10 +11,12 @@ import {
   drawRuler,
   drawPlayhead,
   drawLoopRegion,
+  RULER_HEIGHT,
 } from '@/utils/waveform-renderer';
 
-const TRACK_HEIGHT = 48;
-const AUTOMATION_LANE_HEIGHT = 32;
+const TRACK_HEIGHT = 72;
+const AUTOMATION_LANE_HEIGHT = 36;
+const CLIP_HEADER_HEIGHT = 18;
 
 function drawAutomationLane(
   ctx: CanvasRenderingContext2D,
@@ -26,16 +28,16 @@ function drawAutomationLane(
   width: number,
 ) {
   // Lane background
-  ctx.fillStyle = lane.color + '08';
+  ctx.fillStyle = lane.color + '0a';
   ctx.fillRect(0, y, width, h);
 
   // Lane label
-  ctx.fillStyle = lane.color + '80';
-  ctx.font = '8px Inter, sans-serif';
-  ctx.fillText(lane.target.toUpperCase(), 4, y + 10);
+  ctx.fillStyle = lane.color + '99';
+  ctx.font = '9px Inter, system-ui, sans-serif';
+  ctx.fillText(lane.target.toUpperCase(), 4, y + 12);
 
   // Separator
-  ctx.strokeStyle = lane.color + '20';
+  ctx.strokeStyle = lane.color + '25';
   ctx.lineWidth = 0.5;
   ctx.beginPath();
   ctx.moveTo(0, y + h);
@@ -46,19 +48,18 @@ function drawAutomationLane(
 
   // Draw automation curve
   ctx.beginPath();
-  ctx.strokeStyle = lane.color + 'cc';
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = lane.color + 'dd';
+  ctx.lineWidth = 2;
 
   let started = false;
   for (const point of lane.points) {
     const px = point.time * pps - scrollX;
     const normalized = (point.value - lane.minValue) / (lane.maxValue - lane.minValue);
-    const py = y + h - normalized * (h - 4) - 2;
+    const py = y + h - normalized * (h - 6) - 3;
 
     if (!started) {
-      // Extend flat line from left edge
       const firstNorm = (lane.points[0]!.value - lane.minValue) / (lane.maxValue - lane.minValue);
-      const firstPy = y + h - firstNorm * (h - 4) - 2;
+      const firstPy = y + h - firstNorm * (h - 6) - 3;
       ctx.moveTo(0, firstPy);
       ctx.lineTo(px, py);
       started = true;
@@ -67,10 +68,9 @@ function drawAutomationLane(
     }
   }
 
-  // Extend to right edge
   const lastPoint = lane.points[lane.points.length - 1]!;
   const lastNorm = (lastPoint.value - lane.minValue) / (lane.maxValue - lane.minValue);
-  const lastPy = y + h - lastNorm * (h - 4) - 2;
+  const lastPy = y + h - lastNorm * (h - 6) - 3;
   ctx.lineTo(width, lastPy);
   ctx.stroke();
 
@@ -79,17 +79,18 @@ function drawAutomationLane(
     const px = point.time * pps - scrollX;
     if (px < -5 || px > width + 5) continue;
     const normalized = (point.value - lane.minValue) / (lane.maxValue - lane.minValue);
-    const py = y + h - normalized * (h - 4) - 2;
+    const py = y + h - normalized * (h - 6) - 3;
 
     ctx.beginPath();
-    ctx.arc(px, py, 3, 0, Math.PI * 2);
+    ctx.arc(px, py, 4, 0, Math.PI * 2);
     ctx.fillStyle = lane.color;
     ctx.fill();
     ctx.strokeStyle = '#000';
-    ctx.lineWidth = 0.5;
+    ctx.lineWidth = 1;
     ctx.stroke();
   }
 }
+
 const PIXELS_PER_SECOND = 100;
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 10;
@@ -130,11 +131,9 @@ export default function Timeline() {
       const pos = getPositionSeconds();
       const playheadX = pos * pps;
 
-      // If playhead is past 75% of visible area, scroll to keep it at 25%
       if (playheadX - scrollX > width * 0.75) {
         setScrollX(Math.max(0, playheadX - width * 0.25));
       }
-      // If playhead is before visible area, jump back
       if (playheadX < scrollX) {
         setScrollX(Math.max(0, playheadX - width * 0.1));
       }
@@ -163,15 +162,15 @@ export default function Timeline() {
     if (!ctx) return;
     ctx.scale(dpr, dpr);
 
-    // Background
-    ctx.fillStyle = '#0d0d0d';
+    // Background — dark like Ableton
+    ctx.fillStyle = '#141414';
     ctx.fillRect(0, 0, width, height);
 
     // Grid
     drawGrid(ctx, bpm, 4, pps, scrollX, width, height);
 
     // Track lanes
-    let yOffset = 16;
+    let yOffset = RULER_HEIGHT;
     tracks.forEach((track, index) => {
       const trackLanes = showAutomation
         ? (automationLanes[track.id] ?? []).filter((l) => l.visible)
@@ -183,75 +182,86 @@ export default function Timeline() {
 
       if (y + totalTrackHeight < 0 || y > height) return;
 
-      // Alternating lane backgrounds
-      ctx.fillStyle = index % 2 === 0 ? '#111111' : '#0f0f0f';
+      // Track lane background — subtle alternation
+      ctx.fillStyle = index % 2 === 0 ? '#161616' : '#131313';
       ctx.fillRect(0, y, width, TRACK_HEIGHT);
 
-      // Lane separator
-      ctx.strokeStyle = '#1a1a1a';
+      // Track color indicator — left edge strip (like Logic Pro)
+      ctx.fillStyle = track.color + '60';
+      ctx.fillRect(0, y, 3, TRACK_HEIGHT);
+
+      // Lane separator — subtle
+      ctx.strokeStyle = '#222';
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(0, y + totalTrackHeight);
       ctx.lineTo(width, y + totalTrackHeight);
       ctx.stroke();
 
-      // Clips
+      // Clips — bold, saturated colors like Ableton/Logic
       track.clips.forEach((clip) => {
         const clipX = clip.startTime * pps - scrollX;
         const clipW = clip.duration * pps;
-        const clipY = y + 3;
-        const clipH = TRACK_HEIGHT - 6;
+        const clipY = y + 2;
+        const clipH = TRACK_HEIGHT - 4;
 
         if (clipX + clipW < 0 || clipX > width) return;
 
-        // Clip background with rounded corners
         const radius = 3;
+
+        // Clip body — saturated fill
         ctx.beginPath();
         ctx.roundRect(clipX, clipY, clipW, clipH, radius);
-        ctx.fillStyle = track.color + '18';
+        ctx.fillStyle = track.color + '35';
         ctx.fill();
 
-        // Clip border
-        ctx.strokeStyle = track.color + '44';
+        // Clip border — visible edge
+        ctx.strokeStyle = track.color + '80';
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        // Clip header bar
-        ctx.fillStyle = track.color + '30';
+        // Clip header bar — fully colored like Ableton
         ctx.beginPath();
-        ctx.roundRect(clipX, clipY, clipW, 14, [radius, radius, 0, 0]);
+        ctx.roundRect(clipX, clipY, clipW, CLIP_HEADER_HEIGHT, [radius, radius, 0, 0]);
+        ctx.fillStyle = track.color + 'cc';
         ctx.fill();
 
-        // Clip name
-        ctx.fillStyle = track.color + 'cc';
-        ctx.font = '9px Inter, sans-serif';
+        // Clip name — white text on colored header
+        ctx.fillStyle = '#000000cc';
+        ctx.font = 'bold 10px Inter, system-ui, sans-serif';
         ctx.save();
         ctx.beginPath();
-        ctx.rect(clipX + 2, clipY, clipW - 4, 14);
+        ctx.rect(clipX + 2, clipY, clipW - 4, CLIP_HEADER_HEIGHT);
         ctx.clip();
-        ctx.fillText(clip.name, clipX + 5, clipY + 10);
+        ctx.fillText(clip.name, clipX + 5, clipY + 13);
         ctx.restore();
 
-        // Waveform / MIDI
+        // Content area
+        const contentY = clipY + CLIP_HEADER_HEIGHT;
+        const contentH = clipH - CLIP_HEADER_HEIGHT;
+
         if (isAudioClip(clip)) {
           drawWaveform(
             ctx,
             clip.buffer,
             clipX,
-            clipY + 14,
+            contentY,
             clipW,
-            clipH - 14,
+            contentH,
             track.color,
           );
         } else {
+          // MIDI notes — thicker, more visible
           clip.notes.forEach((note) => {
             const noteX = clipX + note.startTime * pps;
-            const noteW = Math.max(2, note.duration * pps);
-            const noteY = clipY + clipH -
-              ((note.pitch / 127) * (clipH - 16)) - 2;
-            ctx.fillStyle = track.color + '99';
+            const noteW = Math.max(3, note.duration * pps);
+            const noteY = contentY + contentH -
+              ((note.pitch / 127) * (contentH - 4)) - 2;
+            const noteH = Math.max(3, contentH / 24);
+
+            ctx.fillStyle = track.color + 'dd';
             ctx.beginPath();
-            ctx.roundRect(noteX, noteY, noteW, 2.5, 1);
+            ctx.roundRect(noteX, noteY, noteW, noteH, 1);
             ctx.fill();
           });
         }
@@ -264,15 +274,15 @@ export default function Timeline() {
       });
     });
 
-    // Loop region (behind ruler)
+    // Loop region
     if (loopEnabled) {
       drawLoopRegion(ctx, loopStart, loopEnd, pps, scrollX, height);
     }
 
-    // Ruler (draw on top)
+    // Ruler (on top)
     drawRuler(ctx, bpm, pps, scrollX, width, beatsPerBar);
 
-    // Playhead (draw last, on top of everything)
+    // Playhead (last, on top)
     const position = getPositionSeconds();
     drawPlayhead(ctx, position, pps, scrollX, height);
 
@@ -289,11 +299,9 @@ export default function Timeline() {
       e.preventDefault();
       setZoom((z) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z - e.deltaY * 0.001)));
     } else if (e.shiftKey) {
-      // Horizontal scroll with shift
       setScrollX((s) => Math.max(0, s + e.deltaY));
       setFollowPlayhead(false);
     } else {
-      // Vertical scroll for tracks, horizontal for deltaX
       setScrollY((s) => Math.max(0, s + e.deltaY));
       if (e.deltaX !== 0) {
         setScrollX((s) => Math.max(0, s + e.deltaX));
@@ -333,22 +341,22 @@ export default function Timeline() {
     <div
       ref={containerRef}
       className="w-full h-full relative overflow-hidden cursor-crosshair
-                 bg-daw-bg"
+                 bg-[#141414]"
       onWheel={handleWheel}
       onClick={handleClick}
     >
       <canvas ref={canvasRef} className="absolute inset-0" />
 
-      {/* Zoom / Follow controls overlay */}
-      <div className="absolute top-1 right-1 flex items-center gap-0.5 z-10
+      {/* Controls overlay */}
+      <div className="absolute top-[24px] right-1 flex items-center gap-0.5 z-10
                       pointer-events-auto">
         <button
           onClick={(e) => { e.stopPropagation(); setShowAutomation((v) => !v); }}
           className={`w-6 h-5 rounded text-xxs flex items-center justify-center
                      transition-all font-bold
                      ${showAutomation
-              ? 'bg-red-500/20 text-red-400 border border-red-500/40'
-              : 'bg-daw-bg/80 text-daw-text-muted border border-daw-border/40 hover:text-daw-text-dim'}`}
+              ? 'bg-red-500/25 text-red-400 border border-red-500/50'
+              : 'bg-black/60 text-daw-text-muted border border-daw-border/40 hover:text-daw-text-dim'}`}
           title={showAutomation ? 'Hide Automation' : 'Show Automation'}
         >
           A
@@ -358,9 +366,9 @@ export default function Timeline() {
           className={`w-6 h-5 rounded text-xxs flex items-center justify-center
                      transition-all
                      ${followPlayhead
-              ? 'bg-daw-accent/20 text-daw-accent border border-daw-accent/40'
-              : 'bg-daw-bg/80 text-daw-text-muted border border-daw-border/40 hover:text-daw-text-dim'}`}
-          title={followPlayhead ? 'Follow ON — click to disable' : 'Follow OFF — click to enable'}
+              ? 'bg-daw-accent/25 text-daw-accent border border-daw-accent/50'
+              : 'bg-black/60 text-daw-text-muted border border-daw-border/40 hover:text-daw-text-dim'}`}
+          title={followPlayhead ? 'Follow ON' : 'Follow OFF'}
         >
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none"
             stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
@@ -369,7 +377,7 @@ export default function Timeline() {
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); zoomOut(); }}
-          className="w-6 h-5 rounded text-xxs bg-daw-bg/80 text-daw-text-muted
+          className="w-6 h-5 rounded text-xxs bg-black/60 text-daw-text-muted
                      border border-daw-border/40 flex items-center justify-center
                      hover:text-daw-text-dim transition-all"
           title="Zoom Out"
@@ -377,12 +385,12 @@ export default function Timeline() {
           −
         </button>
         <span className="text-xxs text-daw-text-muted font-mono w-8 text-center
-                         bg-daw-bg/60 rounded border border-daw-border/30 leading-5">
+                         bg-black/50 rounded border border-daw-border/30 leading-5">
           {Math.round(zoom * 100)}%
         </span>
         <button
           onClick={(e) => { e.stopPropagation(); zoomIn(); }}
-          className="w-6 h-5 rounded text-xxs bg-daw-bg/80 text-daw-text-muted
+          className="w-6 h-5 rounded text-xxs bg-black/60 text-daw-text-muted
                      border border-daw-border/40 flex items-center justify-center
                      hover:text-daw-text-dim transition-all"
           title="Zoom In"
@@ -391,7 +399,7 @@ export default function Timeline() {
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); zoomFit(); }}
-          className="w-6 h-5 rounded text-xxs bg-daw-bg/80 text-daw-text-muted
+          className="w-6 h-5 rounded text-xxs bg-black/60 text-daw-text-muted
                      border border-daw-border/40 flex items-center justify-center
                      hover:text-daw-text-dim transition-all"
           title="Zoom to Fit"

@@ -52,17 +52,17 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
 
   return (
     <div
-      className={`group flex items-center gap-1.5 px-2 py-1 border-b
-                  border-daw-border/20 cursor-pointer transition-colors min-h-[48px]
+      className={`group flex items-center gap-1.5 px-2 py-1.5 border-b
+                  border-daw-border/20 cursor-pointer transition-colors min-h-[72px]
                   ${isSelected
           ? 'bg-daw-track-selected'
           : 'bg-daw-track hover:bg-daw-surface-alt'}`}
       onClick={() => selectTrack(trackId)}
     >
       {/* Color bar — click to pick color */}
-      <div className="relative shrink-0">
+      <div className="relative shrink-0 self-stretch flex items-center">
         <div
-          className="w-[3px] h-8 rounded-full cursor-pointer hover:w-[5px] transition-all"
+          className="w-1 self-stretch rounded-full cursor-pointer hover:w-1.5 transition-all"
           style={{ backgroundColor: track.color }}
           onClick={(e) => {
             e.stopPropagation();
@@ -96,15 +96,21 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
 
       {/* Track info */}
       <div className="flex-1 min-w-0">
-        <input
-          className="bg-transparent text-xs font-medium w-full truncate
-                     text-daw-text focus:outline-none focus:bg-daw-bg/60
-                     rounded px-1 -ml-1 leading-tight"
-          value={track.name}
-          onChange={(e) => updateTrack(trackId, { name: e.target.value })}
-          onClick={(e) => e.stopPropagation()}
-        />
-        <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+        {/* Track number + name */}
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] font-mono text-daw-text-muted/50 w-4 text-right shrink-0">
+            {useSessionStore.getState().tracks.findIndex((t) => t.id === trackId) + 1}
+          </span>
+          <input
+            className="bg-transparent text-[11px] font-semibold w-full truncate
+                       text-daw-text focus:outline-none focus:bg-daw-bg/60
+                       rounded px-1 -ml-0.5 leading-tight"
+            value={track.name}
+            onChange={(e) => updateTrack(trackId, { name: e.target.value })}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+        <div className="flex items-center gap-1 mt-1 flex-wrap ml-5">
           {/* Type badge */}
           <span
             className="text-xxs uppercase tracking-wide px-1 py-px rounded
@@ -148,53 +154,73 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="flex items-center gap-0.5">
-        <button
-          className={`w-5 h-5 rounded text-xxs font-bold transition-all
-                     flex items-center justify-center
-                     ${track.mute
-              ? 'bg-amber-500/90 text-black'
-              : 'bg-daw-bg/40 text-daw-text-muted hover:text-daw-text-dim'}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleMute(trackId);
-            updateTrack(trackId, { mute: !track.mute });
-          }}
-        >
-          M
-        </button>
-        <button
-          className={`w-5 h-5 rounded text-xxs font-bold transition-all
-                     flex items-center justify-center
-                     ${track.solo
-              ? 'bg-sky-500/90 text-black'
-              : 'bg-daw-bg/40 text-daw-text-muted hover:text-daw-text-dim'}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleSolo(trackId);
-            updateTrack(trackId, { solo: !track.solo });
-          }}
-        >
-          S
-        </button>
-        <button
-          className="w-5 h-5 rounded text-xxs bg-daw-bg/40
-                     text-daw-text-muted hover:text-red-400
-                     transition-all flex items-center justify-center
-                     opacity-0 group-hover:opacity-100"
-          onClick={(e) => {
-            e.stopPropagation();
-            removeTrack(trackId);
-          }}
-          title="Delete track"
-        >
-          <svg width="8" height="8" viewBox="0 0 8 8" stroke="currentColor"
-            strokeWidth="1.5" strokeLinecap="round">
-            <line x1="1" y1="1" x2="7" y2="7" />
-            <line x1="7" y1="1" x2="1" y2="7" />
-          </svg>
-        </button>
+      {/* Controls — vertical layout like Logic Pro */}
+      <div className="flex flex-col items-center gap-0.5 shrink-0">
+        <div className="flex items-center gap-0.5">
+          <button
+            className={`w-6 h-5 rounded text-[9px] font-bold transition-all
+                       flex items-center justify-center
+                       ${track.mute
+                ? 'bg-amber-500/90 text-black'
+                : 'bg-daw-bg/60 text-daw-text-muted/60 hover:text-daw-text-dim'}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleMute(trackId);
+              updateTrack(trackId, { mute: !track.mute });
+            }}
+          >
+            M
+          </button>
+          <button
+            className={`w-6 h-5 rounded text-[9px] font-bold transition-all
+                       flex items-center justify-center
+                       ${track.solo
+                ? 'bg-sky-500/90 text-black'
+                : 'bg-daw-bg/60 text-daw-text-muted/60 hover:text-daw-text-dim'}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleSolo(trackId);
+              updateTrack(trackId, { solo: !track.solo });
+            }}
+          >
+            S
+          </button>
+        </div>
+        <div className="flex items-center gap-0.5">
+          {/* Record arm */}
+          <button
+            className={`w-6 h-5 rounded-full text-[9px] font-bold transition-all
+                       flex items-center justify-center
+                       ${track.armed
+                ? 'bg-red-500/90 text-white'
+                : 'bg-daw-bg/60 text-daw-text-muted/40 hover:text-red-400/60'}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              updateTrack(trackId, { armed: !track.armed });
+            }}
+            title="Record Arm"
+          >
+            R
+          </button>
+          {/* Delete */}
+          <button
+            className="w-6 h-5 rounded text-xxs bg-daw-bg/60
+                       text-daw-text-muted/40 hover:text-red-400
+                       transition-all flex items-center justify-center
+                       opacity-0 group-hover:opacity-100"
+            onClick={(e) => {
+              e.stopPropagation();
+              removeTrack(trackId);
+            }}
+            title="Delete track"
+          >
+            <svg width="8" height="8" viewBox="0 0 8 8" stroke="currentColor"
+              strokeWidth="1.5" strokeLinecap="round">
+              <line x1="1" y1="1" x2="7" y2="7" />
+              <line x1="7" y1="1" x2="1" y2="7" />
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
   );
