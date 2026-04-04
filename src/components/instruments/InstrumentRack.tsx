@@ -16,7 +16,7 @@ export default function InstrumentRack() {
   if (!selectedTrackId || !selectedTrack) {
     return (
       <div className="h-full flex items-center justify-center text-xxs
-                      text-daw-text-muted">
+                      text-daw-text-muted p-4">
         Select a track to load an instrument
       </div>
     );
@@ -25,8 +25,8 @@ export default function InstrumentRack() {
   if (selectedTrack.type !== 'midi') {
     return (
       <div className="h-full flex items-center justify-center text-xxs
-                      text-daw-text-muted">
-        Instruments are available on MIDI tracks
+                      text-daw-text-muted p-4">
+        Instruments are available on MIDI tracks only
       </div>
     );
   }
@@ -35,9 +35,9 @@ export default function InstrumentRack() {
 
   if (!config) {
     return (
-      <div className="flex flex-col gap-2 p-3">
+      <div className="p-3">
         <span className="daw-section-label">Load Instrument</span>
-        <div className="grid grid-cols-1 gap-1 mt-1">
+        <div className="flex flex-wrap gap-1.5 mt-2">
           {INSTRUMENT_PRESETS.map((preset) => (
             <button
               key={preset.type}
@@ -47,16 +47,16 @@ export default function InstrumentRack() {
                   preset.type as InstrumentType,
                 )
               }
-              className="text-left text-xxs py-2 px-2.5 rounded
+              className="text-xxs py-2 px-3 rounded
                          bg-daw-bg border border-daw-border/20
                          text-daw-text-dim hover:text-daw-text
                          hover:border-daw-accent/30 hover:bg-daw-accent/5
-                         transition-all flex items-center gap-2"
+                         transition-all flex items-center gap-1.5"
             >
               <span className="w-4 h-4 rounded bg-daw-accent/15
-                               flex items-center justify-center text-[8px]
+                               flex items-center justify-center text-[9px]
                                text-daw-accent">
-                {preset.type === 'drum-machine' ? '&#9833;' : '&#9834;'}
+                {preset.type === 'drum-machine' ? '\u266D' : '\u266A'}
               </span>
               {preset.name}
             </button>
@@ -67,7 +67,7 @@ export default function InstrumentRack() {
   }
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full flex flex-col">
       {/* Instrument header */}
       <div className="flex items-center justify-between px-3 h-7 border-b
                       border-daw-border/20 shrink-0">
@@ -76,11 +76,12 @@ export default function InstrumentRack() {
           <span className="daw-section-label text-daw-accent">
             {config.name}
           </span>
+          <span className="text-[8px] text-daw-text-muted/40">
+            {selectedTrack.name}
+          </span>
         </div>
         <button
-          onClick={() => {
-            assignInstrument(selectedTrackId, config.type);
-          }}
+          onClick={() => assignInstrument(selectedTrackId, config.type)}
           className="text-xxs text-daw-text-muted hover:text-daw-text-dim
                      transition-colors"
           title="Reset instrument"
@@ -89,11 +90,13 @@ export default function InstrumentRack() {
         </button>
       </div>
 
-      {config.type === 'drum-machine' ? (
-        <DrumMachine trackId={selectedTrackId} />
-      ) : (
-        <SynthPanel trackId={selectedTrackId} />
-      )}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        {config.type === 'drum-machine' ? (
+          <DrumMachine trackId={selectedTrackId} />
+        ) : (
+          <SynthPanel trackId={selectedTrackId} />
+        )}
+      </div>
     </div>
   );
 }

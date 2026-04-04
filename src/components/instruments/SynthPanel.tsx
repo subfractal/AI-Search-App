@@ -22,30 +22,27 @@ export default function SynthPanel({ trackId }: SynthPanelProps) {
   };
 
   return (
-    <div className="flex flex-col gap-3 p-3">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-daw-text">{config.name}</span>
-        <button
-          onClick={playTestNote}
-          className="daw-button text-xxs px-2"
-        >
-          Test
-        </button>
-      </div>
-
-      {/* Oscillator */}
-      <div>
-        <span className="daw-section-label">Oscillator</span>
-        <div className="flex gap-1 mt-1">
+    <div className="flex flex-wrap gap-3 p-3 items-start">
+      {/* Oscillator section */}
+      <div className="flex flex-col gap-1.5 min-w-[100px]">
+        <div className="flex items-center justify-between">
+          <span className="daw-section-label">OSC</span>
+          <button
+            onClick={playTestNote}
+            className="daw-button text-[8px] px-1.5 py-0"
+          >
+            Test
+          </button>
+        </div>
+        <div className="flex gap-0.5">
           {OSC_TYPES.map((osc) => (
             <button
               key={osc}
               onClick={() => updateSynth(trackId, { oscillator: osc })}
-              className={`flex-1 text-xxs py-1 rounded transition-all
+              className={`flex-1 text-[8px] py-1 rounded transition-all
                          ${params.oscillator === osc
                   ? 'bg-daw-accent/20 text-daw-accent border border-daw-accent/30'
-                  : 'bg-daw-bg text-daw-text-muted border border-daw-border/30 hover:text-daw-text-dim'}`}
+                  : 'bg-daw-bg text-daw-text-muted/50 border border-daw-border/20'}`}
             >
               {osc.slice(0, 3).toUpperCase()}
             </button>
@@ -53,24 +50,24 @@ export default function SynthPanel({ trackId }: SynthPanelProps) {
         </div>
       </div>
 
-      {/* Filter */}
-      <div>
-        <span className="daw-section-label">Filter</span>
-        <div className="flex gap-1 mt-1 mb-2">
+      {/* Filter section */}
+      <div className="flex flex-col gap-1.5 min-w-[120px]">
+        <span className="daw-section-label">FILTER</span>
+        <div className="flex gap-0.5">
           {FILTER_TYPES.map((f) => (
             <button
               key={f}
               onClick={() => updateSynth(trackId, { filterType: f })}
-              className={`flex-1 text-xxs py-1 rounded transition-all
+              className={`flex-1 text-[8px] py-1 rounded transition-all
                          ${params.filterType === f
                   ? 'bg-daw-accent/20 text-daw-accent border border-daw-accent/30'
-                  : 'bg-daw-bg text-daw-text-muted border border-daw-border/30 hover:text-daw-text-dim'}`}
+                  : 'bg-daw-bg text-daw-text-muted/50 border border-daw-border/20'}`}
             >
               {f === 'lowpass' ? 'LP' : f === 'highpass' ? 'HP' : 'BP'}
             </button>
           ))}
         </div>
-        <div className="flex justify-center gap-4">
+        <div className="flex gap-2 justify-center">
           <Knob
             value={Math.log2(params.filterFrequency / 20) / Math.log2(20000 / 20)}
             min={0}
@@ -80,7 +77,8 @@ export default function SynthPanel({ trackId }: SynthPanelProps) {
               updateSynth(trackId, { filterFrequency: Math.round(freq) });
             }}
             label="Freq"
-            size={30}
+            size={24}
+            showValue
           />
           <Knob
             value={params.filterResonance}
@@ -88,22 +86,24 @@ export default function SynthPanel({ trackId }: SynthPanelProps) {
             max={20}
             onChange={(v) => updateSynth(trackId, { filterResonance: v })}
             label="Res"
-            size={30}
+            size={24}
+            showValue
           />
         </div>
       </div>
 
-      {/* Envelope */}
-      <div>
-        <span className="daw-section-label">Envelope</span>
-        <div className="flex justify-center gap-3 mt-2">
+      {/* ADSR Envelope section */}
+      <div className="flex flex-col gap-1.5 min-w-[140px]">
+        <span className="daw-section-label">ENVELOPE</span>
+        <div className="flex gap-1.5 justify-center">
           <Knob
             value={params.attack}
             min={0.001}
             max={2}
             onChange={(v) => updateSynth(trackId, { attack: v })}
             label="A"
-            size={26}
+            size={22}
+            showValue
           />
           <Knob
             value={params.decay}
@@ -111,7 +111,8 @@ export default function SynthPanel({ trackId }: SynthPanelProps) {
             max={2}
             onChange={(v) => updateSynth(trackId, { decay: v })}
             label="D"
-            size={26}
+            size={22}
+            showValue
           />
           <Knob
             value={params.sustain}
@@ -119,7 +120,8 @@ export default function SynthPanel({ trackId }: SynthPanelProps) {
             max={1}
             onChange={(v) => updateSynth(trackId, { sustain: v })}
             label="S"
-            size={26}
+            size={22}
+            showValue
           />
           <Knob
             value={params.release}
@@ -127,14 +129,15 @@ export default function SynthPanel({ trackId }: SynthPanelProps) {
             max={4}
             onChange={(v) => updateSynth(trackId, { release: v })}
             label="R"
-            size={26}
+            size={22}
+            showValue
           />
         </div>
       </div>
 
       {/* Mini keyboard */}
-      <div>
-        <span className="daw-section-label">Keyboard</span>
+      <div className="flex flex-col gap-1 min-w-[140px] flex-1">
+        <span className="daw-section-label">KEYBOARD</span>
         <MiniKeyboard trackId={trackId} />
       </div>
     </div>
@@ -156,32 +159,32 @@ function MiniKeyboard({ trackId }: { trackId: string }) {
   };
 
   return (
-    <div className="relative mt-1 h-10">
-      {/* White keys */}
+    <div className="relative h-10">
       <div className="flex gap-px h-full">
         {whiteKeys.map((note) => (
           <button
             key={note}
             onMouseDown={() => play(note)}
+            onTouchStart={() => play(note)}
             className="flex-1 bg-daw-text/90 rounded-b-sm text-[7px]
                        text-daw-bg font-medium flex items-end justify-center
                        pb-0.5 hover:bg-white active:bg-daw-text-dim
-                       transition-colors"
+                       transition-colors touch-none"
           >
             {note}
           </button>
         ))}
       </div>
-      {/* Black keys */}
       <div className="absolute top-0 left-0 right-0 h-[60%] flex">
         {blackKeys.map(({ note, offset }) => (
           <button
             key={note}
             onMouseDown={() => play(note)}
+            onTouchStart={() => play(note)}
             className="absolute w-[12%] h-full bg-daw-bg rounded-b-sm
                        border border-daw-border/40
                        hover:bg-daw-surface active:bg-daw-panel
-                       transition-colors z-10"
+                       transition-colors z-10 touch-none"
             style={{
               left: `${(offset / 7) * 100 + 100 / 14 - 6}%`,
             }}

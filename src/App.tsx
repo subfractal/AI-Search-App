@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import TransportBar from '@/components/TransportBar';
 import TrackList from '@/components/TrackList';
 import Timeline from '@/components/Timeline';
@@ -40,9 +40,49 @@ function useScreenSize() {
   return size;
 }
 
+// Resizable panel height with drag handle
+function useResizablePanel(defaultHeight: number, minH: number, maxH: number) {
+  const [height, setHeight] = useState(defaultHeight);
+
+  const onDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    const startY = 'touches' in e ? e.touches[0]!.clientY : e.clientY;
+    const startH = height;
+
+    const onMove = (ev: MouseEvent | TouchEvent) => {
+      const clientY = 'touches' in ev ? ev.touches[0]!.clientY : (ev as MouseEvent).clientY;
+      const delta = startY - clientY;
+      setHeight(Math.max(minH, Math.min(maxH, startH + delta)));
+    };
+
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onUp);
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    document.addEventListener('touchmove', onMove);
+    document.addEventListener('touchend', onUp);
+  }, [height, minH, maxH]);
+
+  return { height, onDragStart };
+}
+
 export default function App() {
   useKeyboardShortcuts();
   const { isMobile, height: screenH } = useScreenSize();
+
+  const minPanelH = isMobile ? 120 : 160;
+  const maxPanelH = Math.floor(screenH * 0.6);
+  const defaultPanelH = isMobile
+    ? Math.min(Math.max(160, Math.floor(screenH * 0.35)), 280)
+    : 220;
+
+  const { height: panelH, onDragStart } = useResizablePanel(defaultPanelH, minPanelH, maxPanelH);
+
   const [bottomPanel, setBottomPanel] = useState<BottomPanel>('mixer');
   const [showAI, setShowAI] = useState(!isMobile);
   const [showTracks, setShowTracks] = useState(!isMobile);
@@ -55,11 +95,6 @@ export default function App() {
 
   const tracks = useSessionStore((s) => s.tracks);
   const selectedTrackId = useSessionStore((s) => s.selectedTrackId);
-
-  // Dynamic panel height: 35% of screen on mobile, fixed on desktop
-  const panelHeight = isMobile
-    ? Math.min(Math.max(160, Math.floor(screenH * 0.35)), 280)
-    : undefined; // use CSS classes on desktop
 
   const togglePanel = (panel: BottomPanel) => {
     setBottomPanel((current) => (current === panel ? null : panel));
@@ -76,10 +111,74 @@ export default function App() {
     }
   };
 
-  const panelStyle = isMobile && panelHeight
-    ? { height: panelHeight } : undefined;
-  const panelClass = `bg-daw-surface border-t border-daw-border/40 shrink-0
-                      overflow-auto ${!isMobile ? 'h-52' : ''}`;
+  const renderBottomPanel = () => {
+    if (!bottomPanel) return null;
+
+    let content: React.ReactNode = null;
+
+    switch (bottomPanel) {
+      case 'mixer':
+        content = <MixerPanel />;
+        break;
+      case 'instrument':
+        content = <InstrumentRack />;
+        break;
+      case 'effects':
+        if (!selectedTrackId) {
+          content = (
+            <div className="h-full flex items-center justify-center text-xxs text-daw-text-muted">
+              Select a track to edit effects
+            </div>
+          );
+        } else {
+          content = (
+            <EffectsRack
+              trackId={selectedTrackId}
+              trackName={tracks.find((t) => t.id === selectedTrackId)?.name ?? ''}
+            />
+          );
+        }
+        break;
+      case 'routing':
+        content = <RoutingPanel selectedTrackId={selectedTrackId} />;
+        break;
+      case 'piano-roll':
+        if (!pianoRollClip) return null;
+        content = (
+          <PianoRoll
+            trackId={pianoRollClip.trackId}
+            clip={pianoRollClip.clip}
+            onClose={() => {
+              setPianoRollClip(null);
+              setBottomPanel('mixer');
+            }}
+          />
+        );
+        break;
+    }
+
+    return (
+      <div
+        className="bg-daw-surface border-t border-daw-border/40 shrink-0 flex flex-col"
+        style={{ height: panelH }}
+      >
+        {/* Drag handle to resize */}
+        <div
+          className="h-1.5 cursor-ns-resize flex items-center justify-center
+                     shrink-0 hover:bg-daw-accent/10 transition-colors group"
+          onMouseDown={onDragStart}
+          onTouchStart={onDragStart}
+        >
+          <div className="w-8 h-0.5 rounded bg-daw-border/40 group-hover:bg-daw-accent/40
+                          transition-colors" />
+        </div>
+        {/* Panel content — scrollable */}
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+          {content}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <FileDropZone>
@@ -114,45 +213,7 @@ export default function App() {
           )}
         </div>
 
-        {/* Bottom panels — dynamic height on mobile */}
-        {bottomPanel === 'mixer' && (
-          <div style={panelStyle}>
-            <MixerPanel />
-          </div>
-        )}
-        {bottomPanel === 'instrument' && (
-          <div className={panelClass} style={panelStyle}>
-            <InstrumentRack />
-          </div>
-        )}
-        {bottomPanel === 'effects' && selectedTrackId && (
-          <div className={panelClass} style={panelStyle}>
-            <EffectsRack
-              trackId={selectedTrackId}
-              trackName={tracks.find((t) => t.id === selectedTrackId)?.name ?? ''}
-            />
-          </div>
-        )}
-        {bottomPanel === 'routing' && (
-          <div className={panelClass} style={panelStyle}>
-            <RoutingPanel selectedTrackId={selectedTrackId} />
-          </div>
-        )}
-        {bottomPanel === 'piano-roll' && pianoRollClip && (
-          <div
-            className="bg-daw-surface border-t border-daw-border/40 shrink-0 overflow-hidden"
-            style={isMobile ? { height: Math.min(300, Math.floor(screenH * 0.4)) } : { height: 288 }}
-          >
-            <PianoRoll
-              trackId={pianoRollClip.trackId}
-              clip={pianoRollClip.clip}
-              onClose={() => {
-                setPianoRollClip(null);
-                setBottomPanel('mixer');
-              }}
-            />
-          </div>
-        )}
+        {renderBottomPanel()}
 
         <ExportDialog open={showExport} onClose={() => setShowExport(false)} />
         <HistoryPanel open={showHistory} onClose={() => setShowHistory(false)} />
