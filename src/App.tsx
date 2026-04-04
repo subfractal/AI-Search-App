@@ -14,7 +14,7 @@ export default function App() {
 
   return (
     <FileDropZone>
-      <div className="h-screen flex flex-col">
+      <div className="h-screen flex flex-col bg-daw-bg">
         <TransportBar
           showMixer={showMixer}
           onToggleMixer={() => setShowMixer((v) => !v)}
@@ -30,7 +30,7 @@ export default function App() {
           </div>
 
           {showAI && (
-            <div className="w-72 border-l border-daw-grid/30">
+            <div className="w-60 border-l border-daw-border/30 shrink-0">
               <AISidebar />
             </div>
           )}

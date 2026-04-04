@@ -15,12 +15,13 @@ export default function Knob({
   max = 1,
   onChange,
   label,
-  size = 32,
+  size = 28,
 }: KnobProps) {
   const startY = useRef(0);
   const startValue = useRef(0);
 
-  const rotation = ((value - min) / (max - min)) * 270 - 135;
+  const normalizedValue = (value - min) / (max - min);
+  const rotation = normalizedValue * 270 - 135;
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -49,27 +50,80 @@ export default function Knob({
     [value, min, max, onChange],
   );
 
+  const r = size / 2 - 2;
+  const arcStart = -225 * (Math.PI / 180);
+  const arcEnd = arcStart + normalizedValue * 270 * (Math.PI / 180);
+  const cx = size / 2;
+  const cy = size / 2;
+
   return (
-    <div className="flex flex-col items-center gap-1">
-      <div
-        className="relative rounded-full bg-daw-bg border border-daw-grid/50
-                   cursor-pointer select-none"
-        style={{ width: size, height: size }}
+    <div className="flex flex-col items-center gap-0.5">
+      <svg
+        width={size}
+        height={size}
+        className="cursor-pointer"
         onMouseDown={handleMouseDown}
       >
-        <div
-          className="absolute inset-1 rounded-full border border-daw-grid/30"
-          style={{ transform: `rotate(${rotation}deg)` }}
-        >
-          <div
-            className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-2
-                       bg-daw-accent rounded-full"
-          />
-        </div>
-      </div>
+        {/* Background track */}
+        <circle
+          cx={cx} cy={cy} r={r}
+          fill="#111"
+          stroke="#333"
+          strokeWidth="1"
+        />
+
+        {/* Value arc */}
+        <path
+          d={describeArc(cx, cy, r - 1, arcStart, arcEnd)}
+          fill="none"
+          stroke="#ff6b35"
+          strokeWidth="2"
+          strokeLinecap="round"
+          opacity={0.7}
+        />
+
+        {/* Pointer line */}
+        <line
+          x1={cx}
+          y1={cy}
+          x2={cx + (r - 3) * Math.cos(rotation * Math.PI / 180)}
+          y2={cy + (r - 3) * Math.sin(rotation * Math.PI / 180)}
+          stroke="#ccc"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+
+        {/* Center dot */}
+        <circle cx={cx} cy={cy} r="2" fill="#444" />
+      </svg>
       {label && (
-        <span className="text-[10px] text-daw-text-dim">{label}</span>
+        <span className="text-xxs text-daw-text-muted leading-none">
+          {label}
+        </span>
       )}
     </div>
   );
+}
+
+function describeArc(
+  cx: number,
+  cy: number,
+  r: number,
+  startAngle: number,
+  endAngle: number,
+): string {
+  const start = {
+    x: cx + r * Math.cos(endAngle),
+    y: cy + r * Math.sin(endAngle),
+  };
+  const end = {
+    x: cx + r * Math.cos(startAngle),
+    y: cy + r * Math.sin(startAngle),
+  };
+  const largeArc = endAngle - startAngle > Math.PI ? 1 : 0;
+
+  return [
+    'M', start.x, start.y,
+    'A', r, r, 0, largeArc, 0, end.x, end.y,
+  ].join(' ');
 }

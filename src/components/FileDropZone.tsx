@@ -27,7 +27,6 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
   const [dragging, setDragging] = useState(false);
   const addAudioTrack = useSessionStore((s) => s.addAudioTrack);
   const addClipToTrack = useSessionStore((s) => s.addClipToTrack);
-  const tracks = useSessionStore((s) => s.tracks);
   const initStrip = useMixerStore((s) => s.initStrip);
 
   const handleFiles = useCallback(
@@ -37,15 +36,10 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
 
         try {
           const buffer = await loadAudioFile(file);
-          let trackId: string;
-
-          if (tracks.length === 0) {
-            trackId = addAudioTrack(file.name.replace(/\.[^.]+$/, ''));
-            initStrip(trackId);
-          } else {
-            trackId = addAudioTrack(file.name.replace(/\.[^.]+$/, ''));
-            initStrip(trackId);
-          }
+          const trackId = addAudioTrack(
+            file.name.replace(/\.[^.]+$/, ''),
+          );
+          initStrip(trackId);
 
           const clip: AudioClip = {
             id: generateId('clip'),
@@ -63,7 +57,7 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
         }
       }
     },
-    [addAudioTrack, addClipToTrack, tracks.length, initStrip],
+    [addAudioTrack, addClipToTrack, initStrip],
   );
 
   const handleDrop = useCallback(
@@ -97,11 +91,14 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
     >
       {children}
       {dragging && (
-        <div className="absolute inset-0 bg-daw-accent/20 border-2
-                        border-dashed border-daw-accent z-50
-                        flex items-center justify-center">
-          <div className="text-daw-accent text-lg font-semibold">
-            Drop audio files to import
+        <div className="absolute inset-0 bg-daw-accent/10 border-2
+                        border-dashed border-daw-accent/40 z-50
+                        flex items-center justify-center backdrop-blur-sm">
+          <div className="bg-daw-surface/90 rounded-lg px-6 py-4
+                          border border-daw-accent/30 shadow-xl">
+            <span className="text-daw-accent text-sm font-medium">
+              Drop audio files to import
+            </span>
           </div>
         </div>
       )}

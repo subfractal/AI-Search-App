@@ -34,13 +34,21 @@ export default function ChannelStrip({ trackId }: ChannelStripProps) {
   )?.action?.value ?? null;
 
   return (
-    <div className="flex flex-col items-center gap-2 px-3 py-3
-                    min-w-[72px] border-r border-daw-grid/20">
-      <div
-        className="w-2 h-2 rounded-full"
-        style={{ backgroundColor: track.color }}
-      />
+    <div className="flex flex-col items-center gap-1.5 px-2 py-2
+                    min-w-[60px] border-r border-daw-border/15
+                    bg-daw-surface hover:bg-daw-surface-alt transition-colors">
+      {/* Track color + name */}
+      <div className="flex items-center gap-1 w-full">
+        <div
+          className="w-1.5 h-1.5 rounded-full shrink-0"
+          style={{ backgroundColor: track.color }}
+        />
+        <span className="text-xxs text-daw-text-dim truncate max-w-[48px]">
+          {track.name}
+        </span>
+      </div>
 
+      {/* Pan knob */}
       <Knob
         value={strip.pan}
         min={-1}
@@ -49,29 +57,32 @@ export default function ChannelStrip({ trackId }: ChannelStripProps) {
           setPan(trackId, v);
           updateTrack(trackId, { pan: v });
         }}
-        label="PAN"
-        size={28}
+        label="Pan"
+        size={26}
       />
 
-      <div className="flex gap-1">
-        <PeakMeter trackId={trackId} height={100} />
+      {/* Meter + Fader side by side */}
+      <div className="flex gap-1 items-end">
+        <PeakMeter trackId={trackId} height={80} width={6} />
         <Fader
           value={strip.volume}
           onChange={(v) => {
             setVolume(trackId, v);
             updateTrack(trackId, { volume: v });
           }}
-          height={100}
+          height={80}
           ghost={ghostVolume}
         />
       </div>
 
-      <div className="flex gap-1">
+      {/* Mute / Solo */}
+      <div className="flex gap-0.5">
         <button
-          className={`w-6 h-5 rounded text-[9px] font-bold transition-colors
+          className={`w-5 h-4 rounded text-xxs font-bold transition-all
+                     flex items-center justify-center
                      ${strip.mute
-              ? 'bg-yellow-600 text-white'
-              : 'bg-daw-bg/50 text-daw-text-dim hover:text-daw-text'}`}
+              ? 'bg-amber-500/90 text-black'
+              : 'bg-daw-bg text-daw-text-muted hover:text-daw-text-dim'}`}
           onClick={() => {
             toggleMute(trackId);
             updateTrack(trackId, { mute: !strip.mute });
@@ -80,10 +91,11 @@ export default function ChannelStrip({ trackId }: ChannelStripProps) {
           M
         </button>
         <button
-          className={`w-6 h-5 rounded text-[9px] font-bold transition-colors
+          className={`w-5 h-4 rounded text-xxs font-bold transition-all
+                     flex items-center justify-center
                      ${strip.solo
-              ? 'bg-blue-600 text-white'
-              : 'bg-daw-bg/50 text-daw-text-dim hover:text-daw-text'}`}
+              ? 'bg-sky-500/90 text-black'
+              : 'bg-daw-bg text-daw-text-muted hover:text-daw-text-dim'}`}
           onClick={() => {
             toggleSolo(trackId);
             updateTrack(trackId, { solo: !strip.solo });
@@ -92,11 +104,6 @@ export default function ChannelStrip({ trackId }: ChannelStripProps) {
           S
         </button>
       </div>
-
-      <span className="text-[10px] text-daw-text-dim truncate max-w-[60px]
-                        text-center">
-        {track.name}
-      </span>
     </div>
   );
 }

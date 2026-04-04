@@ -22,35 +22,48 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
 
   return (
     <div
-      className={`flex items-center gap-2 px-3 py-2 border-b border-daw-grid/30
-                  cursor-pointer transition-colors h-20
-                  ${isSelected ? 'bg-daw-panel/60' : 'hover:bg-daw-track'}`}
+      className={`group flex items-center gap-2 px-2.5 py-0 border-b
+                  border-daw-border/20 cursor-pointer transition-colors h-[60px]
+                  ${isSelected
+          ? 'bg-daw-track-selected'
+          : 'bg-daw-track hover:bg-daw-surface-alt'}`}
       onClick={() => selectTrack(trackId)}
     >
+      {/* Color bar */}
       <div
-        className="w-1 h-12 rounded-full flex-shrink-0"
+        className="w-[3px] h-8 rounded-full shrink-0"
         style={{ backgroundColor: track.color }}
       />
 
+      {/* Track info */}
       <div className="flex-1 min-w-0">
         <input
-          className="bg-transparent text-sm font-medium w-full truncate
-                     focus:outline-none focus:bg-daw-bg/50 rounded px-1"
+          className="bg-transparent text-xs font-medium w-full truncate
+                     text-daw-text focus:outline-none focus:bg-daw-bg/60
+                     rounded px-1 -ml-1 leading-tight"
           value={track.name}
           onChange={(e) => updateTrack(trackId, { name: e.target.value })}
           onClick={(e) => e.stopPropagation()}
         />
-        <span className="text-[10px] text-daw-text-dim uppercase">
-          {track.type}
-        </span>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <span
+            className="text-xxs uppercase tracking-wide px-1 py-px rounded
+                       bg-daw-bg/60 leading-none"
+            style={{ color: track.color + 'bb' }}
+          >
+            {track.type}
+          </span>
+        </div>
       </div>
 
-      <div className="flex items-center gap-1">
+      {/* Controls */}
+      <div className="flex items-center gap-0.5">
         <button
-          className={`w-6 h-6 rounded text-[10px] font-bold transition-colors
+          className={`w-5 h-5 rounded text-xxs font-bold transition-all
+                     flex items-center justify-center
                      ${track.mute
-              ? 'bg-yellow-600 text-white'
-              : 'bg-daw-bg/50 text-daw-text-dim hover:text-daw-text'}`}
+              ? 'bg-amber-500/90 text-black'
+              : 'bg-daw-bg/40 text-daw-text-muted hover:text-daw-text-dim'}`}
           onClick={(e) => {
             e.stopPropagation();
             toggleMute(trackId);
@@ -60,10 +73,11 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
           M
         </button>
         <button
-          className={`w-6 h-6 rounded text-[10px] font-bold transition-colors
+          className={`w-5 h-5 rounded text-xxs font-bold transition-all
+                     flex items-center justify-center
                      ${track.solo
-              ? 'bg-blue-600 text-white'
-              : 'bg-daw-bg/50 text-daw-text-dim hover:text-daw-text'}`}
+              ? 'bg-sky-500/90 text-black'
+              : 'bg-daw-bg/40 text-daw-text-muted hover:text-daw-text-dim'}`}
           onClick={(e) => {
             e.stopPropagation();
             toggleSolo(trackId);
@@ -73,15 +87,21 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
           S
         </button>
         <button
-          className="w-6 h-6 rounded text-[10px] bg-daw-bg/50
-                     text-daw-text-dim hover:text-red-400 transition-colors"
+          className="w-5 h-5 rounded text-xxs bg-daw-bg/40
+                     text-daw-text-muted hover:text-red-400
+                     transition-all flex items-center justify-center
+                     opacity-0 group-hover:opacity-100"
           onClick={(e) => {
             e.stopPropagation();
             removeTrack(trackId);
           }}
           title="Delete track"
         >
-          &#10005;
+          <svg width="8" height="8" viewBox="0 0 8 8" stroke="currentColor"
+            strokeWidth="1.5" strokeLinecap="round">
+            <line x1="1" y1="1" x2="7" y2="7" />
+            <line x1="7" y1="1" x2="1" y2="7" />
+          </svg>
         </button>
       </div>
     </div>
