@@ -12,6 +12,7 @@ import type {
   DistortionParams,
   PhaserParams,
   FilterParams,
+  PitchShiftParams,
 } from '@/types/effects';
 
 interface EffectEntry {
@@ -90,23 +91,34 @@ function createEffectNode(
         rolloff: p.rolloff,
       });
     }
+    case 'pitchShift': {
+      const p = params as PitchShiftParams;
+      return new Tone.PitchShift({
+        pitch: p.pitch,
+        wet: p.wet,
+        windowSize: p.windowSize,
+      });
+    }
   }
 }
 
 function reconnectChain(trackId: string): void {
   const trackNode = getTrackNodes(trackId);
-  if (!trackNode) return;
+  if (!trackNode) {
+    console.warn(`[effects] No track nodes for ${trackId} — effects not connected`);
+    return;
+  }
 
   const entries = trackEffectChains.get(trackId) ?? [];
 
   // Disconnect all players from everything
   for (const player of trackNode.players.values()) {
-    player.disconnect();
+    try { player.disconnect(); } catch { /* already disconnected */ }
   }
 
   // Disconnect all effect nodes
   for (const entry of entries) {
-    entry.node.disconnect();
+    try { entry.node.disconnect(); } catch { /* already disconnected */ }
   }
 
   // Build chain: players → [effects...] → channel
@@ -115,22 +127,16 @@ function reconnectChain(trackId: string): void {
     .map((e) => e.node);
 
   if (activeNodes.length === 0) {
-    // Direct connection: players → channel
     for (const player of trackNode.players.values()) {
       player.connect(trackNode.channel);
     }
   } else {
-    // Connect players → first effect
     for (const player of trackNode.players.values()) {
       player.connect(activeNodes[0]!);
     }
-
-    // Chain effects together
     for (let i = 0; i < activeNodes.length - 1; i++) {
       activeNodes[i]!.connect(activeNodes[i + 1]!);
     }
-
-    // Last effect → channel
     activeNodes[activeNodes.length - 1]!.connect(trackNode.channel);
   }
 }
@@ -156,13 +162,14 @@ export function removeEffect(trackId: string, effectId: string): void {
   if (index === -1) return;
 
   const entry = entries[index]!;
-  entry.node.disconnect();
+  try { entry.node.disconnect(); } catch { /* ok */ }
   entry.node.dispose();
   entries.splice(index, 1);
 
   reconnectChain(trackId);
 }
 
+// Update effect parameters in-place — no chain rewiring needed
 export function updateEffectParams(
   trackId: string,
   effectId: string,
@@ -183,6 +190,7 @@ export function updateEffectParams(
       node[key] = value;
     }
   }
+  // No reconnectChain — params update in-place on the live audio node
 }
 
 export function toggleEffect(
@@ -219,12 +227,20 @@ export function reorderEffects(
   reconnectChain(trackId);
 }
 
+// Called when a new clip player is added to a track that already has effects
+export function reconnectTrackEffects(trackId: string): void {
+  const entries = trackEffectChains.get(trackId);
+  if (entries && entries.length > 0) {
+    reconnectChain(trackId);
+  }
+}
+
 export function disposeTrackEffects(trackId: string): void {
   const entries = trackEffectChains.get(trackId);
   if (!entries) return;
 
   for (const entry of entries) {
-    entry.node.disconnect();
+    try { entry.node.disconnect(); } catch { /* ok */ }
     entry.node.dispose();
   }
 

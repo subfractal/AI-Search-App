@@ -1,5 +1,6 @@
 import * as Tone from 'tone';
 import { createChannel, createPlayer, disposeNode } from './audio-engine';
+import { reconnectTrackEffects } from './effects-service';
 import type { AudioClip } from '@/types/audio';
 
 interface TrackAudioNode {
@@ -59,6 +60,9 @@ export function addClipPlayer(clip: AudioClip): void {
   player.connect(node.channel);
   player.sync().start(clip.startTime, clip.offset, clip.duration);
   node.players.set(clip.id, player);
+
+  // Re-route through effects chain if effects exist on this track
+  reconnectTrackEffects(clip.trackId);
 }
 
 export function removeClipPlayer(trackId: string, clipId: string): void {

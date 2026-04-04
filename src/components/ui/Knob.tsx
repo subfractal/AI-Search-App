@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useRef, useCallback } from 'react';
 
 interface KnobProps {
   value: number;
@@ -7,6 +7,7 @@ interface KnobProps {
   onChange: (value: number) => void;
   label?: string;
   size?: number;
+  showValue?: boolean;
 }
 
 export default function Knob({
@@ -16,9 +17,16 @@ export default function Knob({
   onChange,
   label,
   size = 28,
+  showValue = false,
 }: KnobProps) {
   const startY = useRef(0);
   const startValue = useRef(0);
+  const onChangeRef = useRef(onChange);
+  const minRef = useRef(min);
+  const maxRef = useRef(max);
+  onChangeRef.current = onChange;
+  minRef.current = min;
+  maxRef.current = max;
 
   const normalizedValue = (value - min) / (max - min);
   const rotation = normalizedValue * 270 - 135;
@@ -31,12 +39,10 @@ export default function Knob({
 
       const onMove = (ev: MouseEvent) => {
         const delta = (startY.current - ev.clientY) / 100;
-        const newVal = startValue.current + delta * (max - min);
-        onChange(
-          Math.round(
-            Math.max(min, Math.min(max, newVal)) * 100,
-          ) / 100,
-        );
+        const range = maxRef.current - minRef.current;
+        const newVal = startValue.current + delta * range;
+        const clamped = Math.max(minRef.current, Math.min(maxRef.current, newVal));
+        onChangeRef.current(Math.round(clamped * 100) / 100);
       };
 
       const onUp = () => {
@@ -47,7 +53,7 @@ export default function Knob({
       document.addEventListener('mousemove', onMove);
       document.addEventListener('mouseup', onUp);
     },
-    [value, min, max, onChange],
+    [value],
   );
 
   const r = size / 2 - 2;
@@ -96,6 +102,11 @@ export default function Knob({
         {/* Center dot */}
         <circle cx={cx} cy={cy} r="2" fill="#444" />
       </svg>
+      {showValue && (
+        <span className="text-[8px] font-mono text-daw-text-dim tabular-nums leading-none">
+          {value.toFixed(max >= 10 ? 0 : 1)}
+        </span>
+      )}
       {label && (
         <span className="text-xxs text-daw-text-muted leading-none">
           {label}
