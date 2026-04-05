@@ -50,7 +50,7 @@ export default function InstrumentRack() {
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
-              className={`text-[9px] px-2 py-1 rounded shrink-0 transition-all
+              className={`text-[9px] px-2 py-1 shrink-0 transition-all
                          ${activeCategory === cat.id
                   ? 'bg-daw-accent/20 text-daw-accent border border-daw-accent/30'
                   : 'bg-daw-bg text-daw-text-muted/60 border border-daw-border/20 hover:text-daw-text-dim'}`}
@@ -72,13 +72,13 @@ export default function InstrumentRack() {
                   preset.params,
                 )
               }
-              className="text-xxs py-2 px-3 rounded
+              className="text-xxs py-2 px-3
                          bg-daw-bg border border-daw-border/20
                          text-daw-text-dim hover:text-daw-text
                          hover:border-daw-accent/30 hover:bg-daw-accent/5
                          transition-all flex items-center gap-1.5"
             >
-              <span className="w-4 h-4 rounded bg-daw-accent/15
+              <span className="w-4 h-4 bg-daw-accent/15
                                flex items-center justify-center text-[9px]
                                text-daw-accent">
                 {preset.type === 'drum-machine' ? '\u266D' : '\u266A'}
@@ -97,7 +97,7 @@ export default function InstrumentRack() {
       <div className="flex items-center justify-between px-3 h-7 border-b
                       border-daw-border/20 shrink-0">
         <div className="flex items-center gap-1.5">
-          <div className="w-1.5 h-1.5 rounded-full bg-daw-accent" />
+          <div className="w-1.5 h-1.5 bg-daw-accent" />
           <span className="daw-section-label text-daw-accent">
             {config.name}
           </span>

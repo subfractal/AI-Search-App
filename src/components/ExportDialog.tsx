@@ -93,7 +93,7 @@ export default function ExportDialog({ open, onClose }: ExportDialogProps) {
       />
 
       {/* Dialog */}
-      <div className="relative z-10 w-[90vw] max-w-[380px] rounded-lg
+      <div className="relative z-10 w-[90vw] max-w-[380px]
                       bg-daw-surface border border-daw-border
                       shadow-xl shadow-black/50">
         {/* Header */}
@@ -116,7 +116,7 @@ export default function ExportDialog({ open, onClose }: ExportDialogProps) {
           {/* Format */}
           <Field label="Format">
             <div className="text-xs text-daw-text-dim bg-daw-bg/50
-                            rounded px-2 py-1.5 border border-daw-border/30">
+                            px-2 py-1.5 border border-daw-border/30">
               WAV (16-bit PCM)
             </div>
           </Field>
@@ -127,7 +127,7 @@ export default function ExportDialog({ open, onClose }: ExportDialogProps) {
               value={sampleRate}
               onChange={(e) => setSampleRate(Number(e.target.value))}
               className="w-full text-xs text-daw-text bg-daw-bg/50
-                         rounded px-2 py-1.5 border border-daw-border/30
+                         px-2 py-1.5 border border-daw-border/30
                          focus:outline-none focus:border-daw-accent/50"
             >
               <option value={44100}>44,100 Hz</option>
@@ -147,7 +147,7 @@ export default function ExportDialog({ open, onClose }: ExportDialogProps) {
                   key={val}
                   onClick={() => setExportType(val)}
                   disabled={val === 'selected' && !selectedTrack}
-                  className={`flex-1 text-xxs py-1.5 rounded font-medium
+                  className={`flex-1 text-xxs py-1.5 font-medium
                              transition-all border
                              ${exportType === val
                       ? 'bg-daw-accent/20 text-daw-accent border-daw-accent/40'
@@ -170,7 +170,7 @@ export default function ExportDialog({ open, onClose }: ExportDialogProps) {
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
               className="w-full text-xs text-daw-text bg-daw-bg/50
-                         rounded px-2 py-1.5 border border-daw-border/30
+                         px-2 py-1.5 border border-daw-border/30
                          placeholder:text-daw-text-muted/50
                          focus:outline-none focus:border-daw-accent/50"
             />
@@ -188,7 +188,7 @@ export default function ExportDialog({ open, onClose }: ExportDialogProps) {
               value={filename}
               onChange={(e) => setFilename(e.target.value)}
               className="w-full text-xs text-daw-text bg-daw-bg/50
-                         rounded px-2 py-1.5 border border-daw-border/30
+                         px-2 py-1.5 border border-daw-border/30
                          placeholder:text-daw-text-muted/50
                          focus:outline-none focus:border-daw-accent/50"
             />
@@ -197,7 +197,7 @@ export default function ExportDialog({ open, onClose }: ExportDialogProps) {
           {/* Progress */}
           {progress && (
             <div className="text-xxs text-daw-accent bg-daw-accent/10
-                            rounded px-2 py-1.5 text-center">
+                            px-2 py-1.5 text-center">
               {progress}
             </div>
           )}
@@ -209,7 +209,7 @@ export default function ExportDialog({ open, onClose }: ExportDialogProps) {
           <button
             onClick={onClose}
             disabled={exporting}
-            className="text-xs px-3 py-1.5 rounded
+            className="text-xs px-3 py-1.5
                        bg-daw-bg/50 text-daw-text-muted
                        border border-daw-border/30
                        hover:text-daw-text-dim transition-colors
@@ -220,7 +220,7 @@ export default function ExportDialog({ open, onClose }: ExportDialogProps) {
           <button
             onClick={handleExport}
             disabled={exporting || tracks.length === 0}
-            className="text-xs px-4 py-1.5 rounded font-medium
+            className="text-xs px-4 py-1.5 font-medium
                        bg-daw-accent/80 text-white
                        hover:bg-daw-accent transition-colors
                        disabled:opacity-40 disabled:cursor-not-allowed"

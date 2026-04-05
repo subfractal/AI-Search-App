@@ -219,7 +219,7 @@ export default function App() {
           onMouseDown={onDragStart}
           onTouchStart={onDragStart}
         >
-          <div className="w-8 h-0.5 rounded bg-daw-border/40 group-hover:bg-daw-accent/40
+          <div className="w-8 h-0.5 bg-daw-border/40 group-hover:bg-daw-accent/40
                           transition-colors" />
         </div>
         {/* Panel content — scrollable */}
@@ -232,7 +232,7 @@ export default function App() {
 
   return (
     <FileDropZone>
-      <div className="h-screen h-[100dvh] flex flex-col bg-daw-bg overflow-hidden">
+      <div className="daw-grain h-screen h-[100dvh] flex flex-col bg-daw-bg overflow-hidden">
         <TransportBar
           activePanel={bottomPanel}
           onTogglePanel={togglePanel}

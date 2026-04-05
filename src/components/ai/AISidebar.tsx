@@ -70,17 +70,16 @@ export default function AISidebar() {
 
   return (
     <div className="h-full flex flex-col bg-daw-ai-bg">
-      <div className="flex items-center justify-between px-2.5 h-8 shrink-0 border-b border-daw-border/20"
-           style={{ background: 'linear-gradient(to right, rgba(167,139,250,0.04), transparent)' }}>
+      <div className="flex items-center justify-between px-2.5 h-8 shrink-0 border-b border-daw-border/20">
         <div className="flex items-center gap-1.5">
-          <div className={`w-2 h-2 rounded-full bg-daw-ai-accent
+          <div className={`w-2 h-2 bg-daw-ai-accent
                           ${analyzing ? 'daw-analyzing' : ''}
-                          ${enabled ? 'shadow-[0_0_6px_rgba(167,139,250,0.5)]' : 'opacity-40'}`} />
+                          ${enabled ? '' : 'opacity-40'}`} />
           <span className="text-[10px] font-semibold tracking-wider uppercase text-daw-ai-accent">Co-Producer</span>
         </div>
         <button
           onClick={() => setEnabled(!enabled)}
-          className={`text-xxs px-1.5 py-px rounded transition-all ${enabled ? 'bg-daw-ai-accent/20 text-daw-ai-accent' : 'bg-daw-bg text-daw-text-muted'}`}
+          className={`text-xxs px-1.5 py-px transition-all ${enabled ? 'bg-daw-ai-accent/20 text-daw-ai-accent' : 'bg-daw-bg text-daw-text-muted'}`}
         >
           {enabled ? 'ON' : 'OFF'}
         </button>
@@ -92,12 +91,11 @@ export default function AISidebar() {
             <button
               onClick={() => runAnalysis()}
               disabled={analyzing || tracks.length === 0}
-              className={`w-full text-xxs py-1.5 rounded font-medium text-white
+              className={`w-full text-xxs py-1.5 font-medium text-white
                          disabled:opacity-30 disabled:cursor-not-allowed transition-all
                          ${analyzing
-                           ? 'bg-daw-ai-suggestion/50 animate-pulse-soft'
+                           ? 'bg-daw-ai-suggestion/50 animate-blink-signal'
                            : 'bg-daw-ai-suggestion/70 hover:bg-daw-ai-suggestion'}`}
-              style={analyzing ? { boxShadow: '0 0 12px rgba(124,58,237,0.2)' } : undefined}
             >
               {analyzing ? (
                 <span className="flex items-center justify-center gap-1.5">
@@ -110,7 +108,7 @@ export default function AISidebar() {
             </button>
             <button
               onClick={() => resetAppliedSignatures()}
-              className="w-full mt-1 text-xxs py-1 rounded font-medium bg-daw-bg/60 text-daw-text-muted hover:text-daw-text-dim"
+              className="w-full mt-1 text-xxs py-1 font-medium bg-daw-bg/60 text-daw-text-muted hover:text-daw-text-dim"
             >
               Reset AI Memory
             </button>
@@ -122,7 +120,7 @@ export default function AISidebar() {
               <select
                 value={applyMode}
                 onChange={(e) => setApplyMode(e.target.value as SuggestionApplyMode)}
-                className="text-[9px] bg-daw-bg border border-daw-border/30 rounded px-1 py-0.5 text-daw-text-dim"
+                className="text-[9px] bg-daw-bg border border-daw-border/30 px-1 py-0.5 text-daw-text-dim"
               >
                 {APPLY_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
               </select>
@@ -135,7 +133,7 @@ export default function AISidebar() {
                 max="12"
                 value={maxAutoVolumeDeltaDb}
                 onChange={(e) => setMaxAutoVolumeDeltaDb(Number(e.target.value))}
-                className="w-12 text-[9px] bg-daw-bg border border-daw-border/30 rounded px-1 py-0.5 text-daw-text-dim"
+                className="w-12 text-[9px] bg-daw-bg border border-daw-border/30 px-1 py-0.5 text-daw-text-dim"
               />
             </div>
             {selectedTrack && (
@@ -143,7 +141,7 @@ export default function AISidebar() {
                 <span className="text-xxs text-daw-text-muted truncate">{selectedTrack.name}</span>
                 <button
                   onClick={() => toggleTrackLock(selectedTrack.id)}
-                  className={`text-[9px] px-2 py-0.5 rounded ${selectedLocked ? 'bg-amber-500/20 text-amber-400' : 'bg-daw-bg text-daw-text-muted'}`}
+                  className={`text-[9px] px-2 py-0.5 ${selectedLocked ? 'bg-amber-500/20 text-amber-400' : 'bg-daw-bg text-daw-text-muted'}`}
                 >
                   {selectedLocked ? 'Unlock AI' : 'Lock AI'}
                 </button>
@@ -157,7 +155,7 @@ export default function AISidebar() {
               <select
                 value={config.genre}
                 onChange={(e) => setConfig({ genre: e.target.value as MixGenre })}
-                className="text-[9px] bg-daw-bg border border-daw-border/30 rounded px-1 py-0.5 text-daw-text-dim"
+                className="text-[9px] bg-daw-bg border border-daw-border/30 px-1 py-0.5 text-daw-text-dim"
               >
                 {Object.entries(GENRE_PROFILES).map(([key, p]) => (
                   <option key={key} value={key}>{p.name}</option>
@@ -172,7 +170,7 @@ export default function AISidebar() {
                   toggleMonitoring();
                   useAIStore.getState().setMonitorEnabled(!monitorEnabled);
                 }}
-                className={`text-[9px] px-2 py-0.5 rounded ${monitorEnabled ? 'bg-green-500/20 text-green-400' : 'bg-daw-bg text-daw-text-muted'}`}
+                className={`text-[9px] px-2 py-0.5 ${monitorEnabled ? 'bg-green-500/20 text-green-400' : 'bg-daw-bg text-daw-text-muted'}`}
               >
                 {monitorEnabled ? 'ON' : 'OFF'}
               </button>
@@ -188,7 +186,7 @@ export default function AISidebar() {
                 <select
                   value={composer.model}
                   onChange={(e) => setComposer({ model: e.target.value as GeneratorModel })}
-                  className="w-full text-[9px] bg-daw-bg border border-daw-border/30 rounded px-1 py-0.5 text-daw-text-dim"
+                  className="w-full text-[9px] bg-daw-bg border border-daw-border/30 px-1 py-0.5 text-daw-text-dim"
                 >
                   {GENERATOR_MODELS.map((m) => <option key={m} value={m}>{m}</option>)}
                 </select>
@@ -201,7 +199,7 @@ export default function AISidebar() {
                   max="16"
                   value={composer.bars}
                   onChange={(e) => setComposer({ bars: Number(e.target.value) })}
-                  className="w-full text-[9px] bg-daw-bg border border-daw-border/30 rounded px-1 py-0.5 text-daw-text-dim"
+                  className="w-full text-[9px] bg-daw-bg border border-daw-border/30 px-1 py-0.5 text-daw-text-dim"
                 />
                 <span className="text-[7px] text-daw-text-muted/40">Bars (4 beats each)</span>
               </div>
@@ -218,7 +216,7 @@ export default function AISidebar() {
                   step="0.05"
                   value={composer.density}
                   onChange={(e) => setComposer({ density: Number(e.target.value) })}
-                  className="w-full text-[9px] bg-daw-bg border border-daw-border/30 rounded px-1 py-0.5 text-daw-text-dim"
+                  className="w-full text-[9px] bg-daw-bg border border-daw-border/30 px-1 py-0.5 text-daw-text-dim"
                 />
                 <span className="text-[7px] text-daw-text-muted/40">Density (sparse→dense)</span>
               </div>
@@ -230,7 +228,7 @@ export default function AISidebar() {
                   step="0.05"
                   value={composer.temperature}
                   onChange={(e) => setComposer({ temperature: Number(e.target.value) })}
-                  className="w-full text-[9px] bg-daw-bg border border-daw-border/30 rounded px-1 py-0.5 text-daw-text-dim"
+                  className="w-full text-[9px] bg-daw-bg border border-daw-border/30 px-1 py-0.5 text-daw-text-dim"
                 />
                 <span className="text-[7px] text-daw-text-muted/40">Temperature (safe→wild)</span>
               </div>
@@ -248,7 +246,7 @@ export default function AISidebar() {
                   });
                 }
               }}
-              className="w-full mt-1.5 text-xxs py-1 rounded font-medium bg-daw-ai-accent/20 text-daw-ai-accent hover:bg-daw-ai-accent/30"
+              className="w-full mt-1.5 text-xxs py-1 font-medium bg-daw-ai-accent/20 text-daw-ai-accent hover:bg-daw-ai-accent/30"
             >
               Generate MIDI Idea
             </button>
@@ -269,7 +267,7 @@ export default function AISidebar() {
                       undoable: false,
                     });
                   }}
-                  className="w-full mt-1 text-xxs py-1 rounded font-medium bg-daw-ai-accent/10 text-daw-ai-accent/70 hover:bg-daw-ai-accent/20"
+                  className="w-full mt-1 text-xxs py-1 font-medium bg-daw-ai-accent/10 text-daw-ai-accent/70 hover:bg-daw-ai-accent/20"
                 >
                   Variation of Selected Clip
                 </button>
@@ -306,17 +304,17 @@ export default function AISidebar() {
                 return (
                   <div className="flex gap-1 mt-1.5 flex-wrap">
                     {clipCount > 0 && (
-                      <span className="text-[8px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-400">
+                      <span className="text-[8px] px-1.5 py-0.5 bg-red-500/15 text-red-400">
                         Clipping: {clipCount}
                       </span>
                     )}
                     {maskCount > 0 && (
-                      <span className="text-[8px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400">
+                      <span className="text-[8px] px-1.5 py-0.5 bg-amber-500/15 text-amber-400">
                         Masking: {maskCount}
                       </span>
                     )}
                     {phaseCount > 0 && (
-                      <span className="text-[8px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400">
+                      <span className="text-[8px] px-1.5 py-0.5 bg-amber-500/15 text-amber-400">
                         Phase: {phaseCount}
                       </span>
                     )}
@@ -337,7 +335,7 @@ export default function AISidebar() {
                       undoable: true,
                     });
                   }}
-                  className="w-full mt-1.5 text-xxs py-1 rounded font-medium bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30"
+                  className="w-full mt-1.5 text-xxs py-1 font-medium bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30"
                 >
                   Auto Gain Stage
                 </button>
@@ -345,7 +343,7 @@ export default function AISidebar() {
               <button
                 onClick={() => runMasteringPipeline(config.genre)}
                 disabled={masteringInProgress || tracks.length === 0}
-                className="w-full mt-1.5 text-xxs py-1 rounded font-medium bg-purple-600/20 text-purple-400 hover:bg-purple-600/30 disabled:opacity-30 disabled:cursor-not-allowed"
+                className="w-full mt-1.5 text-xxs py-1 font-medium bg-purple-600/20 text-purple-400 hover:bg-purple-600/30 disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 {masteringInProgress ? 'Mastering...' : 'Mix & Master'}
               </button>
@@ -388,7 +386,9 @@ export default function AISidebar() {
           {activityLog.length > 0 && (
             <Section title="Activity">
               {activityLog.slice(0, 15).map((entry) => (
-                <div key={entry.id} className="text-xxs text-daw-text-muted/70 py-0.5 leading-tight">{entry.description}</div>
+                <div key={entry.id} className="text-xxs font-mono text-[#E63946]/70 py-0.5 leading-tight">
+                  &gt; {entry.description}
+                </div>
               ))}
             </Section>
           )}
@@ -426,9 +426,9 @@ function StatRow({ label, value, warn = false }: { label: string; value: string;
 
 function LufsRow({ label, value }: { label: string; value: number }) {
   let color = 'text-daw-text-dim';
-  if (value >= -16 && value <= -14) color = 'text-green-400';
-  else if ((value >= -20 && value < -16) || (value > -14 && value <= -11)) color = 'text-yellow-400';
-  else if (value > -11 || value < -20) color = 'text-red-400';
+  if (value >= -16 && value <= -14) color = 'text-daw-text-dim';
+  else if ((value >= -20 && value < -16) || (value > -14 && value <= -11)) color = 'text-[#F77F00]';
+  else if (value > -11 || value < -20) color = 'text-[#E63946]';
 
   return (
     <div className="flex justify-between text-xxs">
@@ -461,9 +461,9 @@ function SuggestionCard({
 }) {
   const actionLabel = describeAction(suggestion);
   const confPct = Math.round(suggestion.confidence * 100);
-  const confColor = confPct >= 90 ? '#3dd68c' : confPct >= 70 ? '#f5c542' : '#ef4444';
+  const confColor = confPct >= 90 ? '#D1D1D1' : confPct >= 70 ? '#F77F00' : '#E63946';
   return (
-    <div className="bg-daw-bg/40 rounded-md p-2 border border-daw-border/15 hover:border-daw-ai-accent/20 transition-colors">
+    <div className="bg-daw-bg/40 p-2 border border-daw-border/15 hover:border-daw-ai-accent/20 transition-colors">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="text-xxs font-medium text-daw-text">{suggestion.title}</div>
@@ -477,8 +477,8 @@ function SuggestionCard({
         {/* Confidence meter */}
         <div className="flex flex-col items-center gap-0.5 shrink-0">
           <span className="text-[8px] font-mono font-medium" style={{ color: confColor }}>{confPct}%</span>
-          <div className="w-5 h-1 rounded-full bg-daw-bg/80 overflow-hidden">
-            <div className="h-full rounded-full" style={{ width: `${confPct}%`, backgroundColor: confColor }} />
+          <div className="w-5 h-1 bg-daw-bg/80 overflow-hidden">
+            <div className="h-full" style={{ width: `${confPct}%`, backgroundColor: confColor }} />
           </div>
         </div>
       </div>
@@ -492,7 +492,7 @@ function SuggestionCard({
       {suggestion.evidence && suggestion.evidence.length > 0 && (
         <div className="mt-1 flex flex-wrap gap-1">
           {suggestion.evidence.slice(0, 3).map((e) => (
-            <span key={`${suggestion.id}-${e.label}`} className="text-[8px] px-1 py-px rounded bg-daw-panel text-daw-text-muted">
+            <span key={`${suggestion.id}-${e.label}`} className="text-[8px] px-1 py-px bg-daw-panel text-daw-text-muted">
               {e.label}: {String(e.value)}
             </span>
           ))}
@@ -516,13 +516,13 @@ function SuggestionCard({
       <div className="flex gap-1 mt-1.5">
         <button
           onClick={onAccept}
-          className="flex-1 text-xxs py-0.5 rounded font-medium bg-green-600/20 text-green-400 hover:bg-green-600/30"
+          className="flex-1 text-xxs py-0.5font-medium bg-green-600/20 text-green-400 hover:bg-green-600/30"
         >
           Apply
         </button>
         <button
           onClick={onReject}
-          className="flex-1 text-xxs py-0.5 rounded font-medium bg-daw-bg/60 text-daw-text-muted hover:text-daw-text-dim"
+          className="flex-1 text-xxs py-0.5font-medium bg-daw-bg/60 text-daw-text-muted hover:text-daw-text-dim"
         >
           Dismiss
         </button>

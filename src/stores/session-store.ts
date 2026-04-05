@@ -39,7 +39,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const color = TRACK_COLORS[index % TRACK_COLORS.length]!;
     const track: Track = {
       id,
-      name: name ?? `Audio ${index + 1}`,
+      name: name ?? `DKT-AUD-${String(index + 1).padStart(2, '0')}`,
       type: 'audio',
       color,
       volume: 0,
@@ -60,7 +60,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const color = TRACK_COLORS[index % TRACK_COLORS.length]!;
     const track: Track = {
       id,
-      name: name ?? `MIDI ${index + 1}`,
+      name: name ?? `DKT-SEQ-${String(index + 1).padStart(2, '0')}`,
       type: 'midi',
       color,
       volume: 0,

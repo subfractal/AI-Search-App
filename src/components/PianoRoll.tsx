@@ -707,7 +707,7 @@ export default function PianoRoll({ trackId, clip, onClose }: PianoRollProps) {
         {/* Snap */}
         <select
           className="bg-daw-panel text-daw-text text-[10px] px-1 py-0.5
-                     border border-daw-border rounded outline-none shrink-0"
+                     border border-daw-border outline-none shrink-0"
           value={snap}
           onChange={(e) => setSnap(e.target.value as SnapValue)}
         >

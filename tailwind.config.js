@@ -5,84 +5,82 @@ export default {
     extend: {
       colors: {
         daw: {
-          // Core surfaces — Z-space depth hierarchy (darkest = deepest)
-          bg: '#0a0a0b',
-          'bg-alt': '#101012',
-          surface: '#141417',
-          'surface-alt': '#1a1a1e',
-          panel: '#1e1e23',
-          'panel-hover': '#262630',
-          border: '#2a2a35',
-          'border-light': '#35354a',
+          // Industrial-Konstrukt — Signal & Shadow palette
+          bg: '#050505',
+          'bg-alt': '#080808',
+          surface: '#0F0F11',
+          'surface-alt': '#131315',
+          panel: '#0F0F11',
+          'panel-hover': '#1a1a1c',
+          border: '#222224',
+          'border-light': '#2a2a2c',
 
-          // Text hierarchy
-          text: '#e2e2ea',
-          'text-dim': '#8888a0',
-          'text-muted': '#555568',
+          // Text — Concrete Gray
+          text: '#D1D1D1',
+          'text-dim': '#888888',
+          'text-muted': '#555555',
 
-          // Accent — warm amber-orange
-          accent: '#ff6b35',
-          'accent-dim': '#cc5529',
-          'accent-glow': 'rgba(255, 107, 53, 0.15)',
+          // Accent — Safety Orange
+          accent: '#F77F00',
+          'accent-dim': '#c46600',
 
-          // Track type colors
-          'type-audio': '#3dd68c',
-          'type-midi': '#4ba0ff',
-          'type-ai': '#a78bfa',
+          // Track type — monochrome except AI
+          'type-audio': '#D1D1D1',
+          'type-midi': '#D1D1D1',
+          'type-ai': '#E63946',
 
           // Track surfaces
-          track: '#111114',
-          'track-alt': '#0e0e11',
-          'track-selected': '#18182a',
+          track: '#0a0a0a',
+          'track-alt': '#080808',
+          'track-selected': '#141414',
 
           // Timeline
-          grid: '#1e1e28',
-          'grid-bar': '#2a2a3a',
-          playhead: '#ff6b35',
-          waveform: '#5ec4e6',
-          'waveform-fill': 'rgba(94, 196, 230, 0.12)',
-          midi: '#4ba0ff',
+          grid: '#1a1a1a',
+          'grid-bar': '#222224',
+          playhead: '#E63946',
+          waveform: '#D1D1D1',
+          'waveform-fill': 'rgba(209,209,209,0.08)',
+          midi: '#D1D1D1',
 
-          // Meters
+          // Meters — monochrome
           meter: {
-            green: '#3dd68c',
-            yellow: '#f5c542',
-            red: '#ef4444',
-            bg: '#0a0a0d',
+            green: '#D1D1D1',
+            yellow: '#F77F00',
+            red: '#E63946',
+            bg: '#050505',
           },
 
-          // AI Co-Producer
+          // AI Co-Producer — Signal Red
           ai: {
-            bg: '#0e0e14',
-            accent: '#a78bfa',
-            'accent-dim': '#8b6fe0',
-            suggestion: '#7c3aed',
-            'suggestion-glow': 'rgba(124, 58, 237, 0.10)',
+            bg: '#080808',
+            accent: '#E63946',
+            'accent-dim': '#b82d38',
+            suggestion: '#E63946',
           },
 
           // Transport
           transport: {
-            bg: '#0c0c0e',
-            play: '#3dd68c',
-            stop: '#8888a0',
-            record: '#ef4444',
+            bg: '#050505',
+            play: '#D1D1D1',
+            stop: '#888888',
+            record: '#E63946',
           },
 
-          // LCD display
+          // LCD display — Signal Red on black
           lcd: {
-            bg: '#060810',
-            text: '#b8e0ff',
-            dim: '#2a3a50',
+            bg: '#050505',
+            text: '#E63946',
+            dim: '#222224',
           },
         },
       },
       fontFamily: {
         mono: [
-          'JetBrains Mono', 'SF Mono', 'Fira Code',
+          'Roboto Mono', 'SF Mono', 'Fira Code',
           'Cascadia Code', 'monospace',
         ],
         sans: [
-          'Inter', '-apple-system', 'BlinkMacSystemFont',
+          'IBM Plex Sans', '-apple-system', 'BlinkMacSystemFont',
           'Segoe UI', 'sans-serif',
         ],
       },
@@ -90,27 +88,19 @@ export default {
         'xxs': ['10px', '14px'],
       },
       boxShadow: {
-        'inner-glow': 'inset 0 1px 0 rgba(255,255,255,0.03)',
-        'panel': '0 2px 8px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.3)',
-        'control': '0 1px 3px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04)',
-        'fader': '0 2px 6px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08)',
-        'lcd': 'inset 0 2px 8px rgba(0,0,0,0.8), inset 0 0 1px rgba(0,0,0,0.5)',
-        'knob': '0 2px 4px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)',
-        'glow-accent': '0 0 12px rgba(255, 107, 53, 0.2)',
-        'glow-ai': '0 0 12px rgba(167, 139, 250, 0.15)',
+        'panel': '0 1px 2px rgba(0,0,0,0.8)',
+        'control': '0 1px 2px rgba(0,0,0,0.8)',
+        'fader': '0 1px 3px rgba(0,0,0,0.8)',
+        'lcd': 'inset 0 1px 4px rgba(0,0,0,0.9)',
+        'knob': '0 1px 2px rgba(0,0,0,0.6)',
       },
       animation: {
-        'pulse-soft': 'pulse-soft 2s ease-in-out infinite',
-        'analyzing': 'analyzing 1.5s ease-in-out infinite',
+        'blink-signal': 'blink-signal 1s step-end infinite',
       },
       keyframes: {
-        'pulse-soft': {
-          '0%, 100%': { opacity: '0.6' },
-          '50%': { opacity: '1' },
-        },
-        'analyzing': {
-          '0%, 100%': { opacity: '0.4', transform: 'scale(1)' },
-          '50%': { opacity: '1', transform: 'scale(1.15)' },
+        'blink-signal': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0' },
         },
       },
     },

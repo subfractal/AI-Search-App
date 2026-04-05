@@ -95,7 +95,8 @@ export default function Fader({
   return (
     <div className="flex flex-col items-center gap-0.5">
       {label && (
-        <span className="text-[8px] text-daw-text-muted/50 uppercase tracking-wide leading-none">
+        <span className="text-[8px] text-daw-text-muted/50 uppercase leading-none"
+              style={{ letterSpacing: '1.5px' }}>
           {label}
         </span>
       )}
@@ -107,29 +108,28 @@ export default function Fader({
         onTouchStart={handleMouseDown}
         onDoubleClick={handleDoubleClick}
       >
-        {/* Fader slot (groove) */}
+        {/* Fader slot (groove) — sharp edges */}
         <div
-          className="absolute rounded-full"
+          className="absolute"
           style={{
             width: slotW,
             left: (trackW - slotW) / 2,
             top: 4,
             bottom: 4,
-            background: 'linear-gradient(to top, #08080c 0%, #12121a 100%)',
-            border: '1px solid #1a1a28',
-            boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)',
+            background: 'linear-gradient(to top, #050505 0%, #0F0F11 100%)',
+            border: '1px solid #222224',
           }}
         />
 
-        {/* Fill glow */}
+        {/* Fill */}
         <div
-          className="absolute rounded-full"
+          className="absolute"
           style={{
             width: slotW - 2,
             left: (trackW - slotW) / 2 + 1,
             bottom: 5,
             height: `${Math.max(0, pct - 2)}%`,
-            background: 'linear-gradient(to top, rgba(255,107,53,0.25) 0%, rgba(255,107,53,0.04) 100%)',
+            background: 'linear-gradient(to top, rgba(247,127,0,0.15) 0%, rgba(247,127,0,0.02) 100%)',
           }}
         />
 
@@ -139,59 +139,48 @@ export default function Fader({
           const isUnity = tick === 0;
           return (
             <div key={tick} className="absolute flex items-center" style={{ top: y, left: 0, right: 0 }}>
-              <div
-                className={isUnity ? 'w-1.5 h-px bg-daw-text-muted/30' : 'w-1 h-px bg-daw-text-muted/15'}
-              />
+              <div className={isUnity ? 'w-1.5 h-px bg-daw-text-muted/30' : 'w-1 h-px bg-daw-text-muted/15'} />
               <div className="flex-1" />
-              <div
-                className={isUnity ? 'w-1.5 h-px bg-daw-text-muted/30' : 'w-1 h-px bg-daw-text-muted/15'}
-              />
+              <div className={isUnity ? 'w-1.5 h-px bg-daw-text-muted/30' : 'w-1 h-px bg-daw-text-muted/15'} />
             </div>
           );
         })}
 
-        {/* Unity (0dB) mark */}
+        {/* Unity mark */}
         <div
           className="absolute h-px bg-daw-text-muted/25"
-          style={{
-            bottom: `${unityPct}%`,
-            left: 2,
-            right: 2,
-          }}
+          style={{ bottom: `${unityPct}%`, left: 2, right: 2 }}
         />
 
-        {/* Ghost suggestion */}
+        {/* Ghost suggestion — Signal Red */}
         {ghost !== null && (
           <div
-            className="absolute left-1 right-1 h-[3px] rounded-full"
+            className="absolute left-1 right-1 h-[3px]"
             style={{
               bottom: `${valueToPercent(ghost)}%`,
-              background: 'rgba(167, 139, 250, 0.5)',
-              boxShadow: '0 0 6px rgba(167, 139, 250, 0.3)',
+              background: 'rgba(230, 57, 70, 0.5)',
             }}
           />
         )}
 
-        {/* Fader cap / thumb */}
+        {/* Fader cap — flat industrial */}
         <div
-          className="absolute rounded cursor-grab active:cursor-grabbing"
+          className="absolute cursor-grab active:cursor-grabbing"
           style={{
             left: 1,
             right: 1,
             height: 18,
             bottom: `calc(${pct}% - 9px)`,
-            background: 'linear-gradient(to bottom, #6a6a78 0%, #4a4a58 20%, #3a3a48 50%, #2a2a38 80%, #222230 100%)',
-            border: '1px solid #555568',
-            borderBottom: '1px solid #1a1a22',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.12)',
-            borderRadius: 3,
+            background: '#222224',
+            border: '1px solid #333',
+            borderBottom: '1px solid #1a1a1a',
           }}
         >
-          {/* Grip lines on the cap */}
+          {/* Grip lines */}
           <div className="absolute inset-x-[3px] top-[5px] h-px bg-white/8" />
-          <div className="absolute inset-x-[3px] top-[7px] h-px bg-black/25" />
+          <div className="absolute inset-x-[3px] top-[7px] h-px bg-black/30" />
           <div className="absolute inset-x-[3px] top-[9px] h-px bg-white/8" />
-          <div className="absolute inset-x-[3px] top-[11px] h-px bg-black/25" />
+          <div className="absolute inset-x-[3px] top-[11px] h-px bg-black/30" />
           <div className="absolute inset-x-[3px] top-[13px] h-px bg-white/8" />
         </div>
       </div>

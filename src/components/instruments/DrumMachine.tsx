@@ -91,7 +91,7 @@ export default function DrumMachine({ trackId }: DrumMachineProps) {
                   <button
                     key={stepIdx}
                     onClick={() => toggleStep(trackId, soundIdx, stepIdx)}
-                    className={`h-5 flex-1 rounded-sm transition-all duration-75
+                    className={`h-5 flex-1 transition-all duration-75
                                ${isOn
                         ? isActive
                           ? 'bg-daw-accent shadow-[0_0_6px_rgba(255,107,53,0.4)]'

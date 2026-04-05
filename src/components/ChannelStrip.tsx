@@ -87,7 +87,7 @@ export default function ChannelStrip({ trackId }: ChannelStripProps) {
       <div className="w-full text-center">
         <div className="flex items-center justify-center gap-0.5">
           <div
-            className="w-1.5 h-1.5 rounded-full shrink-0"
+            className="w-1.5 h-1.5 shrink-0"
             style={{ backgroundColor: track.type === 'audio' ? '#3dd68c' : '#4ba0ff' }}
           />
           <span className={`text-[7px] uppercase font-medium
@@ -103,7 +103,7 @@ export default function ChannelStrip({ trackId }: ChannelStripProps) {
       {/* FX badge */}
       {effectCount > 0 && (
         <span className="text-[7px] bg-daw-accent/10 text-daw-accent/60
-                         px-1 rounded-full leading-none">
+                         px-1 leading-none">
           {effectCount}FX
         </span>
       )}
@@ -175,7 +175,7 @@ export default function ChannelStrip({ trackId }: ChannelStripProps) {
       {/* Mute / Solo */}
       <div className="flex gap-px w-full">
         <button
-          className={`flex-1 h-4 rounded-sm text-[8px] font-bold transition-all
+          className={`flex-1 h-4 text-[8px] font-bold transition-all
                      flex items-center justify-center
                      ${strip.mute
               ? 'bg-amber-500/90 text-black'
@@ -189,7 +189,7 @@ export default function ChannelStrip({ trackId }: ChannelStripProps) {
           M
         </button>
         <button
-          className={`flex-1 h-4 rounded-sm text-[8px] font-bold transition-all
+          className={`flex-1 h-4 text-[8px] font-bold transition-all
                      flex items-center justify-center
                      ${strip.solo
               ? 'bg-sky-500/90 text-black'
@@ -206,7 +206,7 @@ export default function ChannelStrip({ trackId }: ChannelStripProps) {
 
       {/* Selection indicator */}
       {isSelected && (
-        <div className="w-full h-0.5 rounded bg-daw-accent/60" />
+        <div className="w-full h-0.5 bg-daw-accent/60" />
       )}
     </div>
   );

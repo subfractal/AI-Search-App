@@ -62,7 +62,7 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
       {/* Color bar — click to pick color */}
       <div className="relative shrink-0 self-stretch flex items-center">
         <div
-          className="w-1 self-stretch rounded-full cursor-pointer hover:w-1.5 transition-all"
+          className="w-1 self-stretch cursor-pointer hover:w-1.5 transition-all"
           style={{ backgroundColor: track.color }}
           onClick={(e) => {
             e.stopPropagation();
@@ -73,13 +73,13 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
         {showColorPicker && (
           <div
             className="absolute top-0 left-3 z-30 bg-daw-panel border border-daw-border/40
-                       rounded p-1.5 shadow-lg grid grid-cols-4 gap-1"
+                       p-1.5 grid grid-cols-4 gap-1"
             onClick={(e) => e.stopPropagation()}
           >
             {TRACK_COLORS.map((c) => (
               <button
                 key={c}
-                className={`w-4 h-4 rounded-full border transition-all
+                className={`w-4 h-4 border transition-all
                            ${c === track.color
                     ? 'border-white scale-110'
                     : 'border-transparent hover:border-white/40'}`}
@@ -98,13 +98,18 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
       <div className="flex-1 min-w-0">
         {/* Track number + name */}
         <div className="flex items-center gap-1">
-          <span className="text-[10px] font-mono text-daw-text-muted/50 w-4 text-right shrink-0">
-            {useSessionStore.getState().tracks.findIndex((t) => t.id === trackId) + 1}
+          <span className="text-[8px] font-mono uppercase text-daw-text-muted/50 shrink-0" style={{ letterSpacing: '1px' }}>
+            {(() => {
+              const trackIndex = useSessionStore.getState().tracks.findIndex((t) => t.id === trackId);
+              const typePrefix = track.type === 'audio' ? 'AUD' : 'SEQ';
+              const catalogId = `DKT-${typePrefix}-${String(trackIndex + 1).padStart(2, '0')}`;
+              return catalogId;
+            })()}
           </span>
           <input
             className="bg-transparent text-[11px] font-semibold w-full truncate
                        text-daw-text focus:outline-none focus:bg-daw-bg/60
-                       rounded px-1 -ml-0.5 leading-tight"
+                       px-1 -ml-0.5 leading-tight"
             value={track.name}
             onChange={(e) => updateTrack(trackId, { name: e.target.value })}
             onClick={(e) => e.stopPropagation()}
@@ -113,7 +118,7 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
         <div className="flex items-center gap-1 mt-1 flex-wrap ml-5">
           {/* Type badge — color coded by track type */}
           <span
-            className={`text-[9px] uppercase tracking-wide px-1.5 py-px rounded border leading-none font-medium
+            className={`text-[9px] uppercase tracking-wide px-1.5 py-px border leading-none font-medium
                        ${track.type === 'audio' ? 'daw-type-audio' : 'daw-type-midi'}
                        ${track.name.startsWith('AI ') ? 'daw-type-ai' : ''}`}
           >
@@ -122,7 +127,7 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
 
           {/* Instrument badge for MIDI */}
           {instrument && (
-            <span className="text-xxs px-1 py-px rounded bg-daw-accent/10
+            <span className="text-xxs px-1 py-px bg-daw-accent/10
                            text-daw-accent leading-none">
               {instrument.name}
             </span>
@@ -131,7 +136,7 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
           {/* Key badge for audio */}
           {keyResult && (
             <span
-              className="text-xxs px-1 py-px rounded leading-none font-medium"
+              className="text-xxs px-1 py-px leading-none font-medium"
               style={{
                 backgroundColor: 'rgba(83, 192, 240, 0.15)',
                 color: '#53c0f0',
@@ -145,7 +150,7 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
           {/* Warp indicator — click to open warp panel */}
           {warpConfig?.enabled && (
             <button
-              className="text-xxs px-1 py-px rounded bg-amber-500/15
+              className="text-xxs px-1 py-px bg-amber-500/15
                          text-amber-400 leading-none hover:bg-amber-500/25 transition-colors"
               title={`Warped from ${warpConfig.originalBpm.toFixed(0)} BPM — click to open warp panel`}
               onClick={(e) => {
@@ -164,7 +169,7 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
       <div className="flex flex-col items-center gap-0.5 shrink-0">
         <div className="flex items-center gap-0.5">
           <button
-            className={`w-6 h-5 rounded text-[9px] font-bold transition-all
+            className={`w-6 h-5 text-[9px] font-bold transition-all
                        flex items-center justify-center
                        ${track.mute
                 ? 'bg-amber-500/90 text-black'
@@ -178,7 +183,7 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
             M
           </button>
           <button
-            className={`w-6 h-5 rounded text-[9px] font-bold transition-all
+            className={`w-6 h-5 text-[9px] font-bold transition-all
                        flex items-center justify-center
                        ${track.solo
                 ? 'bg-sky-500/90 text-black'
@@ -195,7 +200,7 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
         <div className="flex items-center gap-0.5">
           {/* Record arm */}
           <button
-            className={`w-6 h-5 rounded-full text-[9px] font-bold transition-all
+            className={`w-6 h-5 text-[9px] font-bold transition-all
                        flex items-center justify-center
                        ${track.armed
                 ? 'bg-red-500/90 text-white'
@@ -210,7 +215,7 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
           </button>
           {/* Delete */}
           <button
-            className="w-6 h-5 rounded text-xxs bg-daw-bg/60
+            className="w-6 h-5 text-xxs bg-daw-bg/60
                        text-daw-text-muted/40 hover:text-red-400
                        transition-all flex items-center justify-center
                        opacity-0 group-hover:opacity-100"

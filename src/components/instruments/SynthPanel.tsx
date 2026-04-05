@@ -32,11 +32,11 @@ function Oscilloscope({ trackId }: { trackId: string }) {
       const mid = h / 2;
 
       // Dark background
-      ctx.fillStyle = '#060810';
+      ctx.fillStyle = '#050505';
       ctx.fillRect(0, 0, w, h);
 
       // Grid lines
-      ctx.strokeStyle = '#1a1a28';
+      ctx.strokeStyle = '#222224';
       ctx.lineWidth = 0.5;
       ctx.beginPath();
       ctx.moveTo(0, mid);
@@ -65,10 +65,8 @@ function Oscilloscope({ trackId }: { trackId: string }) {
         }
 
         if (hasSignal) {
-          ctx.strokeStyle = '#3dd68c';
+          ctx.strokeStyle = '#E63946';
           ctx.lineWidth = 1.5;
-          ctx.shadowColor = '#3dd68c';
-          ctx.shadowBlur = 4;
           ctx.beginPath();
 
           const sliceWidth = w / bufferLength;
@@ -81,10 +79,9 @@ function Oscilloscope({ trackId }: { trackId: string }) {
             x += sliceWidth;
           }
           ctx.stroke();
-          ctx.shadowBlur = 0;
         } else {
           // Flat line when idle
-          ctx.strokeStyle = '#1e3028';
+          ctx.strokeStyle = '#1a1a1a';
           ctx.lineWidth = 1;
           ctx.beginPath();
           ctx.moveTo(0, mid);
@@ -93,7 +90,7 @@ function Oscilloscope({ trackId }: { trackId: string }) {
         }
       } else {
         // No analyser — flat idle line
-        ctx.strokeStyle = '#1e3028';
+        ctx.strokeStyle = '#1a1a1a';
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(0, mid);
@@ -111,11 +108,10 @@ function Oscilloscope({ trackId }: { trackId: string }) {
   return (
     <canvas
       ref={canvasRef}
-      className="rounded border border-daw-border/20"
+      className="border border-daw-border/20"
       style={{
         width: 160,
         height: 64,
-        boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.6)',
       }}
     />
   );
@@ -150,7 +146,7 @@ export default function SynthPanel({ trackId }: SynthPanelProps) {
             <button
               key={osc}
               onClick={() => updateSynth(trackId, { oscillator: osc })}
-              className={`flex-1 text-[8px] py-1 rounded transition-all
+              className={`flex-1 text-[8px] py-1 transition-all
                          ${params.oscillator === osc
                   ? 'bg-daw-accent/20 text-daw-accent border border-daw-accent/30'
                   : 'bg-daw-bg text-daw-text-muted/50 border border-daw-border/20 hover:border-daw-border/40'}`}
@@ -172,7 +168,7 @@ export default function SynthPanel({ trackId }: SynthPanelProps) {
             <button
               key={f}
               onClick={() => updateSynth(trackId, { filterType: f })}
-              className={`flex-1 text-[8px] py-1 rounded transition-all
+              className={`flex-1 text-[8px] py-1 transition-all
                          ${params.filterType === f
                   ? 'bg-daw-accent/20 text-daw-accent border border-daw-accent/30'
                   : 'bg-daw-bg text-daw-text-muted/50 border border-daw-border/20 hover:border-daw-border/40'}`}
@@ -280,7 +276,7 @@ function MiniKeyboard({ trackId }: { trackId: string }) {
             key={note}
             onMouseDown={() => play(note)}
             onTouchStart={() => play(note)}
-            className="flex-1 rounded-b-sm text-[7px]
+            className="flex-1 text-[7px]
                        font-medium flex items-end justify-center
                        pb-0.5 transition-colors touch-none"
             style={{
@@ -298,7 +294,7 @@ function MiniKeyboard({ trackId }: { trackId: string }) {
             key={note}
             onMouseDown={() => play(note)}
             onTouchStart={() => play(note)}
-            className="absolute w-[12%] h-full rounded-b-sm
+            className="absolute w-[12%] h-full
                        border border-daw-border/20
                        hover:bg-daw-surface-alt active:bg-daw-panel
                        transition-colors z-10 touch-none"

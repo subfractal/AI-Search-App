@@ -460,7 +460,7 @@ export default function Timeline() {
                       pointer-events-auto">
         <button
           onClick={(e) => { e.stopPropagation(); setShowAutomation((v) => !v); }}
-          className={`w-6 h-5 rounded text-xxs flex items-center justify-center
+          className={`w-6 h-5 text-xxs flex items-center justify-center
                      transition-all font-bold
                      ${showAutomation
               ? 'bg-red-500/25 text-red-400 border border-red-500/50'
@@ -471,7 +471,7 @@ export default function Timeline() {
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); toggleFollow(); }}
-          className={`w-6 h-5 rounded text-xxs flex items-center justify-center
+          className={`w-6 h-5 text-xxs flex items-center justify-center
                      transition-all
                      ${followPlayhead
               ? 'bg-daw-accent/25 text-daw-accent border border-daw-accent/50'
@@ -485,7 +485,7 @@ export default function Timeline() {
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); zoomOut(); }}
-          className="w-6 h-5 rounded text-xxs bg-black/60 text-daw-text-muted
+          className="w-6 h-5 text-xxs bg-black/60 text-daw-text-muted
                      border border-daw-border/40 flex items-center justify-center
                      hover:text-daw-text-dim transition-all"
           title="Zoom Out"
@@ -493,12 +493,12 @@ export default function Timeline() {
           −
         </button>
         <span className="text-xxs text-daw-text-muted font-mono w-8 text-center
-                         bg-black/50 rounded border border-daw-border/30 leading-5">
+                         bg-black/50 border border-daw-border/30 leading-5">
           {Math.round(zoom * 100)}%
         </span>
         <button
           onClick={(e) => { e.stopPropagation(); zoomIn(); }}
-          className="w-6 h-5 rounded text-xxs bg-black/60 text-daw-text-muted
+          className="w-6 h-5 text-xxs bg-black/60 text-daw-text-muted
                      border border-daw-border/40 flex items-center justify-center
                      hover:text-daw-text-dim transition-all"
           title="Zoom In"
@@ -507,7 +507,7 @@ export default function Timeline() {
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); zoomFit(); }}
-          className="w-6 h-5 rounded text-xxs bg-black/60 text-daw-text-muted
+          className="w-6 h-5 text-xxs bg-black/60 text-daw-text-muted
                      border border-daw-border/40 flex items-center justify-center
                      hover:text-daw-text-dim transition-all"
           title="Zoom to Fit"

@@ -6,15 +6,15 @@ import {
 import type { AISuggestion } from '@/types/ai';
 
 const TYPE_COLORS: Record<string, string> = {
-  clipping: '#ef4444',
-  level: '#f59e0b',
-  eq: '#38bdf8',
-  masking: '#f97316',
-  loudness: '#a78bfa',
-  'gain-staging': '#4ade80',
-  pan: '#34d399',
-  compression: '#8b5cf6',
-  noise: '#fb923c',
+  clipping: '#E63946',
+  level: '#F77F00',
+  eq: '#D1D1D1',
+  masking: '#F77F00',
+  loudness: '#E63946',
+  'gain-staging': '#D1D1D1',
+  pan: '#D1D1D1',
+  compression: '#E63946',
+  noise: '#F77F00',
 };
 
 interface InlineSuggestionProps {
@@ -36,7 +36,7 @@ export default function InlineSuggestion({
 
   if (!visible) return null;
 
-  const color = TYPE_COLORS[suggestion.type] ?? '#a78bfa';
+  const color = TYPE_COLORS[suggestion.type] ?? '#E63946';
 
   return (
     <div
@@ -44,13 +44,13 @@ export default function InlineSuggestion({
       className="absolute z-20 pointer-events-auto"
     >
       <div
-        className="bg-[#1e1e1e] border rounded shadow-lg
+        className="bg-[#1e1e1e] border
                    max-w-[200px] p-1.5 animate-in fade-in slide-in-from-right-2"
         style={{ borderColor: color + '60' }}
       >
         <div className="flex items-start gap-1">
           <div
-            className="w-1 self-stretch rounded-full shrink-0"
+            className="w-1 self-stretch shrink-0"
             style={{ backgroundColor: color }}
           />
           <div className="flex-1 min-w-0">
@@ -72,7 +72,7 @@ export default function InlineSuggestion({
                 acceptSuggestion(suggestion.id);
                 setVisible(false);
               }}
-              className="flex-1 text-[9px] py-0.5 rounded font-medium
+              className="flex-1 text-[9px] py-0.5 font-medium
                          bg-green-600/25 text-green-400
                          hover:bg-green-600/40 transition-colors"
             >
@@ -84,7 +84,7 @@ export default function InlineSuggestion({
               rejectSuggestion(suggestion.id);
               setVisible(false);
             }}
-            className="flex-1 text-[9px] py-0.5 rounded font-medium
+            className="flex-1 text-[9px] py-0.5 font-medium
                        bg-white/5 text-[#888]
                        hover:bg-white/10 transition-colors"
           >

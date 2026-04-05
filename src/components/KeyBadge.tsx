@@ -26,7 +26,7 @@ export default function KeyBadge({ clipId, buffer, compact = false }: KeyBadgePr
 
   if (detecting) {
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5
                        bg-daw-bg/60 text-xxs text-daw-text-muted animate-pulse">
         ...
       </span>
@@ -42,13 +42,13 @@ export default function KeyBadge({ clipId, buffer, compact = false }: KeyBadgePr
   if (compact) {
     return (
       <span
-        className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded
+        className="inline-flex items-center gap-0.5 px-1.5 py-0.5
                    text-xxs font-medium"
         style={{ backgroundColor: color + '20', color }}
         title={`${keyResult.fullName} (${keyResult.camelotCode}) — ${(keyResult.confidence * 100).toFixed(0)}% confidence`}
       >
         <span
-          className="w-1 h-1 rounded-full"
+          className="w-1 h-1"
           style={{ backgroundColor: confidenceColor }}
         />
         {keyResult.key}{keyResult.scale === 'minor' ? 'm' : ''}
@@ -58,7 +58,7 @@ export default function KeyBadge({ clipId, buffer, compact = false }: KeyBadgePr
 
   return (
     <div
-      className="inline-flex items-center gap-1.5 px-2 py-1 rounded
+      className="inline-flex items-center gap-1.5 px-2 py-1
                  border text-xs"
       style={{
         backgroundColor: color + '10',
@@ -67,7 +67,7 @@ export default function KeyBadge({ clipId, buffer, compact = false }: KeyBadgePr
       }}
     >
       <span
-        className="w-1.5 h-1.5 rounded-full"
+        className="w-1.5 h-1.5"
         style={{ backgroundColor: confidenceColor }}
       />
       <span className="font-medium">{keyResult.fullName}</span>

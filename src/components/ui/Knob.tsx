@@ -19,7 +19,6 @@ export default function Knob({
   label,
   size = 28,
   showValue = false,
-  color = '#ff6b35',
 }: KnobProps) {
   const startY = useRef(0);
   const startValue = useRef(0);
@@ -79,18 +78,29 @@ export default function Knob({
     [startDrag],
   );
 
-  const r = size / 2 - 3;
-  const trackR = r + 1;
   const cx = size / 2;
   const cy = size / 2;
-  const pointerLen = r - 4;
+  const r = size / 2 - 3;
+  const pointerInner = r * 0.55;
+  const pointerOuter = r * 0.85;
 
-  // Track arc (full 270 degrees, background)
-  const trackStart = -225 * (Math.PI / 180);
-  const trackEnd = trackStart + 270 * (Math.PI / 180);
+  // Knurling: radial tick marks around the perimeter
+  const knurlCount = size >= 22 ? 24 : 12;
+  const knurlR1 = r - 1;
+  const knurlR2 = r + 1;
 
-  // Value arc
-  const arcEnd = trackStart + normalizedValue * 270 * (Math.PI / 180);
+  const knurlTicks = Array.from({ length: knurlCount }, (_, i) => {
+    const angle = (i / knurlCount) * 360 * (Math.PI / 180);
+    return {
+      x1: cx + knurlR1 * Math.cos(angle),
+      y1: cy + knurlR1 * Math.sin(angle),
+      x2: cx + knurlR2 * Math.cos(angle),
+      y2: cy + knurlR2 * Math.sin(angle),
+    };
+  });
+
+  // Pointer angle
+  const pointerAngle = rotation * (Math.PI / 180);
 
   return (
     <div className="flex flex-col items-center gap-0.5 touch-none select-none">
@@ -101,74 +111,34 @@ export default function Knob({
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
       >
-        <defs>
-          {/* Subtle radial gradient for knob body */}
-          <radialGradient id={`knob-grad-${size}`} cx="40%" cy="35%">
-            <stop offset="0%" stopColor="#3a3a45" />
-            <stop offset="60%" stopColor="#222228" />
-            <stop offset="100%" stopColor="#18181e" />
-          </radialGradient>
-          {/* Glow filter for value arc */}
-          <filter id={`knob-glow-${size}`} x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="1.5" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-
-        {/* Background track ring */}
-        <path
-          d={describeArc(cx, cy, trackR, trackStart, trackEnd)}
-          fill="none"
-          stroke="#1a1a22"
-          strokeWidth={size > 24 ? 3 : 2.5}
-          strokeLinecap="round"
-        />
-
-        {/* Value arc ring */}
-        {normalizedValue > 0.005 && (
-          <path
-            d={describeArc(cx, cy, trackR, trackStart, arcEnd)}
-            fill="none"
-            stroke={color}
-            strokeWidth={size > 24 ? 3 : 2.5}
-            strokeLinecap="round"
-            opacity={0.85}
-            filter={`url(#knob-glow-${size})`}
-          />
-        )}
-
-        {/* Knob body */}
+        {/* Knob body — flat black */}
         <circle
           cx={cx} cy={cy} r={r}
-          fill={`url(#knob-grad-${size})`}
-          stroke="#2a2a35"
-          strokeWidth="0.5"
+          fill="#111111"
+          stroke="#222224"
+          strokeWidth="1"
         />
 
-        {/* Subtle inner highlight */}
-        <circle
-          cx={cx} cy={cy - 1} r={r - 2}
-          fill="none"
-          stroke="rgba(255,255,255,0.04)"
-          strokeWidth="0.5"
-        />
+        {/* Knurling texture — fine radial marks */}
+        {knurlTicks.map((tick, i) => (
+          <line
+            key={i}
+            x1={tick.x1} y1={tick.y1}
+            x2={tick.x2} y2={tick.y2}
+            stroke="#222224"
+            strokeWidth="0.5"
+          />
+        ))}
 
-        {/* Pointer line */}
+        {/* Single white pointer tick — the only indicator */}
         <line
-          x1={cx}
-          y1={cy}
-          x2={cx + pointerLen * Math.cos(rotation * Math.PI / 180)}
-          y2={cy + pointerLen * Math.sin(rotation * Math.PI / 180)}
-          stroke="#d0d0e0"
-          strokeWidth={size > 24 ? 1.5 : 1}
-          strokeLinecap="round"
+          x1={cx + pointerInner * Math.cos(pointerAngle)}
+          y1={cy + pointerInner * Math.sin(pointerAngle)}
+          x2={cx + pointerOuter * Math.cos(pointerAngle)}
+          y2={cy + pointerOuter * Math.sin(pointerAngle)}
+          stroke="#FFFFFF"
+          strokeWidth="1.5"
         />
-
-        {/* Center dot */}
-        <circle cx={cx} cy={cy} r={size > 24 ? 1.5 : 1} fill="#555568" />
       </svg>
       {showValue && (
         <span className="text-[8px] font-mono text-daw-text-dim tabular-nums leading-none">
@@ -176,33 +146,11 @@ export default function Knob({
         </span>
       )}
       {label && (
-        <span className="text-[8px] text-daw-text-muted leading-none tracking-wide uppercase">
+        <span className="text-[8px] text-daw-text-muted leading-none uppercase"
+              style={{ letterSpacing: '1.5px' }}>
           {label}
         </span>
       )}
     </div>
   );
-}
-
-function describeArc(
-  cx: number,
-  cy: number,
-  r: number,
-  startAngle: number,
-  endAngle: number,
-): string {
-  const start = {
-    x: cx + r * Math.cos(endAngle),
-    y: cy + r * Math.sin(endAngle),
-  };
-  const end = {
-    x: cx + r * Math.cos(startAngle),
-    y: cy + r * Math.sin(startAngle),
-  };
-  const largeArc = endAngle - startAngle > Math.PI ? 1 : 0;
-
-  return [
-    'M', start.x, start.y,
-    'A', r, r, 0, largeArc, 0, end.x, end.y,
-  ].join(' ');
 }

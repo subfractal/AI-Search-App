@@ -103,7 +103,7 @@ export default function WarpPanel({
         <button
           onClick={() => setEnabled(clipId, !config.enabled)}
           className={
-            'text-xxs px-1.5 py-0.5 rounded transition-all '
+            'text-xxs px-1.5 py-0.5 transition-all '
             + enabledClass
           }
         >
@@ -150,7 +150,7 @@ export default function WarpPanel({
             <span className="text-xxs text-daw-text-muted">s</span>
             <button
               onClick={handleDetectAnchor}
-              className="text-xxs px-1.5 py-0.5 rounded
+              className="text-xxs px-1.5 py-0.5
                          bg-daw-bg text-daw-text-muted
                          hover:text-daw-accent transition-colors"
               title="Auto-detect first downbeat (Origin Strike)"
@@ -194,7 +194,7 @@ export default function WarpPanel({
                   key={s.value}
                   onClick={() => setStretchState(clipId, s.value)}
                   className={
-                    'flex-1 text-xxs py-1 rounded transition-all ' + cls
+                    'flex-1 text-xxs py-1 transition-all ' + cls
                   }
                   title={s.desc}
                 >
@@ -220,7 +220,7 @@ export default function WarpPanel({
                     key={m.value}
                     onClick={() => setMode(clipId, m.value as WarpMode)}
                     className={
-                      'flex-1 text-xxs py-1 rounded transition-all '
+                      'flex-1 text-xxs py-1 transition-all '
                       + cls
                     }
                     title={m.description}
@@ -270,7 +270,7 @@ export default function WarpPanel({
                   <div
                     key={mk.id}
                     className="flex items-center justify-between
-                               text-xxs bg-daw-bg/40 rounded
+                               text-xxs bg-daw-bg/40
                                px-1.5 py-0.5"
                   >
                     <span className="text-daw-text-muted font-mono">

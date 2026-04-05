@@ -94,7 +94,7 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
         <div className="absolute inset-0 bg-daw-accent/10 border-2
                         border-dashed border-daw-accent/40 z-50
                         flex items-center justify-center backdrop-blur-sm">
-          <div className="bg-daw-surface/90 rounded-lg px-6 py-4
+          <div className="bg-daw-surface/90 px-6 py-4
                           border border-daw-accent/30 shadow-xl">
             <span className="text-daw-accent text-sm font-medium">
               Drop audio files to import

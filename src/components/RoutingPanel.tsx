@@ -78,7 +78,7 @@ function BusMeter({ busId, height = 80 }: { busId: string; height?: number }) {
     <canvas
       ref={canvasRef}
       style={{ width, height }}
-      className="rounded-sm"
+      className=""
     />
   );
 }
@@ -116,11 +116,11 @@ function BusesSection() {
   const renderBusStrip = (bus: typeof busList[number]) => (
     <div
       key={bus.id}
-      className="flex flex-col items-center gap-1 bg-daw-panel rounded p-2
+      className="flex flex-col items-center gap-1 bg-daw-panel p-2
                  border border-daw-border min-w-[72px]"
     >
       <div
-        className="w-3 h-1 rounded-full mb-0.5"
+        className="w-3 h-1 mb-0.5"
         style={{ backgroundColor: bus.color }}
       />
       <span className="text-xxs text-daw-text truncate max-w-[64px]">
@@ -149,7 +149,7 @@ function BusesSection() {
 
       <div className="flex gap-1">
         <button
-          className={`text-xxs px-1 rounded ${
+          className={`text-xxs px-1 ${
             bus.mute
               ? 'bg-red-600 text-white'
               : 'bg-daw-surface text-daw-text-muted'
@@ -159,7 +159,7 @@ function BusesSection() {
           M
         </button>
         <button
-          className={`text-xxs px-1 rounded ${
+          className={`text-xxs px-1 ${
             bus.solo
               ? 'bg-yellow-500 text-black'
               : 'bg-daw-surface text-daw-text-muted'
@@ -266,7 +266,7 @@ function SendsSection({ selectedTrackId }: { selectedTrackId: string }) {
           {showDropdown && (
             <div
               className="absolute top-full left-0 mt-1 bg-daw-surface border
-                         border-daw-border rounded shadow-lg z-10 min-w-[120px]"
+                         border-daw-border shadow-lg z-10 min-w-[120px]"
             >
               {availableBuses.length === 0 ? (
                 <div className="text-xxs text-daw-text-muted p-2">
@@ -281,7 +281,7 @@ function SendsSection({ selectedTrackId }: { selectedTrackId: string }) {
                     onClick={() => handleAddSend(bus.id)}
                   >
                     <span
-                      className="inline-block w-2 h-2 rounded-full mr-1.5"
+                      className="inline-block w-2 h-2 mr-1.5"
                       style={{ backgroundColor: bus.color }}
                     />
                     {bus.name}
@@ -304,11 +304,11 @@ function SendsSection({ selectedTrackId }: { selectedTrackId: string }) {
             return (
               <div
                 key={send.id}
-                className="flex items-center gap-2 bg-daw-panel rounded px-2
+                className="flex items-center gap-2 bg-daw-panel px-2
                            py-1 border border-daw-border"
               >
                 <span
-                  className="w-2 h-2 rounded-full shrink-0"
+                  className="w-2 h-2 shrink-0"
                   style={{ backgroundColor: bus?.color ?? '#888' }}
                 />
                 <span className="text-xxs text-daw-text min-w-[60px]">
@@ -325,7 +325,7 @@ function SendsSection({ selectedTrackId }: { selectedTrackId: string }) {
                 />
 
                 <button
-                  className={`text-xxs px-1.5 py-0.5 rounded ${
+                  className={`text-xxs px-1.5 py-0.5 ${
                     send.enabled
                       ? 'bg-daw-accent text-white'
                       : 'bg-daw-surface text-daw-text-muted'
@@ -392,12 +392,12 @@ function SidechainSection() {
       </div>
 
       {showForm && (
-        <div className="flex items-center gap-2 bg-daw-panel rounded p-2
+        <div className="flex items-center gap-2 bg-daw-panel p-2
                         border border-daw-border">
           <div className="flex flex-col gap-1">
             <label className="text-xxs text-daw-text-muted">Source (trigger)</label>
             <select
-              className="bg-daw-surface text-daw-text text-xxs rounded px-1
+              className="bg-daw-surface text-daw-text text-xxs px-1
                          py-0.5 border border-daw-border"
               value={sourceId}
               onChange={(e) => setSourceId(e.target.value)}
@@ -412,7 +412,7 @@ function SidechainSection() {
           <div className="flex flex-col gap-1">
             <label className="text-xxs text-daw-text-muted">Target (ducked)</label>
             <select
-              className="bg-daw-surface text-daw-text text-xxs rounded px-1
+              className="bg-daw-surface text-daw-text text-xxs px-1
                          py-0.5 border border-daw-border"
               value={targetId}
               onChange={(e) => setTargetId(e.target.value)}
@@ -450,7 +450,7 @@ function SidechainSection() {
           {scList.map((sc) => (
             <div
               key={sc.id}
-              className="flex items-center gap-3 bg-daw-panel rounded px-2
+              className="flex items-center gap-3 bg-daw-panel px-2
                          py-1.5 border border-daw-border flex-wrap"
             >
               <div className="flex items-center gap-1 min-w-[120px]">
@@ -505,7 +505,7 @@ function SidechainSection() {
               />
 
               <button
-                className={`text-xxs px-1.5 py-0.5 rounded ${
+                className={`text-xxs px-1.5 py-0.5 ${
                   sc.enabled
                     ? 'bg-daw-accent text-white'
                     : 'bg-daw-surface text-daw-text-muted'
@@ -575,18 +575,18 @@ function GroupAssignmentsSection() {
           return (
             <div
               key={track.id}
-              className="flex items-center gap-2 bg-daw-panel rounded px-2
+              className="flex items-center gap-2 bg-daw-panel px-2
                          py-1 border border-daw-border"
             >
               <span
-                className="w-2 h-2 rounded-full shrink-0"
+                className="w-2 h-2 shrink-0"
                 style={{ backgroundColor: track.color }}
               />
               <span className="text-xxs text-daw-text min-w-[80px] truncate">
                 {track.name}
               </span>
               <select
-                className="bg-daw-surface text-daw-text text-xxs rounded px-1
+                className="bg-daw-surface text-daw-text text-xxs px-1
                            py-0.5 border border-daw-border flex-1"
                 value={currentGroup ?? ''}
                 onChange={(e) => handleChange(track.id, e.target.value)}

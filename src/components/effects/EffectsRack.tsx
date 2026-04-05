@@ -89,14 +89,14 @@ export default function EffectsRack({ trackId, trackName }: EffectsRackProps) {
           <span className="text-xs text-daw-text-muted">{trackName}</span>
           {effects.length > 0 && (
             <span className="text-xxs bg-daw-accent/15 text-daw-accent px-1.5
-                             py-px rounded-full font-medium">
+                             py-px font-medium">
               {effects.length}
             </span>
           )}
         </div>
         <select
           className="bg-daw-panel text-daw-text text-xs border border-daw-border/40
-                     rounded px-2 py-1 outline-none cursor-pointer
+                     px-2 py-1 outline-none cursor-pointer
                      hover:border-daw-accent/40 transition-colors"
           onChange={handleAddEffect}
           defaultValue=""
@@ -183,7 +183,7 @@ const EffectCard = memo(function EffectCard({
 
   return (
     <div
-      className={`flex flex-col gap-1.5 bg-daw-panel rounded-lg px-2.5 py-2
+      className={`flex flex-col gap-1.5 bg-daw-panel px-2.5 py-2
                    border border-daw-border/30 min-w-[100px] w-[120px]
                    transition-all ${!effect.enabled ? 'opacity-40 grayscale' : ''}`}
     >
@@ -192,7 +192,7 @@ const EffectCard = memo(function EffectCard({
         <button
           onClick={onToggle}
           title={effect.enabled ? 'Bypass' : 'Enable'}
-          className={`w-5 h-5 rounded flex items-center justify-center
+          className={`w-5 h-5 flex items-center justify-center
                      text-[9px] font-bold shrink-0 transition-all ${colorClass}`}
         >
           {icon}

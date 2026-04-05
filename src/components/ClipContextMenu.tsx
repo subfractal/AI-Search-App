@@ -143,7 +143,7 @@ export default function ClipContextMenu({
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 min-w-[160px] py-1 rounded
+      className="fixed z-50 min-w-[160px] py-1
                  bg-daw-panel border border-daw-border/60
                  shadow-lg shadow-black/40"
       style={{ left: position.x, top: position.y }}

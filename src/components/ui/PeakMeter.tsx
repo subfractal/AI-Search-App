@@ -44,10 +44,7 @@ export default function PeakMeter({
       }
 
       // Dark background with subtle gradient
-      const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
-      bgGrad.addColorStop(0, '#08080c');
-      bgGrad.addColorStop(1, '#0a0a10');
-      ctx.fillStyle = bgGrad;
+      ctx.fillStyle = '#050505';
       ctx.fillRect(0, 0, width, height);
 
       const db = getTrackLevel(trackId);
@@ -64,19 +61,19 @@ export default function PeakMeter({
 
         if (i < filledSegments) {
           if (ratio > 0.92) {
-            ctx.fillStyle = '#ef4444';
+            ctx.fillStyle = '#E63946';
           } else if (ratio > 0.75) {
-            ctx.fillStyle = '#f5c542';
+            ctx.fillStyle = '#F77F00';
           } else {
-            ctx.fillStyle = '#3dd68c';
+            ctx.fillStyle = '#D1D1D1';
           }
         } else {
           // Dimmed segments for visual depth
           ctx.fillStyle = ratio > 0.92
-            ? 'rgba(239,68,68,0.06)'
+            ? 'rgba(230,57,70,0.06)'
             : ratio > 0.75
-              ? 'rgba(245,197,66,0.04)'
-              : 'rgba(61,214,140,0.04)';
+              ? 'rgba(247,127,0,0.04)'
+              : 'rgba(209,209,209,0.04)';
         }
 
         ctx.fillRect(1, segY, width - 2, segmentHeight);
@@ -96,7 +93,7 @@ export default function PeakMeter({
 
       if (peakHoldRef.current > 0.02) {
         const peakY = height - peakHoldRef.current * height;
-        ctx.fillStyle = peakHoldRef.current > 0.92 ? '#ef4444' : 'rgba(255,255,255,0.7)';
+        ctx.fillStyle = peakHoldRef.current > 0.92 ? '#E63946' : 'rgba(255,255,255,0.7)';
         ctx.fillRect(1, peakY, width - 2, 1);
       }
 
@@ -104,7 +101,7 @@ export default function PeakMeter({
       if (truePeakDb !== undefined && truePeakDb > -60) {
         const tpNorm = Math.max(0, Math.min(1, (truePeakDb + 60) / 66));
         const tpY = height - tpNorm * height;
-        ctx.fillStyle = truePeakDb > -1 ? '#ef4444' : '#ff6b35';
+        ctx.fillStyle = truePeakDb > -1 ? '#E63946' : '#F77F00';
         ctx.fillRect(0, tpY, width, 1);
       }
 
@@ -120,7 +117,7 @@ export default function PeakMeter({
     <canvas
       ref={canvasRef}
       style={{ width, height }}
-      className="rounded-sm"
+      className=""
     />
   );
 }
