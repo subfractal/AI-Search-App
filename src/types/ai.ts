@@ -246,6 +246,9 @@ export interface RegionAnalysis {
   frequency: FrequencyAnalysis;
 }
 
+// Mastering scope — which tracks to process
+export type MasteringScope = 'all' | 'selected' | 'custom';
+
 // Mastering pipeline
 export interface MasteringStage {
   name: string;

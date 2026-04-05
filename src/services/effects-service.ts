@@ -13,6 +13,18 @@ import type {
   PhaserParams,
   FilterParams,
   PitchShiftParams,
+  GateParams,
+  DeesserParams,
+  MultibandCompParams,
+  FlangerParams,
+  TremoloParams,
+  StereoImagerParams,
+  FrequencyShifterParams,
+  RingModParams,
+  ExciterParams,
+  UtilityParams,
+  LimiterParams,
+  SaturatorParams,
 } from '@/types/effects';
 
 interface EffectEntry {
@@ -98,6 +110,73 @@ function createEffectNode(
         wet: p.wet,
         windowSize: p.windowSize,
       });
+    }
+    case 'gate': {
+      const p = params as GateParams;
+      return new Tone.Gate({ threshold: p.threshold, smoothing: p.smoothing });
+    }
+    case 'deesser': {
+      // De-esser: high-frequency focused compressor
+      const p = params as DeesserParams;
+      return new Tone.Compressor({
+        threshold: p.threshold,
+        ratio: p.ratio,
+        attack: 0.001,
+        release: 0.05,
+        knee: 6,
+      });
+    }
+    case 'multibandComp': {
+      const p = params as MultibandCompParams;
+      return new Tone.MultibandCompressor({
+        low: { threshold: p.lowThreshold, ratio: p.lowRatio, attack: 0.01, release: 0.15 },
+        mid: { threshold: p.midThreshold, ratio: p.midRatio, attack: 0.01, release: 0.15 },
+        high: { threshold: p.highThreshold, ratio: p.highRatio, attack: 0.005, release: 0.1 },
+        lowFrequency: p.lowFrequency,
+        highFrequency: p.highFrequency,
+      });
+    }
+    case 'flanger': {
+      const p = params as FlangerParams;
+      return new Tone.FeedbackDelay({
+        delayTime: p.delayTime,
+        feedback: p.feedback,
+        wet: p.wet,
+      });
+    }
+    case 'tremolo': {
+      const p = params as TremoloParams;
+      return new Tone.Tremolo({ frequency: p.frequency, depth: p.depth }).start();
+    }
+    case 'stereoImager': {
+      const p = params as StereoImagerParams;
+      return new Tone.StereoWidener({ width: p.width });
+    }
+    case 'frequencyShifter': {
+      const p = params as FrequencyShifterParams;
+      return new Tone.FrequencyShifter({ frequency: p.shift });
+    }
+    case 'ringMod': {
+      // Ring modulator via frequency shifter as carrier
+      const p = params as RingModParams;
+      return new Tone.FrequencyShifter({ frequency: p.frequency });
+    }
+    case 'exciter': {
+      // Exciter: light distortion for harmonic enhancement
+      const p = params as ExciterParams;
+      return new Tone.Distortion({ distortion: p.drive, wet: p.wet });
+    }
+    case 'utility': {
+      const p = params as UtilityParams;
+      return new Tone.Channel({ volume: p.gain, pan: p.pan });
+    }
+    case 'limiter': {
+      const p = params as LimiterParams;
+      return new Tone.Limiter(p.threshold);
+    }
+    case 'saturator': {
+      const p = params as SaturatorParams;
+      return new Tone.Distortion({ distortion: p.drive, wet: p.wet });
     }
   }
 }

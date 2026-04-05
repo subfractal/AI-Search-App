@@ -103,7 +103,7 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
             {(() => {
               const trackIndex = useSessionStore.getState().tracks.findIndex((t) => t.id === trackId);
               const typePrefix = track.type === 'audio' ? 'AUD' : 'SEQ';
-              const catalogId = `DKT-${typePrefix}-${String(trackIndex + 1).padStart(2, '0')}`;
+              const catalogId = `${typePrefix}-${String(trackIndex + 1).padStart(2, '0')}`;
               return catalogId;
             })()}
           </span>

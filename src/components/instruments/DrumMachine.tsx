@@ -63,7 +63,7 @@ export default function DrumMachine({ trackId }: DrumMachineProps) {
       <div className="flex items-center justify-between pb-2" style={{ borderBottom: '1px solid #1a1a1c' }}>
         <div className="flex items-center gap-3">
           <span className="text-[9px] font-mono uppercase tracking-[3px] text-[#E63946]/90 font-bold">
-            DKT-DRUM-SEQ-01
+            DRUM SEQUENCER
           </span>
           <span className="text-xs font-medium text-daw-text">Drum Machine</span>
         </div>

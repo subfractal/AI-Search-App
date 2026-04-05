@@ -15,6 +15,7 @@ import { useMixerStore } from '@/stores/mixer-store';
 import { useEffectsStore } from '@/stores/effects-store';
 import { useHistoryStore } from '@/stores/history-store';
 import { analyzeMix, generateSuggestions } from './mix-analyzer';
+import { getTopRecommendations } from './device-catalog';
 import { generateId } from '@/utils/id';
 import type { AISuggestion, SuggestionAction, SuggestionApplyMode } from '@/types/ai';
 import type { EffectType, EffectParams } from '@/types/effects';
@@ -226,7 +227,7 @@ export function runAnalysis(): void {
     }
 
     const appliedSigs = aiState.appliedSignatures;
-    const allSuggestions = generateSuggestions(analysis, tracks, config.genre).map((s) => ({
+    const baseSuggestions = generateSuggestions(analysis, tracks, config.genre).map((s) => ({
       ...s,
       applyMode: s.applyMode ?? defaultApplyMode(s),
       realtimeSafe: s.realtimeSafe ?? (s.type === 'clipping' || s.type === 'level' || s.type === 'pan' || s.type === 'gain-staging'),
@@ -234,6 +235,43 @@ export function runAnalysis(): void {
       evidence: s.evidence ?? [],
       constraints: s.constraints ?? [],
     }));
+
+    // Generate device-catalog suggestions (gate, de-esser, exciter, etc.)
+    const deviceSuggestions: AISuggestion[] = [];
+    if (!masteredTypes.has('eq') && !masteredTypes.has('dynamics')) {
+      const effectsState = useEffectsStore.getState();
+      for (const ta of analysis.tracks) {
+        const trackName = getTrackName(ta.trackId);
+        const existingFx = effectsState.trackEffects[ta.trackId] ?? [];
+        const recs = getTopRecommendations(ta, config.genre, existingFx, 2);
+        for (const rec of recs) {
+          deviceSuggestions.push({
+            id: generateId('sug'),
+            type: 'general',
+            priority: 'sidebar',
+            targetTrackId: ta.trackId,
+            title: `Add ${rec.effectType} to ${trackName}`,
+            description: rec.reason,
+            confidence: 0.7,
+            status: 'pending',
+            action: {
+              type: 'addEffect',
+              trackId: ta.trackId,
+              effectType: rec.effectType,
+              effectParams: rec.params as Record<string, number | string>,
+            },
+            timestamp: Date.now(),
+            applyMode: 'manual',
+            realtimeSafe: false,
+            reversible: true,
+            evidence: [{ label: 'Device', value: rec.effectType }],
+            constraints: [],
+          });
+        }
+      }
+    }
+
+    const allSuggestions = [...baseSuggestions, ...deviceSuggestions];
 
     // Filter out suggestions that have already been applied or conflict with mastering
     const suggestions = allSuggestions.filter((s) => {

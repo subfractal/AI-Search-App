@@ -130,7 +130,7 @@ export default function InspectorPanel() {
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center px-2.5 h-7 shrink-0" style={{ borderBottom: '2px solid #1a1a1c' }}>
-        <span className="text-[9px] font-mono font-bold uppercase tracking-[3px] text-[#E63946]/90">DKT-INSPECT</span>
+        <span className="text-[9px] font-mono font-bold uppercase tracking-[3px] text-[#E63946]/90">INSPECTOR</span>
       </div>
 
       <div className="flex-1 overflow-y-auto px-2.5 py-2">

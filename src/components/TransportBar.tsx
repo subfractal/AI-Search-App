@@ -237,7 +237,7 @@ export default function TransportBar({
           </div>
           <div className="flex flex-col leading-none">
             <span className="text-[8px] font-mono uppercase tracking-[4px] text-[#E63946]/90">
-              DKT WORKSTATION PRO
+              WORKSTATION PRO
             </span>
             <span className="text-[16px] font-bold tracking-tight text-daw-text leading-none mt-0.5">
               de-konstrukt
@@ -314,11 +314,11 @@ export default function TransportBar({
         <div className="daw-lcd px-4 py-2 flex flex-col items-start min-w-[230px] shrink-0">
           <span className="text-[26px] font-mono leading-none text-daw-lcd-text tracking-wider font-medium"
                 style={{ textShadow: '0 0 12px rgba(230,57,70,0.3)' }}>
-            DKT-{timecode}
+            {timecode}
           </span>
           <div className="flex items-center gap-3 mt-1">
             <span className="text-[9px] font-mono text-daw-lcd-dim">
-              DKT-{formatBarsBeats(position, bpm, beatsPerBar)}:000
+              {formatBarsBeats(position, bpm, beatsPerBar)}:000
             </span>
             <span className="text-[9px] font-mono text-daw-lcd-text/80">
               {bpm}.00 BPM
@@ -474,7 +474,7 @@ export default function TransportBar({
         <div className="flex-1" />
 
         {/* de-konstrukt sparkle logo */}
-        <span className="text-[10px] text-daw-text-muted/30 font-mono mr-1 shrink-0">DKT</span>
+        <span className="text-[10px] text-daw-text-muted/30 font-mono mr-1 shrink-0">dkst</span>
 
         <button
           onClick={onToggleAI}

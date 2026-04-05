@@ -192,7 +192,7 @@ export default function MasteringBreakdown() {
 
       {/* Summary */}
       <div className="flex items-center justify-between text-[8px] font-mono text-daw-text-muted/60 px-0.5">
-        <span className="uppercase">{result.genre}</span>
+        <span className="uppercase">{result.genre} · {decisions.length > 0 ? `${new Set(decisions.map((d) => d.trackId)).size} tracks` : 'all'}</span>
         <span>
           {result.finalLufs > -Infinity ? `${result.finalLufs.toFixed(1)} LUFS` : '—'}
           {' / '}

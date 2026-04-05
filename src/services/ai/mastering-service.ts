@@ -8,8 +8,10 @@ import { analyzeGainStaging } from './gain-staging';
 import { detectSections } from './section-detector';
 import { getGenreProfile } from './genre-profiles';
 import { calculateLUFS } from './loudness-meter';
+import { recommendEffectsForTrack } from './device-catalog';
 import { generateId } from '@/utils/id';
 import { isAudioClip } from '@/types/audio';
+import type { EffectParams } from '@/types/effects';
 import type {
   MixGenre,
   MasteringStage,
@@ -171,24 +173,45 @@ export function runMasteringPipeline(genre: MixGenre): MasteringResult {
   aiState.clearSuggestions();
   aiState.resetAppliedSignatures();
 
+  // Determine which tracks to process based on scope
+  const scope = aiState.masteringScope;
+  const targetIds = aiState.masteringTargetTrackIds;
+  const selectedId = session.selectedTrackId;
+
+  let tracksToProcess = session.tracks;
+  switch (scope) {
+    case 'selected':
+      if (selectedId) {
+        tracksToProcess = session.tracks.filter((t) => t.id === selectedId);
+      }
+      break;
+    case 'custom':
+      if (targetIds.length > 0) {
+        tracksToProcess = session.tracks.filter((t) => targetIds.includes(t.id));
+      }
+      break;
+    default:
+      break;
+  }
+
   // Capture before-snapshot for A/B comparison
   const snapshot: MasteringSnapshot = { trackVolumes: {}, trackPans: {} };
-  for (const track of session.tracks) {
+  for (const track of tracksToProcess) {
     snapshot.trackVolumes[track.id] = track.volume;
     snapshot.trackPans[track.id] = track.pan;
   }
 
   try {
     // Detect song sections
-    const sections = detectSections(session.tracks, session.config.sampleRate);
+    const sections = detectSections(tracksToProcess, session.config.sampleRate);
 
     // Stage 1: Gain Staging
-    const analysis = analyzeMix(session.tracks, session.config.sampleRate);
+    const analysis = analyzeMix(tracksToProcess, session.config.sampleRate);
     if (analysis.tracks.length >= 2) {
       const gainResult = analyzeGainStaging(analysis.tracks);
       // Apply gain staging manually (not via applyGainStaging) to track decisions
       for (const t of gainResult.tracks) {
-        const beforeVol = session.tracks.find((tr) => tr.id === t.trackId)?.volume ?? 0;
+        const beforeVol = tracksToProcess.find((tr) => tr.id === t.trackId)?.volume ?? 0;
         mixer.setVolume(t.trackId, t.suggestedVolume);
         session.updateTrack(t.trackId, { volume: t.suggestedVolume });
 
@@ -234,7 +257,7 @@ export function runMasteringPipeline(genre: MixGenre): MasteringResult {
 
     // Stage 2: EQ Balance (section-aware)
     const eqEffects: string[] = [];
-    for (const track of session.tracks) {
+    for (const track of tracksToProcess) {
       if (track.mute || track.clips.length === 0) continue;
       const ta = analysis.tracks.find((t) => t.trackId === track.id);
       if (!ta) continue;
@@ -288,7 +311,7 @@ export function runMasteringPipeline(genre: MixGenre): MasteringResult {
       sectionAwareCompression(preset, sections);
 
     for (const ta of analysis.tracks) {
-      const track = session.tracks.find((t) => t.id === ta.trackId);
+      const track = tracksToProcess.find((t) => t.id === ta.trackId);
       if (!track || track.mute) continue;
       const profile = getGenreProfile(genre);
 
@@ -333,19 +356,13 @@ export function runMasteringPipeline(genre: MixGenre): MasteringResult {
       effects: compEffects,
     });
 
-    // Stage 4: Limiting (apply to loudest track as master bus proxy)
+    // Stage 4: Limiting (using dedicated limiter device)
     const sortedTracks = [...analysis.tracks].sort((a, b) => b.level.peak - a.level.peak);
     const loudestTrack = sortedTracks[0];
     if (loudestTrack && loudestTrack.level.peak > preset.limiterThreshold) {
-      const track = session.tracks.find((t) => t.id === loudestTrack.trackId);
-      const limiterParams = {
-        threshold: preset.limiterThreshold,
-        ratio: 20,
-        attack: 0.001,
-        release: 0.05,
-        knee: 0,
-      };
-      const effectId = effects.addEffect(loudestTrack.trackId, 'compressor', limiterParams);
+      const track = tracksToProcess.find((t) => t.id === loudestTrack.trackId);
+      const limiterParams = { threshold: preset.limiterThreshold };
+      const effectId = effects.addEffect(loudestTrack.trackId, 'limiter', limiterParams);
 
       decisions.push({
         id: generateId('md'),
@@ -353,9 +370,9 @@ export function runMasteringPipeline(genre: MixGenre): MasteringResult {
         trackId: loudestTrack.trackId,
         trackName: track?.name ?? 'track',
         effectId,
-        effectType: 'compressor',
-        params: { threshold: preset.limiterThreshold, ratio: 20, attack: 0.001, release: 0.05, knee: 0 },
-        description: `Ceiling limiter at ${preset.limiterThreshold} dBTP (20:1)`,
+        effectType: 'limiter',
+        params: { threshold: preset.limiterThreshold },
+        description: `Brickwall limiter at ${preset.limiterThreshold} dBTP`,
         enabled: true,
       });
 
@@ -363,12 +380,12 @@ export function runMasteringPipeline(genre: MixGenre): MasteringResult {
       const fxId = effectId;
       undoActions.push({
         undo: () => useEffectsStore.getState().removeEffect(tId, fxId),
-        redo: () => useEffectsStore.getState().addEffect(tId, 'compressor', limiterParams),
+        redo: () => useEffectsStore.getState().addEffect(tId, 'limiter', limiterParams),
       });
 
       stages.push({
         name: 'Limiting',
-        description: `Applied ${preset.limiterThreshold} dBTP ceiling limiter`,
+        description: `Applied ${preset.limiterThreshold} dBTP brickwall limiter`,
         applied: true,
         effects: [`${track?.name ?? 'track'}: limiter at ${preset.limiterThreshold} dBTP`],
       });
@@ -381,11 +398,57 @@ export function runMasteringPipeline(genre: MixGenre): MasteringResult {
       });
     }
 
-    // Stage 5: Loudness Verification
+    // Stage 5: Device Recommendations (gate, de-esser, exciter, saturator, etc.)
+    const deviceEffects: string[] = [];
+    for (const ta of analysis.tracks) {
+      const track = tracksToProcess.find((t) => t.id === ta.trackId);
+      if (!track || track.mute) continue;
+
+      const existingFx = effects.trackEffects[track.id] ?? [];
+      const recs = recommendEffectsForTrack(ta, genre, existingFx);
+
+      // Apply top 2 recommendations per track to avoid over-processing
+      for (const rec of recs.slice(0, 2)) {
+        const effectId = effects.addEffect(track.id, rec.effectType, rec.params as unknown as EffectParams);
+
+        decisions.push({
+          id: generateId('md'),
+          stage: 'Device Recommendations',
+          trackId: track.id,
+          trackName: track.name,
+          effectId,
+          effectType: rec.effectType,
+          params: rec.params,
+          description: rec.reason,
+          enabled: true,
+        });
+
+        const tId = track.id;
+        const fxId = effectId;
+        const fxType = rec.effectType;
+        const fxParams = rec.params;
+        undoActions.push({
+          undo: () => useEffectsStore.getState().removeEffect(tId, fxId),
+          redo: () => useEffectsStore.getState().addEffect(tId, fxType, fxParams as unknown as EffectParams),
+        });
+
+        deviceEffects.push(`${track.name}: ${rec.effectType}`);
+      }
+    }
+    stages.push({
+      name: 'Device Recommendations',
+      description: deviceEffects.length > 0
+        ? `Applied ${deviceEffects.length} recommended devices (gate, de-esser, exciter, etc.)`
+        : 'No additional devices needed',
+      applied: deviceEffects.length > 0,
+      effects: deviceEffects,
+    });
+
+    // Stage 6: Loudness Verification
     let finalLufs = -Infinity;
     let finalTruePeak = -Infinity;
     try {
-      const firstClip = session.tracks
+      const firstClip = tracksToProcess
         .flatMap((t) => t.clips)
         .find(isAudioClip);
       if (firstClip) {
@@ -426,7 +489,7 @@ export function runMasteringPipeline(genre: MixGenre): MasteringResult {
     aiState.setMasteringDecisions(decisions);
     aiState.logActivity({
       id: `log-${Date.now()}`,
-      description: `Mastering complete (${genre}): ${decisions.length} decisions across ${sections.length} sections, ${finalLufs.toFixed(1)} LUFS`,
+      description: `Mastering complete (${genre}, ${scope === 'all' ? 'all tracks' : scope === 'selected' ? '1 track' : `${tracksToProcess.length} tracks`}): ${decisions.length} decisions across ${sections.length} sections, ${finalLufs.toFixed(1)} LUFS`,
       trackId: null,
       timestamp: Date.now(),
       undoable: undoActions.length > 0,

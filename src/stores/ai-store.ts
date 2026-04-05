@@ -11,6 +11,7 @@ import type {
   ComposerSettings,
   MasteringResult,
   MasteringDecision,
+  MasteringScope,
   OfflineTask,
   ComposerPreset,
 } from '@/types/ai';
@@ -35,6 +36,8 @@ interface AIStore {
   masteringResult: MasteringResult | null;
   masteringABActive: boolean;
   masteringDecisions: MasteringDecision[];
+  masteringScope: MasteringScope;
+  masteringTargetTrackIds: string[];
   preferredInstrumentFamily: string;
   preferredDrumMode: string;
   preferredVariationIntensity: number;
@@ -68,6 +71,8 @@ interface AIStore {
   updateMasteringDecisionParams: (decisionId: string, params: Record<string, number>) => void;
   removeMasteringDecision: (decisionId: string) => void;
   revertMastering: () => void;
+  setMasteringScope: (scope: MasteringScope) => void;
+  setMasteringTargetTrackIds: (ids: string[]) => void;
   setPreferredInstrumentFamily: (family: string) => void;
   setPreferredDrumMode: (mode: string) => void;
   setPreferredVariationIntensity: (intensity: number) => void;
@@ -106,6 +111,8 @@ export const useAIStore = create<AIStore>((set, get) => ({
   masteringResult: null,
   masteringABActive: true,
   masteringDecisions: [],
+  masteringScope: 'all' as MasteringScope,
+  masteringTargetTrackIds: [] as string[],
   preferredInstrumentFamily: '',
   preferredDrumMode: '',
   preferredVariationIntensity: 0.5,
@@ -307,6 +314,9 @@ export const useAIStore = create<AIStore>((set, get) => ({
 
     set({ masteringResult: null, masteringDecisions: [], masteringABActive: true });
   },
+
+  setMasteringScope: (scope) => set({ masteringScope: scope }),
+  setMasteringTargetTrackIds: (ids) => set({ masteringTargetTrackIds: ids }),
 
   setPreferredInstrumentFamily: (family) => set({ preferredInstrumentFamily: family }),
   setPreferredDrumMode: (mode) => set({ preferredDrumMode: mode }),

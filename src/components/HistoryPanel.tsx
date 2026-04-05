@@ -21,7 +21,7 @@ export default function HistoryPanel({ open, onClose }: HistoryPanelProps) {
       <div className="flex items-center justify-between px-3 py-1.5
                       border-b border-daw-border">
         <span className="text-[9px] font-mono font-bold uppercase tracking-[3px] text-[#E63946]/90">
-          DKT-HISTORY
+          HISTORY
         </span>
         <button
           onClick={onClose}

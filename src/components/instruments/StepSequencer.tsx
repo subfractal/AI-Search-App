@@ -117,7 +117,7 @@ export default function StepSequencer({ trackId, onStepChange }: StepSequencerPr
            style={{ borderBottom: '2px solid #1a1a1c' }}>
         <div className="flex items-center gap-3">
           <span className="text-[9px] font-mono font-bold uppercase tracking-[3px] text-[#E63946]/90">
-            DKT-POLY-SEQ-{trackId.slice(-2).toUpperCase()}
+            POLY SEQ-{trackId.slice(-2).toUpperCase()}
           </span>
           <span className="text-xs font-medium text-daw-text">Step Sequencer</span>
         </div>

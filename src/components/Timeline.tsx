@@ -588,7 +588,7 @@ export default function Timeline() {
       <div className="flex items-center h-8 px-2.5 gap-1 shrink-0"
            style={{ background: '#0a0a0c', borderBottom: '2px solid #1a1a1c' }}>
         <span className="text-[8px] font-mono font-bold uppercase tracking-[3px] text-[#E63946]/80 shrink-0 mr-1">
-          DKT-TL
+          TIMELINE
         </span>
         {/* View mode toggle */}
         <button

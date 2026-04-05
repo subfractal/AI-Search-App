@@ -10,7 +10,7 @@ import {
   removeClipPlayer,
 } from '@/services/track-manager';
 
-export type BottomPanel = 'mixer' | 'instrument' | 'effects' | 'piano-roll' | 'routing' | 'warp' | 'browser' | null;
+export type BottomPanel = 'mixer' | 'instrument' | 'effects' | 'piano-roll' | 'routing' | 'warp' | 'browser' | 'clip-view' | null;
 
 export interface ZoneVisibility {
   leftZone: boolean;
@@ -95,7 +95,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const color = TRACK_COLORS[index % TRACK_COLORS.length]!;
     const track: Track = {
       id,
-      name: name ?? `DKT-AUD-${String(index + 1).padStart(2, '0')}`,
+      name: name ?? `Audio ${String(index + 1).padStart(2, '0')}`,
       type: 'audio',
       color,
       volume: 0,
@@ -116,7 +116,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const color = TRACK_COLORS[index % TRACK_COLORS.length]!;
     const track: Track = {
       id,
-      name: name ?? `DKT-SEQ-${String(index + 1).padStart(2, '0')}`,
+      name: name ?? `MIDI ${String(index + 1).padStart(2, '0')}`,
       type: 'midi',
       color,
       volume: 0,
@@ -309,7 +309,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const color = TRACK_COLORS[index % TRACK_COLORS.length]!;
     const track: Track = {
       id,
-      name: name ?? `DKT-GRP-${String(index + 1).padStart(2, '0')}`,
+      name: name ?? `Group ${String(index + 1).padStart(2, '0')}`,
       type: 'group',
       color,
       volume: 0,
@@ -331,7 +331,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const color = TRACK_COLORS[index % TRACK_COLORS.length]!;
     const track: Track = {
       id,
-      name: name ?? `DKT-FLD-${String(index + 1).padStart(2, '0')}`,
+      name: name ?? `Folder ${String(index + 1).padStart(2, '0')}`,
       type: 'folder',
       color,
       volume: 0,
@@ -352,7 +352,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const color = TRACK_COLORS[index % TRACK_COLORS.length]!;
     const track: Track = {
       id,
-      name: name ?? `DKT-RTN-${String(index + 1).padStart(2, '0')}`,
+      name: name ?? `Return ${String(index + 1).padStart(2, '0')}`,
       type: 'return',
       color,
       volume: 0,

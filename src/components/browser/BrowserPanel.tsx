@@ -42,7 +42,7 @@ export default function BrowserPanel() {
       {/* Tab bar */}
       <div className="flex items-center gap-0.5 px-2 py-1.5 shrink-0" style={{ borderBottom: '2px solid #1a1a1c' }}>
         <span className="text-[9px] font-mono font-bold uppercase tracking-[3px] text-[#E63946]/90 mr-1 shrink-0">
-          DKT-LIB
+          LIBRARY
         </span>
         {TABS.map((t) => (
           <button

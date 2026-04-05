@@ -63,6 +63,10 @@ export default function AISidebar() {
   const resetAppliedSignatures = useAIStore((s) => s.resetAppliedSignatures);
   const masteringInProgress = useAIStore((s) => s.masteringInProgress);
   const masteringResult = useAIStore((s) => s.masteringResult);
+  const masteringScope = useAIStore((s) => s.masteringScope);
+  const setMasteringScope = useAIStore((s) => s.setMasteringScope);
+  const masteringTargetTrackIds = useAIStore((s) => s.masteringTargetTrackIds);
+  const setMasteringTargetTrackIds = useAIStore((s) => s.setMasteringTargetTrackIds);
 
   const tracks = useSessionStore((s) => s.tracks);
   const selectedTrackId = useSessionStore((s) => s.selectedTrackId);
@@ -149,7 +153,7 @@ export default function AISidebar() {
             </button>
           </div>
 
-          <Section title="DKT-AI-POLICY">
+          <Section title="AI POLICY">
             <div className="flex items-center justify-between">
               <span className="text-xxs text-daw-text-muted">Mode</span>
               <select
@@ -184,7 +188,7 @@ export default function AISidebar() {
             )}
           </Section>
 
-          <Section title="DKT-GENRE-MON">
+          <Section title="GENRE MONITOR">
             <div className="flex items-center justify-between">
               <span className="text-xxs text-daw-text-muted">Genre</span>
               <select
@@ -215,7 +219,7 @@ export default function AISidebar() {
             )}
           </Section>
 
-          <Section title="DKT-AI-COMPOSER">
+          <Section title="AI COMPOSER">
             <div className="grid grid-cols-2 gap-1">
               <div>
                 <select
@@ -380,7 +384,7 @@ export default function AISidebar() {
           </Section>
 
           {lastAnalysis && (
-            <Section title="DKT-MIX-ANALYSIS">
+            <Section title="MIX ANALYSIS">
               <StatRow label="Peak" value={`${lastAnalysis.overallLevel.peak.toFixed(1)} dB`} warn={lastAnalysis.overallLevel.clipping} />
               <StatRow label="RMS" value={`${lastAnalysis.overallLevel.rms.toFixed(1)} dB`} />
               <StatRow label="DR" value={`${lastAnalysis.overallLevel.dynamicRange.toFixed(1)} dB`} />
@@ -444,6 +448,49 @@ export default function AISidebar() {
                   Auto Gain Stage
                 </button>
               )}
+              {/* Mastering scope selector */}
+              <div className="mt-1.5 space-y-1">
+                <label className="text-[7px] font-mono text-daw-text-muted/50 uppercase">Scope</label>
+                <div className="flex gap-0.5">
+                  {(['all', 'selected', 'custom'] as const).map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setMasteringScope(s)}
+                      className={`flex-1 text-[8px] font-mono py-0.5 border ${
+                        masteringScope === s
+                          ? 'bg-purple-600/20 text-purple-400 border-purple-500/40'
+                          : 'text-daw-text-muted/40 border-daw-border/30 hover:text-daw-text-muted/60'
+                      }`}
+                    >
+                      {s === 'all' ? 'All' : s === 'selected' ? 'Selected' : 'Custom'}
+                    </button>
+                  ))}
+                </div>
+                {masteringScope === 'selected' && !selectedTrackId && (
+                  <div className="text-[7px] text-amber-400/60">No track selected</div>
+                )}
+                {masteringScope === 'custom' && (
+                  <div className="space-y-0.5 max-h-20 overflow-y-auto">
+                    {tracks.map((t) => (
+                      <label key={t.id} className="flex items-center gap-1 text-[8px] font-mono text-daw-text-muted cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={masteringTargetTrackIds.includes(t.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setMasteringTargetTrackIds([...masteringTargetTrackIds, t.id]);
+                            } else {
+                              setMasteringTargetTrackIds(masteringTargetTrackIds.filter((id) => id !== t.id));
+                            }
+                          }}
+                          className="w-2.5 h-2.5"
+                        />
+                        <span className="truncate">{t.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
               <button
                 onClick={() => runMasteringPipeline(config.genre)}
                 disabled={masteringInProgress || tracks.length === 0}
@@ -489,7 +536,7 @@ export default function AISidebar() {
           )}
 
           {activityLog.length > 0 && (
-            <Section title="DKT-LOG">
+            <Section title="ACTIVITY LOG">
               {activityLog.slice(0, 15).map((entry) => (
                 <div key={entry.id} className="text-xxs font-mono text-[#E63946]/70 py-0.5 leading-tight">
                   &gt; {entry.description}

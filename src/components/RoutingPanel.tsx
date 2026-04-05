@@ -744,11 +744,11 @@ export default function RoutingPanel({ selectedTrackId }: RoutingPanelProps) {
   const [activeTab, setActiveTab] = useState<TabId>('buses');
 
   const tabs: { id: TabId; label: string }[] = [
-    { id: 'buses', label: 'DKT-BUS' },
-    { id: 'sends', label: 'DKT-SEND' },
-    { id: 'sidechain', label: 'DKT-SC' },
-    { id: 'groups', label: 'DKT-GRP' },
-    { id: 'monitor', label: 'DKT-MON' },
+    { id: 'buses', label: 'BUS' },
+    { id: 'sends', label: 'SEND' },
+    { id: 'sidechain', label: 'SC' },
+    { id: 'groups', label: 'GRP' },
+    { id: 'monitor', label: 'MON' },
   ];
 
   return (
@@ -756,7 +756,7 @@ export default function RoutingPanel({ selectedTrackId }: RoutingPanelProps) {
       {/* Tab bar */}
       <div className="flex items-center border-b border-daw-border">
         <span className="text-[9px] font-mono font-bold uppercase tracking-[3px] text-[#E63946]/90 px-3 shrink-0">
-          DKT-ROUTE
+          ROUTE
         </span>
         {tabs.map((tab) => (
           <button

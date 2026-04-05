@@ -11,6 +11,7 @@ import PianoRoll from '@/components/PianoRoll';
 import RoutingPanel from '@/components/RoutingPanel';
 import WarpPanel from '@/components/WarpPanel';
 import BrowserPanel from '@/components/browser/BrowserPanel';
+import ClipView from '@/components/ClipView';
 import InspectorPanel from '@/components/InspectorPanel';
 import ExportDialog from '@/components/ExportDialog';
 import HistoryPanel from '@/components/HistoryPanel';
@@ -213,6 +214,13 @@ export default function App() {
               setPianoRollClip(null);
               setLowerZonePanel('mixer');
             }}
+          />
+        );
+        break;
+      case 'clip-view':
+        content = (
+          <ClipView
+            onClose={() => setLowerZonePanel('mixer')}
           />
         );
         break;

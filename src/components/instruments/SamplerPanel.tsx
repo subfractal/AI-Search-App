@@ -29,7 +29,7 @@ export default function SamplerPanel({ trackId }: SamplerPanelProps) {
 
   return (
     <div className="flex flex-col gap-2 p-3">
-      <span className="text-[9px] font-mono font-bold uppercase tracking-[3px] text-[#E63946]/90">DKT-SAMPLER-01</span>
+      <span className="text-[9px] font-mono font-bold uppercase tracking-[3px] text-[#E63946]/90">SAMPLER</span>
       <div className="flex gap-4 overflow-x-auto">
       {/* Sample Section */}
       <div className="flex flex-col gap-2 min-w-[180px]">
