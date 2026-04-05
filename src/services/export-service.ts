@@ -140,3 +140,67 @@ export async function exportStem(
   const name = filename ?? `${track.name}-stem-${Date.now()}.wav`;
   downloadBlob(wav, name);
 }
+
+/**
+ * Export readiness check result.
+ */
+export interface ExportReadiness {
+  ready: boolean;
+  warnings: string[];
+  suggestions: string[];
+}
+
+/**
+ * Check if the session is ready for export.
+ */
+export function prepareForExport(tracks: Track[]): ExportReadiness {
+  const warnings: string[] = [];
+  const suggestions: string[] = [];
+
+  if (tracks.length === 0) {
+    warnings.push('No tracks in session');
+    return { ready: false, warnings, suggestions };
+  }
+
+  const hasClips = tracks.some((t) => t.clips.length > 0);
+  if (!hasClips) {
+    warnings.push('No clips on any track');
+    return { ready: false, warnings, suggestions };
+  }
+
+  const allMuted = tracks.every((t) => t.mute);
+  if (allMuted) {
+    warnings.push('All tracks are muted — export will be silent');
+  }
+
+  // Check for hot tracks (volume > 3 dB)
+  const hotTracks = tracks.filter((t) => !t.mute && t.volume > 3);
+  if (hotTracks.length > 0) {
+    warnings.push(
+      `${hotTracks.length} track(s) above +3 dB: ${hotTracks.map((t) => t.name).join(', ')}`,
+    );
+    suggestions.push('Consider reducing levels to avoid clipping');
+  }
+
+  // Check for tracks with no clips
+  const emptyTracks = tracks.filter((t) => !t.mute && t.clips.length === 0);
+  if (emptyTracks.length > 0) {
+    suggestions.push(
+      `${emptyTracks.length} active track(s) have no clips`,
+    );
+  }
+
+  // Check for very short clips
+  const shortClips = tracks
+    .flatMap((t) => t.clips)
+    .filter((c) => c.duration < 0.1);
+  if (shortClips.length > 0) {
+    suggestions.push(`${shortClips.length} very short clip(s) detected (<0.1s)`);
+  }
+
+  return {
+    ready: warnings.length === 0,
+    warnings,
+    suggestions,
+  };
+}

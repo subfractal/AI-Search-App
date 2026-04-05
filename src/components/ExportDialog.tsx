@@ -6,7 +6,9 @@ import {
   audioBufferToWav,
   downloadBlob,
   exportStem,
+  prepareForExport,
 } from '@/services/export-service';
+import type { ExportReadiness } from '@/services/export-service';
 
 interface ExportDialogProps {
   open: boolean;
@@ -25,6 +27,7 @@ export default function ExportDialog({ open, onClose }: ExportDialogProps) {
   const [filename, setFilename] = useState('');
   const [exporting, setExporting] = useState(false);
   const [progress, setProgress] = useState('');
+  const [readiness, setReadiness] = useState<ExportReadiness | null>(null);
 
   // Auto-detect duration from last clip end
   const autoDuration = useMemo(() => {
@@ -193,6 +196,41 @@ export default function ExportDialog({ open, onClose }: ExportDialogProps) {
                          focus:outline-none focus:border-daw-accent/50"
             />
           </Field>
+
+          {/* Readiness Check */}
+          <div>
+            <button
+              onClick={() => setReadiness(prepareForExport(tracks))}
+              className="w-full text-xxs py-1.5 font-medium
+                         bg-daw-bg/50 text-daw-text-muted
+                         border border-daw-border/30
+                         hover:text-daw-text-dim transition-colors"
+            >
+              Check Export Readiness
+            </button>
+            {readiness && (
+              <div className="mt-1.5 space-y-1">
+                <div className={`text-xxs px-2 py-1 flex items-center gap-1.5
+                                ${readiness.ready
+                    ? 'bg-green-500/10 text-green-400'
+                    : 'bg-amber-500/10 text-amber-400'}`}
+                >
+                  <span className={`w-2 h-2 ${readiness.ready ? 'bg-green-500' : 'bg-amber-500'}`} />
+                  {readiness.ready ? 'Ready to export' : 'Issues detected'}
+                </div>
+                {readiness.warnings.map((w, i) => (
+                  <div key={`w-${i}`} className="text-[9px] text-red-400/80 px-2">
+                    {w}
+                  </div>
+                ))}
+                {readiness.suggestions.map((s, i) => (
+                  <div key={`s-${i}`} className="text-[9px] text-daw-text-muted/60 px-2">
+                    {s}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Progress */}
           {progress && (
