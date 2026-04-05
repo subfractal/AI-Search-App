@@ -168,12 +168,45 @@ export default function App() {
   };
 
   const openPianoRoll = () => {
-    if (!selectedTrackId) return;
-    const track = tracks.find((t) => t.id === selectedTrackId);
-    if (!track) return;
-    const midiClip = track.clips.find(isMidiClip);
-    if (midiClip) {
-      setPianoRollClip({ trackId: selectedTrackId, clip: midiClip });
+    // BUG-07 FIX: Try to find a selected MIDI clip, then fall back to any MIDI clip in selected track
+    let targetClip = null;
+    let targetTrackId = null;
+
+    // First, try to use the selected clip if it's MIDI
+    if (selectedClips.length > 0) {
+      const sel = selectedClips[0]!;
+      const track = tracks.find((t) => t.id === sel.trackId);
+      const clip = track?.clips.find((c) => c.id === sel.clipId);
+      if (clip && isMidiClip(clip)) {
+        targetClip = clip;
+        targetTrackId = sel.trackId;
+      }
+    }
+
+    // If no selected MIDI clip, try to find one in the selected track
+    if (!targetClip && selectedTrackId) {
+      const track = tracks.find((t) => t.id === selectedTrackId);
+      const midiClip = track?.clips.find(isMidiClip);
+      if (midiClip) {
+        targetClip = midiClip;
+        targetTrackId = selectedTrackId;
+      }
+    }
+
+    // If still no MIDI clip, look for any MIDI clip in any track
+    if (!targetClip) {
+      for (const track of tracks) {
+        const midiClip = track.clips.find(isMidiClip);
+        if (midiClip) {
+          targetClip = midiClip;
+          targetTrackId = track.id;
+          break;
+        }
+      }
+    }
+
+    if (targetClip && targetTrackId) {
+      setPianoRollClip({ trackId: targetTrackId, clip: targetClip });
       setLowerZonePanel('piano-roll');
     }
   };
