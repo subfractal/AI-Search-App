@@ -68,18 +68,31 @@ export function drawWaveform(
   const halfHeight = height / 2;
   const centerY = y + halfHeight;
 
+  // BUG-01 FIX: Find the maximum amplitude to detect silence
+  let maxAmplitude = 0;
+  for (let i = 0; i < pixelWidth; i++) {
+    const amp = absArr[i]!;
+    if (amp > maxAmplitude) maxAmplitude = amp;
+  }
+
+  // If audio is completely silent, draw a flat line visualization
+  const minVisibleAmplitude = 0.01;
+  const displayAmp = Math.max(maxAmplitude, minVisibleAmplitude);
+
   // Draw waveform as filled shape — bold and saturated like Ableton/Logic
   ctx.beginPath();
   ctx.moveTo(x, centerY);
 
   // Top half
   for (let i = 0; i < pixelWidth; i++) {
-    ctx.lineTo(x + i, centerY - maxArr[i]! * halfHeight * 0.95);
+    const amp = maxArr[i]! > 0 ? maxArr[i]! : (absArr[i]! > 0 ? absArr[i]! : minVisibleAmplitude / displayAmp);
+    ctx.lineTo(x + i, centerY - amp * halfHeight * 0.95);
   }
 
   // Bottom half (reverse)
   for (let i = pixelWidth - 1; i >= 0; i--) {
-    ctx.lineTo(x + i, centerY - minArr[i]! * halfHeight * 0.95);
+    const amp = minArr[i]! < 0 ? minArr[i]! : -(absArr[i]! > 0 ? absArr[i]! : minVisibleAmplitude / displayAmp);
+    ctx.lineTo(x + i, centerY - amp * halfHeight * 0.95);
   }
 
   ctx.closePath();
@@ -89,7 +102,10 @@ export function drawWaveform(
   // Draw waveform outline — crisp edge
   ctx.beginPath();
   for (let i = 0; i < pixelWidth; i++) {
-    const amp = absArr[i]! * halfHeight * 0.95;
+    const rawAmp = absArr[i]!;
+    // Normalize to displayAmp range to make quiet waveforms visible
+    const normalizedAmp = rawAmp > 0 ? rawAmp : minVisibleAmplitude / displayAmp;
+    const amp = normalizedAmp * halfHeight * 0.95;
     const top = centerY - amp;
     const bottom = centerY + amp;
     ctx.moveTo(x + i, top);
