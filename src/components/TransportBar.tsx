@@ -7,6 +7,9 @@ import { formatBarsBeats } from '@/utils/format-time';
 
 import type { BottomPanel } from '@/App';
 
+// Global ref to store timeline container for scroll synchronization
+export const timelineContainerRef = { current: null as HTMLDivElement | null };
+
 interface TransportBarProps {
   activePanel: BottomPanel;
   onTogglePanel: (panel: BottomPanel) => void;
