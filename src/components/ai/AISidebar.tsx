@@ -60,6 +60,7 @@ export default function AISidebar() {
   const savedComposerPresets = useAIStore((s) => s.savedComposerPresets);
   const saveComposerPreset = useAIStore((s) => s.saveComposerPreset);
   const loadComposerPreset = useAIStore((s) => s.loadComposerPreset);
+  const deleteComposerPreset = useAIStore((s) => s.deleteComposerPreset);
   const resetAppliedSignatures = useAIStore((s) => s.resetAppliedSignatures);
   const masteringInProgress = useAIStore((s) => s.masteringInProgress);
   const masteringResult = useAIStore((s) => s.masteringResult);
@@ -350,13 +351,21 @@ export default function AISidebar() {
               {savedComposerPresets.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1">
                   {savedComposerPresets.map((p) => (
-                    <button
-                      key={p.id}
-                      onClick={() => loadComposerPreset(p.id)}
-                      className="text-[8px] px-1.5 py-0.5 bg-daw-bg/30 text-daw-text-muted hover:text-daw-ai-accent"
-                    >
-                      {p.name}
-                    </button>
+                    <div key={p.id} className="flex items-center gap-0.5">
+                      <button
+                        onClick={() => loadComposerPreset(p.id)}
+                        className="text-[8px] px-1.5 py-0.5 bg-daw-bg/30 text-daw-text-muted hover:text-daw-ai-accent"
+                      >
+                        {p.name}
+                      </button>
+                      <button
+                        onClick={() => deleteComposerPreset(p.id)}
+                        className="text-[8px] px-0.5 text-daw-text-muted/30 hover:text-[#E63946]"
+                        title="Delete preset"
+                      >
+                        ×
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
