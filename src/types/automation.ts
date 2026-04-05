@@ -25,3 +25,28 @@ export interface AutomationLane {
   minValue: number;        // actual min (e.g., -60 for volume)
   maxValue: number;        // actual max (e.g., 6 for volume)
 }
+
+// --- Clip-level automation ---
+
+export type ClipAutomationTarget =
+  | 'gain'
+  | 'pitch'
+  | 'pan'
+  | 'filterFrequency'
+  | 'filterResonance'
+  | 'playbackRate';
+
+export interface ClipAutomationLane {
+  id: string;
+  clipId: string;
+  trackId: string;
+  target: ClipAutomationTarget;
+  points: AutomationPoint[];
+  enabled: boolean;
+  color: string;
+}
+
+export interface ClipAutomationEnvelope {
+  clipId: string;
+  lanes: ClipAutomationLane[];
+}

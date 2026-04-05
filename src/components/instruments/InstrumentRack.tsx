@@ -8,6 +8,7 @@ import DrumMachine from './DrumMachine';
 import SubtractiveSynthPanel from './SubtractiveSynthPanel';
 import WavetableSynthPanel from './WavetableSynthPanel';
 import SamplerPanel from './SamplerPanel';
+import PatternVariationPanel from '@/components/drums/PatternVariationPanel';
 
 export default function InstrumentRack() {
   const selectedTrackId = useSessionStore((s) => s.selectedTrackId);
@@ -124,7 +125,14 @@ export default function InstrumentRack() {
           if (config.family === 'subtractive') return <SubtractiveSynthPanel trackId={selectedTrackId} />;
           if (config.family === 'wavetable') return <WavetableSynthPanel trackId={selectedTrackId} />;
           if (config.family === 'sampler') return <SamplerPanel trackId={selectedTrackId} />;
-          if (config.type === 'drum-machine') return <DrumMachine trackId={selectedTrackId} />;
+          if (config.type === 'drum-machine') return (
+            <div className="flex flex-col h-full">
+              <DrumMachine trackId={selectedTrackId} />
+              <div className="border-t border-daw-border/20">
+                <PatternVariationPanel trackId={selectedTrackId} />
+              </div>
+            </div>
+          );
           return <SynthPanel trackId={selectedTrackId} />;
         })()}
       </div>

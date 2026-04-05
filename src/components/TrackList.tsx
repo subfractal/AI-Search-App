@@ -57,8 +57,7 @@ export default function TrackList() {
   };
 
   return (
-    <div className="w-36 md:w-48 shrink-0 bg-daw-surface border-r border-daw-border/30
-                    flex flex-col">
+    <div className="h-full bg-daw-surface flex flex-col">
       {/* Hidden file input */}
       <input
         ref={fileInputRef}

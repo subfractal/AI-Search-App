@@ -11,6 +11,7 @@ import PianoRoll from '@/components/PianoRoll';
 import RoutingPanel from '@/components/RoutingPanel';
 import WarpPanel from '@/components/WarpPanel';
 import BrowserPanel from '@/components/browser/BrowserPanel';
+import InspectorPanel from '@/components/InspectorPanel';
 import ExportDialog from '@/components/ExportDialog';
 import HistoryPanel from '@/components/HistoryPanel';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
@@ -256,7 +257,16 @@ export default function App() {
         />
 
         <div className="flex flex-1 min-h-0 overflow-hidden">
-          {showTracks && <TrackList />}
+          {showTracks && (
+            <div className="flex flex-col shrink-0 w-36 md:w-48 border-r border-daw-border/30">
+              <div className="flex-1 min-h-0">
+                <TrackList />
+              </div>
+              <div className="border-t border-daw-border/20 h-40 shrink-0 overflow-hidden bg-daw-surface">
+                <InspectorPanel />
+              </div>
+            </div>
+          )}
 
           <div className="flex-1 min-w-0">
             <Timeline />
