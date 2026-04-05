@@ -1,5 +1,6 @@
-import { detectKey } from './key-detector';
-import { detectBpm } from './beat-detector';
+import { detectKeyAsync } from './key-detector';
+import { detectBpmAsync } from './beat-detector';
+import { importProgress } from '@/stores/import-progress-store';
 import type { KeyResult } from './key-detector';
 import type { BpmResult } from './beat-detector';
 
@@ -8,31 +9,31 @@ export interface AutoAnalysisResult {
   key: KeyResult | null;
 }
 
-// Yield to the main thread between heavy operations
-function yieldToMain(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0));
-}
-
 export async function autoAnalyzeClip(
   buffer: AudioBuffer,
 ): Promise<AutoAnalysisResult> {
   let bpm: BpmResult | null = null;
   let key: KeyResult | null = null;
 
+  importProgress.update('analyzing-bpm', 50);
+  await new Promise<void>((r) => setTimeout(r, 0));
+
   try {
-    bpm = detectBpm(buffer);
+    bpm = await detectBpmAsync(buffer);
   } catch {
     bpm = null;
   }
 
-  // Yield to let the UI breathe between expensive operations
-  await yieldToMain();
+  importProgress.update('analyzing-key', 75);
+  await new Promise<void>((r) => setTimeout(r, 0));
 
   try {
-    key = detectKey(buffer);
+    key = await detectKeyAsync(buffer);
   } catch {
     key = null;
   }
+
+  importProgress.update('done', 100);
 
   return { bpm, key };
 }

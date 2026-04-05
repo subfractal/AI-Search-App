@@ -33,6 +33,15 @@ export function detectKey(buffer: AudioBuffer): KeyResult {
   return detectKeyFromChromagram(chromagram);
 }
 
+/**
+ * Async version of detectKey that yields to the main thread between FFT frames.
+ * Use this for import-time analysis to avoid freezing the UI.
+ */
+export async function detectKeyAsync(buffer: AudioBuffer): Promise<KeyResult> {
+  const chromagram = await computeChromagramAsync(buffer);
+  return detectKeyFromChromagram(chromagram);
+}
+
 export function detectKeyFromChromagram(chromagram: number[]): KeyResult {
   const allKeys: Array<{ key: string; scale: 'major' | 'minor'; correlation: number }> = [];
 
@@ -75,11 +84,84 @@ export function detectKeyFromChromagram(chromagram: number[]): KeyResult {
   };
 }
 
+/**
+ * Async chromagram that yields to the main thread every N frames.
+ */
+export async function computeChromagramAsync(buffer: AudioBuffer): Promise<number[]> {
+  const fullData = buffer.getChannelData(0);
+  const sampleRate = buffer.sampleRate;
+  const maxSamples = Math.min(fullData.length, sampleRate * 10);
+  const data = fullData.subarray(0, maxSamples);
+  const fftSize = 4096;
+  const hopSize = 4096;
+  const chromagram = new Float64Array(12);
+
+  const minFreq = 60;
+  const maxFreq = 4000;
+  const minBin = Math.ceil(minFreq * fftSize / sampleRate);
+  const maxBin = Math.floor(maxFreq * fftSize / sampleRate);
+
+  const win = new Float64Array(fftSize);
+  for (let i = 0; i < fftSize; i++) {
+    win[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / fftSize);
+  }
+
+  const binPitchClass = new Int8Array(maxBin + 1);
+  binPitchClass.fill(-1);
+  for (let bin = minBin; bin <= maxBin; bin++) {
+    const freq = (bin * sampleRate) / fftSize;
+    if (freq > 0) {
+      binPitchClass[bin] = Math.round(12 * Math.log2(freq / 16.3516)) % 12;
+    }
+  }
+
+  let frameCount = 0;
+  const YIELD_EVERY = 8; // yield to main thread every 8 frames
+
+  for (let offset = 0; offset + fftSize <= data.length; offset += hopSize) {
+    const real = new Float64Array(fftSize);
+    const imag = new Float64Array(fftSize);
+
+    for (let i = 0; i < fftSize; i++) {
+      real[i] = (data[offset + i] ?? 0) * win[i]!;
+    }
+
+    fft(real, imag, fftSize);
+
+    for (let bin = minBin; bin <= maxBin; bin++) {
+      const pc = binPitchClass[bin] ?? -1;
+      if (pc >= 0 && pc < 12) {
+        const mag = Math.sqrt(real[bin]! * real[bin]! + imag[bin]! * imag[bin]!);
+        chromagram[pc] = (chromagram[pc] ?? 0) + mag;
+      }
+    }
+
+    frameCount++;
+
+    // Yield to main thread periodically
+    if (frameCount % YIELD_EVERY === 0) {
+      await new Promise<void>((r) => setTimeout(r, 0));
+    }
+  }
+
+  const result = Array.from(chromagram);
+  if (frameCount > 0) {
+    const maxVal = Math.max(...result);
+    if (maxVal > 0) {
+      for (let i = 0; i < 12; i++) {
+        result[i] = result[i]! / maxVal;
+      }
+    }
+  }
+
+  return result;
+}
+
 export function computeChromagram(buffer: AudioBuffer): number[] {
   const fullData = buffer.getChannelData(0);
   const sampleRate = buffer.sampleRate;
-  // Cap analysis to first 30 seconds — sufficient for key detection
-  const maxSamples = Math.min(fullData.length, sampleRate * 30);
+  // Cap analysis to first 10 seconds — sufficient for key detection
+  const maxSamples = Math.min(fullData.length, sampleRate * 10);
   const data = fullData.subarray(0, maxSamples);
   const fftSize = 4096;
   const hopSize = 4096; // Doubled hop size for speed (was 2048)

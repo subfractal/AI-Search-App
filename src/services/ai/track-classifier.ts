@@ -139,7 +139,7 @@ export function classifyTrack(
 ): TrackClassification {
   const lowerName = fileName.toLowerCase().replace(/[_\-.\s]+/g, ' ');
 
-  // Check filename keywords first (higher confidence)
+  // Check filename keywords first (higher confidence — no spectral analysis needed)
   for (const [keyword, role] of Object.entries(FILENAME_KEYWORDS)) {
     if (lowerName.includes(keyword)) {
       return {
@@ -147,12 +147,12 @@ export function classifyTrack(
         suggestedName: generateSmartName(fileName, role),
         suggestedColor: pickRoleColor(role),
         confidence: 0.85,
-        spectralProfile: 'broadband', // filename match, skip spectral detail
+        spectralProfile: 'broadband',
       };
     }
   }
 
-  // Fall back to spectral classification
+  // Fall back to spectral classification (deferred — this is sync but fast with small window)
   const spectral = classifyBySpectrum(buffer, trackId);
   return {
     suggestedRole: spectral.role,
@@ -161,4 +161,17 @@ export function classifyTrack(
     confidence: spectral.confidence,
     spectralProfile: spectral.profile,
   };
+}
+
+/**
+ * Async version that yields to main thread. Use during import.
+ */
+export async function classifyTrackAsync(
+  trackId: string,
+  buffer: AudioBuffer,
+  fileName: string,
+): Promise<TrackClassification> {
+  // Yield first to let the UI render the progress bar
+  await new Promise<void>((r) => setTimeout(r, 0));
+  return classifyTrack(trackId, buffer, fileName);
 }

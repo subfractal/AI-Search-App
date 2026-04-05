@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { detectKey } from '@/services/ai/key-detector';
+import { detectKeyAsync } from '@/services/ai/key-detector';
 import type { KeyResult } from '@/services/ai/key-detector';
 
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const;
@@ -46,14 +46,17 @@ export const useKeyStore = create<KeyStore>((set, get) => ({
       detecting: { ...state.detecting, [clipId]: true },
     }));
 
-    // Run detection asynchronously to avoid blocking
-    setTimeout(() => {
-      const result = detectKey(buffer);
+    // Run detection asynchronously with chunked yields to avoid blocking the UI
+    detectKeyAsync(buffer).then((result) => {
       set((state) => ({
         keys: { ...state.keys, [clipId]: result },
         detecting: { ...state.detecting, [clipId]: false },
       }));
-    }, 0);
+    }).catch(() => {
+      set((state) => ({
+        detecting: { ...state.detecting, [clipId]: false },
+      }));
+    });
   },
 
   setKey: (clipId, key, scale) => {

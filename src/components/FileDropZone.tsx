@@ -5,7 +5,8 @@ import { useMixerStore } from '@/stores/mixer-store';
 import { useAIStore } from '@/stores/ai-store';
 import { generateId } from '@/utils/id';
 import { autoAnalyzeClip } from '@/services/ai/auto-analyze';
-import { classifyTrack } from '@/services/ai/track-classifier';
+import { classifyTrackAsync } from '@/services/ai/track-classifier';
+import { importProgress } from '@/stores/import-progress-store';
 import { toast } from '@/stores/toast-store';
 import type { AudioClip } from '@/types/audio';
 
@@ -39,12 +40,19 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
         if (!isAudioFile(file)) continue;
 
         try {
+          const name = file.name.replace(/\.[^.]+$/, '');
+          importProgress.start(name);
+
+          // Decode audio (async, browser-native)
           const buffer = await loadAudioFile(file);
           if (!buffer || buffer.length === 0) {
             console.warn(`[DAW] Skipping "${file.name}" — empty buffer`);
+            importProgress.done();
             continue;
           }
-          const name = file.name.replace(/\.[^.]+$/, '');
+
+          importProgress.update('decoding', 15);
+
           const trackId = addAudioTrack(name);
           initStrip(trackId);
 
@@ -61,77 +69,79 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
           addClipToTrack(trackId, clip);
           toast.success(`Imported "${name}"`);
 
-          // Defer all heavy analysis to avoid blocking the UI
-          setTimeout(() => {
-            // Auto-classify and organize imported file
-            if (useAIStore.getState().autoOrganizeEnabled) {
-              try {
-                const classification = classifyTrack(trackId, buffer, file.name);
-                if (classification.confidence > 0.4) {
-                  const session = useSessionStore.getState();
-                  session.updateTrack(trackId, {
-                    name: classification.suggestedName,
-                    color: classification.suggestedColor,
-                    role: classification.suggestedRole,
-                  });
-                  useAIStore.getState().logActivity({
-                    id: `log-${Date.now()}`,
-                    description: `Auto-classified "${name}" as ${classification.suggestedRole} (${Math.round(classification.confidence * 100)}%)`,
-                    trackId,
-                    timestamp: Date.now(),
-                    undoable: false,
-                  });
-                }
-              } catch { /* classification failed silently */ }
-            }
+          // Yield to let the UI render the new track before starting analysis
+          await new Promise<void>((r) => setTimeout(r, 16));
 
-            // Auto gain staging on import
-            if (useAIStore.getState().autoGainStagingOnImport) {
-              try {
-                const data = buffer.getChannelData(0);
-                let peak = 0;
-                // Sample every 64th value for speed
-                const stride = Math.max(1, Math.floor(data.length / 10000));
-                for (let i = 0; i < data.length; i += stride) {
-                  const abs = Math.abs(data[i]!);
-                  if (abs > peak) peak = abs;
-                }
-                const peakDb = 20 * Math.log10(Math.max(peak, 1e-10));
-                const targetPeakDb = -6;
-                const adjustment = targetPeakDb - peakDb;
-                if (Math.abs(adjustment) > 1) {
-                  const session = useSessionStore.getState();
-                  const track = session.tracks.find((t) => t.id === trackId);
-                  if (track) {
-                    const newVol = Math.round((track.volume + adjustment) * 10) / 10;
-                    useMixerStore.getState().setVolume(trackId, newVol);
-                    session.updateTrack(trackId, { volume: newVol });
-                  }
-                }
-              } catch { /* gain staging failed silently */ }
-            }
-          }, 50);
-
-          // Auto-analyze BPM and key in background (further deferred)
-          setTimeout(() => {
-            autoAnalyzeClip(buffer).then((analysis) => {
-              const parts: string[] = [];
-              if (analysis.bpm) parts.push(`BPM: ${Math.round(analysis.bpm.bpm)}`);
-              if (analysis.key) parts.push(`Key: ${analysis.key.key}`);
-              if (parts.length > 0) {
+          // Classify track (async — yields to main thread)
+          importProgress.update('classifying', 25);
+          if (useAIStore.getState().autoOrganizeEnabled) {
+            try {
+              const classification = await classifyTrackAsync(trackId, buffer, file.name);
+              if (classification.confidence > 0.4) {
+                const session = useSessionStore.getState();
+                session.updateTrack(trackId, {
+                  name: classification.suggestedName,
+                  color: classification.suggestedColor,
+                  role: classification.suggestedRole,
+                });
                 useAIStore.getState().logActivity({
                   id: `log-${Date.now()}`,
-                  description: `Auto-analyzed "${name}" — ${parts.join(', ')}`,
+                  description: `Auto-classified "${name}" as ${classification.suggestedRole} (${Math.round(classification.confidence * 100)}%)`,
                   trackId,
                   timestamp: Date.now(),
                   undoable: false,
                 });
               }
-            }).catch(() => { /* analysis failed silently */ });
-          }, 200);
+            } catch { /* classification failed silently */ }
+          }
+
+          // Auto gain staging on import (fast — strided peak scan)
+          if (useAIStore.getState().autoGainStagingOnImport) {
+            try {
+              const data = buffer.getChannelData(0);
+              let peak = 0;
+              const stride = Math.max(1, Math.floor(data.length / 10000));
+              for (let i = 0; i < data.length; i += stride) {
+                const abs = Math.abs(data[i]!);
+                if (abs > peak) peak = abs;
+              }
+              const peakDb = 20 * Math.log10(Math.max(peak, 1e-10));
+              const targetPeakDb = -6;
+              const adjustment = targetPeakDb - peakDb;
+              if (Math.abs(adjustment) > 1) {
+                const session = useSessionStore.getState();
+                const track = session.tracks.find((t) => t.id === trackId);
+                if (track) {
+                  const newVol = Math.round((track.volume + adjustment) * 10) / 10;
+                  useMixerStore.getState().setVolume(trackId, newVol);
+                  session.updateTrack(trackId, { volume: newVol });
+                }
+              }
+            } catch { /* gain staging failed silently */ }
+          }
+
+          // BPM + Key analysis (fully async with chunked yields + progress updates)
+          autoAnalyzeClip(buffer).then((analysis) => {
+            importProgress.done();
+            const parts: string[] = [];
+            if (analysis.bpm) parts.push(`BPM: ${Math.round(analysis.bpm.bpm)}`);
+            if (analysis.key) parts.push(`Key: ${analysis.key.key}`);
+            if (parts.length > 0) {
+              useAIStore.getState().logActivity({
+                id: `log-${Date.now()}`,
+                description: `Auto-analyzed "${name}" — ${parts.join(', ')}`,
+                trackId,
+                timestamp: Date.now(),
+                undoable: false,
+              });
+            }
+          }).catch(() => {
+            importProgress.done();
+          });
         } catch (err) {
           console.error(`[DAW] Failed to load "${file.name}":`, err);
           toast.error(`Failed to load "${file.name}"`);
+          importProgress.done();
         }
       }
     },
