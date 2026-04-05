@@ -64,6 +64,7 @@ export interface Track {
   parentTrackId?: string | null;
   frozen?: boolean;
   frozenBuffer?: AudioBuffer;
+  clarity?: number;
 }
 
 export const TRACK_COLORS = [

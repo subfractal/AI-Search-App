@@ -44,6 +44,17 @@ interface AIStore {
   savedComposerPresets: ComposerPreset[];
   offlineTasks: OfflineTask[];
 
+  // Phase 1: Autonomous Agentic Studio Manager
+  commandBarOpen: boolean;
+  autoOrganizeEnabled: boolean;
+  cpuManagementEnabled: boolean;
+  autoGainStagingOnImport: boolean;
+
+  toggleCommandBar: () => void;
+  setAutoOrganize: (enabled: boolean) => void;
+  setCpuManagement: (enabled: boolean) => void;
+  setAutoGainStagingOnImport: (enabled: boolean) => void;
+
   setEnabled: (enabled: boolean) => void;
   addSuggestion: (suggestion: AISuggestion) => void;
   acceptSuggestion: (id: string) => void;
@@ -118,6 +129,17 @@ export const useAIStore = create<AIStore>((set, get) => ({
   preferredVariationIntensity: 0.5,
   savedComposerPresets: [],
   offlineTasks: [],
+
+  // Phase 1: Autonomous Agentic Studio Manager
+  commandBarOpen: false,
+  autoOrganizeEnabled: true,
+  cpuManagementEnabled: false,
+  autoGainStagingOnImport: true,
+
+  toggleCommandBar: () => set((s) => ({ commandBarOpen: !s.commandBarOpen })),
+  setAutoOrganize: (enabled) => set({ autoOrganizeEnabled: enabled }),
+  setCpuManagement: (enabled) => set({ cpuManagementEnabled: enabled }),
+  setAutoGainStagingOnImport: (enabled) => set({ autoGainStagingOnImport: enabled }),
 
   setEnabled: (enabled) => set({ enabled }),
 

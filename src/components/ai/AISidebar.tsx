@@ -14,7 +14,14 @@ import type { VariationType } from '@/services/ai/variation-engine';
 import { interpolateClips } from '@/services/ai/pattern-interpolator';
 import { runMasteringPipeline } from '@/services/ai/mastering-service';
 import MasteringBreakdown from '@/components/ai/MasteringBreakdown';
+import DecisionTimeline from '@/components/ai/DecisionTimeline';
+import SpectralMatrixPanel from '@/components/ai/SpectralMatrixPanel';
+import CoComposerPanel from '@/components/ai/CoComposerPanel';
+import PredictiveBar from '@/components/ai/PredictiveBar';
+import VoiceIndicator from '@/components/ai/VoiceIndicator';
+import SpectralVisualizer from '@/components/visualizers/SpectralVisualizer';
 import { FACTORY_TEMPLATES, loadTemplate } from '@/services/templates/template-loader';
+import { useUIContextStore } from '@/stores/ui-context-store';
 import type { AISuggestion, MixGenre, GeneratorModel, SuggestionApplyMode } from '@/types/ai';
 import { COPRODUCER_MODES, MUSICAL_ROLES } from '@/types/ai';
 import { isMidiClip } from '@/types/audio';
@@ -654,6 +661,37 @@ export default function AISidebar() {
               ))}
             </Section>
           )}
+
+          {/* Spectral Matrix — Cross-track masking grid */}
+          <Section title="SPECTRAL MATRIX">
+            <SpectralMatrixPanel />
+          </Section>
+
+          {/* Co-Composer — Harmony & style */}
+          <Section title="CO-COMPOSER">
+            <CoComposerPanel />
+          </Section>
+
+          {/* Decision Timeline — AI decisions with toggle/revert */}
+          <Section title="DECISION TIMELINE">
+            <DecisionTimeline />
+          </Section>
+
+          {/* Spectral Visualizer */}
+          <Section title="SPECTRAL VIEW">
+            <SpectralVisualizer />
+          </Section>
+
+          {/* Predictive Actions & Voice */}
+          <Section title="SMART TOOLS">
+            <PredictiveBar />
+            <div className="mt-2">
+              <VoiceIndicator />
+            </div>
+          </Section>
+
+          {/* Skill Level */}
+          <SkillLevelSelector />
         </div>
       ) : (
         <div className="flex-1 flex items-center justify-center px-4">
@@ -664,6 +702,32 @@ export default function AISidebar() {
           </span>
         </div>
       )}
+    </div>
+  );
+}
+
+function SkillLevelSelector() {
+  const skillLevel = useUIContextStore((s) => s.skillLevel);
+  const setSkillLevel = useUIContextStore((s) => s.setSkillLevel);
+  const levels = ['beginner', 'intermediate', 'advanced'] as const;
+
+  return (
+    <div className="px-2.5 py-2 border-b border-daw-border/10">
+      <span className="daw-section-label">SKILL LEVEL</span>
+      <div className="flex gap-1 mt-1">
+        {levels.map((level) => (
+          <button
+            key={level}
+            onClick={() => setSkillLevel(level)}
+            className={`flex-1 text-[8px] py-1 font-bold font-mono uppercase tracking-wide transition-all
+                       ${skillLevel === level
+              ? 'bg-[#E63946]/25 text-[#E63946] border border-[#E63946]/40'
+              : 'daw-hw-btn text-daw-text-muted hover:text-daw-text-dim'}`}
+          >
+            {level}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

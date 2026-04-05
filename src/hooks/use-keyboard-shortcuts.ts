@@ -3,6 +3,7 @@ import { useTransportStore } from '@/stores/transport-store';
 import { useHistoryStore } from '@/stores/history-store';
 import { useSessionStore } from '@/stores/session-store';
 import { useMixerStore } from '@/stores/mixer-store';
+import { useAIStore } from '@/stores/ai-store';
 
 export function useKeyboardShortcuts(): void {
   const play = useTransportStore((s) => s.play);
@@ -28,6 +29,13 @@ export function useKeyboardShortcuts(): void {
       }
 
       const mod = e.metaKey || e.ctrlKey;
+
+      // --- Command Bar (Cmd+K) ---
+      if (mod && e.key === 'k') {
+        e.preventDefault();
+        useAIStore.getState().toggleCommandBar();
+        return;
+      }
 
       // --- Undo / Redo ---
       if (mod && e.key === 'z') {

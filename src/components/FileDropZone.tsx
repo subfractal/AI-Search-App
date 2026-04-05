@@ -5,6 +5,7 @@ import { useMixerStore } from '@/stores/mixer-store';
 import { useAIStore } from '@/stores/ai-store';
 import { generateId } from '@/utils/id';
 import { autoAnalyzeClip } from '@/services/ai/auto-analyze';
+import { classifyTrack } from '@/services/ai/track-classifier';
 import { toast } from '@/stores/toast-store';
 import type { AudioClip } from '@/types/audio';
 
@@ -59,6 +60,52 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
 
           addClipToTrack(trackId, clip);
           toast.success(`Imported "${name}"`);
+
+          // Auto-classify and organize imported file
+          if (useAIStore.getState().autoOrganizeEnabled) {
+            try {
+              const classification = classifyTrack(trackId, buffer, file.name);
+              if (classification.confidence > 0.4) {
+                const session = useSessionStore.getState();
+                session.updateTrack(trackId, {
+                  name: classification.suggestedName,
+                  color: classification.suggestedColor,
+                  role: classification.suggestedRole,
+                });
+                useAIStore.getState().logActivity({
+                  id: `log-${Date.now()}`,
+                  description: `Auto-classified "${name}" as ${classification.suggestedRole} (${Math.round(classification.confidence * 100)}%)`,
+                  trackId,
+                  timestamp: Date.now(),
+                  undoable: false,
+                });
+              }
+            } catch { /* classification failed silently */ }
+          }
+
+          // Auto gain staging on import
+          if (useAIStore.getState().autoGainStagingOnImport) {
+            try {
+              const data = buffer.getChannelData(0);
+              let peak = 0;
+              for (let i = 0; i < data.length; i++) {
+                const abs = Math.abs(data[i]!);
+                if (abs > peak) peak = abs;
+              }
+              const peakDb = 20 * Math.log10(Math.max(peak, 1e-10));
+              const targetPeakDb = -6;
+              const adjustment = targetPeakDb - peakDb;
+              if (Math.abs(adjustment) > 1) {
+                const session = useSessionStore.getState();
+                const track = session.tracks.find((t) => t.id === trackId);
+                if (track) {
+                  const newVol = Math.round((track.volume + adjustment) * 10) / 10;
+                  useMixerStore.getState().setVolume(trackId, newVol);
+                  session.updateTrack(trackId, { volume: newVol });
+                }
+              }
+            } catch { /* gain staging failed silently */ }
+          }
 
           // Auto-analyze BPM and key in background
           autoAnalyzeClip(buffer).then((analysis) => {

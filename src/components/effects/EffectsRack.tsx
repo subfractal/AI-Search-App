@@ -1,5 +1,7 @@
 import { useCallback, memo } from 'react';
 import { useEffectsStore } from '@/stores/effects-store';
+import { useUIContextStore } from '@/stores/ui-context-store';
+import { getVisibleEffectTypes } from '@/services/ai/skill-detector';
 import Knob from '@/components/ui/Knob';
 import type { EffectType, EffectConfig, EffectParamDef } from '@/types/effects';
 import { EFFECT_LABELS, EFFECT_KNOB_DEFS, EFFECT_PRESETS } from '@/types/effects';
@@ -75,6 +77,9 @@ export default function EffectsRack({ trackId, trackName }: EffectsRackProps) {
   const updateEffect = useEffectsStore((s) => s.updateEffect);
   const toggleEffect = useEffectsStore((s) => s.toggleEffect);
   const reorderEffects = useEffectsStore((s) => s.reorderEffects);
+  const skillLevel = useUIContextStore((s) => s.skillLevel);
+  const visibleEffectTypes = getVisibleEffectTypes(skillLevel);
+  const filteredEffectTypes = EFFECT_TYPES.filter((t) => visibleEffectTypes.includes(t));
 
   const handleAddEffect = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -131,7 +136,7 @@ export default function EffectsRack({ trackId, trackName }: EffectsRackProps) {
         >
           <option value="" disabled>+ Add Effect</option>
           <optgroup label="Effects">
-            {EFFECT_TYPES.map((type) => (
+            {filteredEffectTypes.map((type) => (
               <option key={type} value={type}>
                 {EFFECT_LABELS[type]}
               </option>

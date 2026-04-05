@@ -9,6 +9,7 @@ import InspectorPanel from '@/components/InspectorPanel';
 import ExportDialog from '@/components/ExportDialog';
 import HistoryPanel from '@/components/HistoryPanel';
 import ToastContainer from '@/components/ui/ToastContainer';
+import CommandBar from '@/components/ai/CommandBar';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { initAudioContext } from '@/services/audio-engine';
 import { startAutosave, stopAutosave, checkForRecovery } from '@/services/autosave-service';
@@ -345,6 +346,7 @@ export default function App() {
 
         <ExportDialog open={showExport} onClose={() => setShowExport(false)} />
         <HistoryPanel open={showHistory} onClose={() => setShowHistory(false)} />
+        <CommandBar />
         <ToastContainer />
       </div>
     </FileDropZone>
