@@ -4,6 +4,8 @@ import type {
   AIActivityEntry,
   MixAnalysis,
   RealtimeLevel,
+  SuggestionApplyMode,
+  ComposerSettings,
 } from '@/types/ai';
 
 interface AIStore {
@@ -15,6 +17,11 @@ interface AIStore {
   realtimeLevels: Record<string, RealtimeLevel>;
   clippingAlerts: string[];
   monitorEnabled: boolean;
+  applyMode: SuggestionApplyMode;
+  maxAutoVolumeDeltaDb: number;
+  maxAutoPanDelta: number;
+  lockedTrackIds: string[];
+  composer: ComposerSettings;
 
   setEnabled: (enabled: boolean) => void;
   addSuggestion: (suggestion: AISuggestion) => void;
@@ -28,6 +35,11 @@ interface AIStore {
   setRealtimeLevels: (levels: Record<string, RealtimeLevel>) => void;
   setClippingAlerts: (trackIds: string[]) => void;
   setMonitorEnabled: (enabled: boolean) => void;
+  setApplyMode: (mode: SuggestionApplyMode) => void;
+  setMaxAutoVolumeDeltaDb: (value: number) => void;
+  setMaxAutoPanDelta: (value: number) => void;
+  toggleTrackLock: (trackId: string) => void;
+  setComposer: (updates: Partial<ComposerSettings>) => void;
 }
 
 export const useAIStore = create<AIStore>((set) => ({
@@ -39,6 +51,17 @@ export const useAIStore = create<AIStore>((set) => ({
   realtimeLevels: {},
   clippingAlerts: [],
   monitorEnabled: false,
+  applyMode: 'manual',
+  maxAutoVolumeDeltaDb: 3,
+  maxAutoPanDelta: 0.35,
+  lockedTrackIds: [],
+  composer: {
+    model: 'markov',
+    bars: 4,
+    density: 0.6,
+    temperature: 0.45,
+    seed: 1,
+  },
 
   setEnabled: (enabled) => set({ enabled }),
 
@@ -80,4 +103,17 @@ export const useAIStore = create<AIStore>((set) => ({
   setRealtimeLevels: (levels) => set({ realtimeLevels: levels }),
   setClippingAlerts: (trackIds) => set({ clippingAlerts: trackIds }),
   setMonitorEnabled: (enabled) => set({ monitorEnabled: enabled }),
+  setApplyMode: (mode) => set({ applyMode: mode }),
+  setMaxAutoVolumeDeltaDb: (value) => set({ maxAutoVolumeDeltaDb: Math.max(0.5, Math.min(12, value)) }),
+  setMaxAutoPanDelta: (value) => set({ maxAutoPanDelta: Math.max(0.05, Math.min(1, value)) }),
+  toggleTrackLock: (trackId) =>
+    set((state) => ({
+      lockedTrackIds: state.lockedTrackIds.includes(trackId)
+        ? state.lockedTrackIds.filter((id) => id !== trackId)
+        : [...state.lockedTrackIds, trackId],
+    })),
+  setComposer: (updates) =>
+    set((state) => ({
+      composer: { ...state.composer, ...updates },
+    })),
 }));

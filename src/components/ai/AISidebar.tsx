@@ -7,9 +7,18 @@ import {
 } from '@/services/ai/suggestion-engine';
 import { toggleMonitoring } from '@/services/ai/realtime-monitor';
 import { analyzeGainStaging, applyGainStaging } from '@/services/ai/gain-staging';
-import { STREAMING_TARGETS } from '@/services/ai/genre-profiles';
-import { GENRE_PROFILES } from '@/services/ai/genre-profiles';
-import type { MixGenre } from '@/types/ai';
+import { STREAMING_TARGETS, GENRE_PROFILES } from '@/services/ai/genre-profiles';
+import { generateComposition } from '@/services/ai/composer-engine';
+import type { AISuggestion, MixGenre, GeneratorModel, SuggestionApplyMode } from '@/types/ai';
+
+const APPLY_MODES: { value: SuggestionApplyMode; label: string }[] = [
+  { value: 'manual', label: 'Manual' },
+  { value: 'realtime-preview', label: 'Preview' },
+  { value: 'offline-commit', label: 'Offline' },
+  { value: 'safe-auto', label: 'Safe Auto' },
+];
+
+const GENERATOR_MODELS: GeneratorModel[] = ['markov', 'lstm', 'vae', 'gan', 'evolutionary', 'diffusion'];
 
 export default function AISidebar() {
   const enabled = useAIStore((s) => s.enabled);
@@ -20,202 +29,195 @@ export default function AISidebar() {
   const lastAnalysis = useAIStore((s) => s.lastAnalysis);
   const clippingAlerts = useAIStore((s) => s.clippingAlerts);
   const monitorEnabled = useAIStore((s) => s.monitorEnabled);
+  const applyMode = useAIStore((s) => s.applyMode);
+  const setApplyMode = useAIStore((s) => s.setApplyMode);
+  const maxAutoVolumeDeltaDb = useAIStore((s) => s.maxAutoVolumeDeltaDb);
+  const setMaxAutoVolumeDeltaDb = useAIStore((s) => s.setMaxAutoVolumeDeltaDb);
+  const lockedTrackIds = useAIStore((s) => s.lockedTrackIds);
+  const toggleTrackLock = useAIStore((s) => s.toggleTrackLock);
+  const composer = useAIStore((s) => s.composer);
+  const setComposer = useAIStore((s) => s.setComposer);
+
   const tracks = useSessionStore((s) => s.tracks);
+  const selectedTrackId = useSessionStore((s) => s.selectedTrackId);
   const config = useSessionStore((s) => s.config);
   const setConfig = useSessionStore((s) => s.setConfig);
 
-  const pendingSuggestions = suggestions.filter(
-    (s) => s.status === 'pending',
-  );
-  const appliedSuggestions = suggestions.filter(
-    (s) => s.status === 'applied',
-  );
+  const pendingSuggestions = suggestions.filter((s) => s.status === 'pending');
+  const appliedSuggestions = suggestions.filter((s) => s.status === 'applied');
+  const selectedTrack = tracks.find((t) => t.id === selectedTrackId) ?? null;
+  const selectedLocked = !!selectedTrackId && lockedTrackIds.includes(selectedTrackId);
 
   return (
     <div className="h-full flex flex-col bg-daw-ai-bg">
-      {/* Header */}
-      <div className="flex items-center justify-between px-2.5 h-7 shrink-0
-                      border-b border-daw-border/20">
+      <div className="flex items-center justify-between px-2.5 h-7 shrink-0 border-b border-daw-border/20">
         <div className="flex items-center gap-1.5">
-          <div className="w-1.5 h-1.5 rounded-full bg-daw-ai-accent
-                          shadow-[0_0_4px_rgba(167,139,250,0.4)]" />
-          <span className="daw-section-label text-daw-ai-accent">
-            Co-Producer
-          </span>
+          <div className="w-1.5 h-1.5 rounded-full bg-daw-ai-accent shadow-[0_0_4px_rgba(167,139,250,0.4)]" />
+          <span className="daw-section-label text-daw-ai-accent">Co-Producer</span>
         </div>
         <button
           onClick={() => setEnabled(!enabled)}
-          className={`text-xxs px-1.5 py-px rounded transition-all
-                     ${enabled
-              ? 'bg-daw-ai-accent/20 text-daw-ai-accent'
-              : 'bg-daw-bg text-daw-text-muted'}`}
+          className={`text-xxs px-1.5 py-px rounded transition-all ${enabled ? 'bg-daw-ai-accent/20 text-daw-ai-accent' : 'bg-daw-bg text-daw-text-muted'}`}
         >
           {enabled ? 'ON' : 'OFF'}
         </button>
       </div>
 
-      {enabled && (
+      {enabled ? (
         <div className="flex-1 overflow-y-auto">
-          {/* Analyze button */}
           <div className="px-2.5 py-2">
             <button
               onClick={() => runAnalysis()}
               disabled={analyzing || tracks.length === 0}
-              className="w-full text-xxs py-1.5 rounded font-medium
-                         transition-all
-                         bg-daw-ai-suggestion/70 text-white
-                         hover:bg-daw-ai-suggestion
-                         disabled:opacity-30 disabled:cursor-not-allowed"
+              className="w-full text-xxs py-1.5 rounded font-medium bg-daw-ai-suggestion/70 text-white hover:bg-daw-ai-suggestion disabled:opacity-30 disabled:cursor-not-allowed"
             >
               {analyzing ? 'Analyzing...' : 'Analyze Mix'}
             </button>
           </div>
 
-          {/* Genre selector */}
-          <div className="px-2.5 py-1.5 border-b border-daw-border/10">
+          <Section title="Assistant Policy">
             <div className="flex items-center justify-between">
-              <span className="text-xxs text-daw-text-muted">Genre Profile</span>
+              <span className="text-xxs text-daw-text-muted">Mode</span>
+              <select
+                value={applyMode}
+                onChange={(e) => setApplyMode(e.target.value as SuggestionApplyMode)}
+                className="text-[9px] bg-daw-bg border border-daw-border/30 rounded px-1 py-0.5 text-daw-text-dim"
+              >
+                {APPLY_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+              </select>
+            </div>
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-xxs text-daw-text-muted">Max auto dB</span>
+              <input
+                type="number"
+                min="1"
+                max="12"
+                value={maxAutoVolumeDeltaDb}
+                onChange={(e) => setMaxAutoVolumeDeltaDb(Number(e.target.value))}
+                className="w-12 text-[9px] bg-daw-bg border border-daw-border/30 rounded px-1 py-0.5 text-daw-text-dim"
+              />
+            </div>
+            {selectedTrack && (
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-xxs text-daw-text-muted truncate">{selectedTrack.name}</span>
+                <button
+                  onClick={() => toggleTrackLock(selectedTrack.id)}
+                  className={`text-[9px] px-2 py-0.5 rounded ${selectedLocked ? 'bg-amber-500/20 text-amber-400' : 'bg-daw-bg text-daw-text-muted'}`}
+                >
+                  {selectedLocked ? 'Locked' : 'Unlock AI'}
+                </button>
+              </div>
+            )}
+          </Section>
+
+          <Section title="Genre & Monitor">
+            <div className="flex items-center justify-between">
+              <span className="text-xxs text-daw-text-muted">Genre</span>
               <select
                 value={config.genre}
                 onChange={(e) => setConfig({ genre: e.target.value as MixGenre })}
-                className="text-[9px] bg-daw-bg border border-daw-border/30 rounded
-                           px-1 py-0.5 text-daw-text-dim
-                           focus:outline-none focus:border-daw-ai-accent/40"
+                className="text-[9px] bg-daw-bg border border-daw-border/30 rounded px-1 py-0.5 text-daw-text-dim"
               >
                 {Object.entries(GENRE_PROFILES).map(([key, p]) => (
                   <option key={key} value={key}>{p.name}</option>
                 ))}
               </select>
             </div>
-            <div className="text-[8px] text-daw-text-muted/50 mt-0.5">
-              {GENRE_PROFILES[config.genre].description}
+            <div className="text-[8px] text-daw-text-muted/50 mt-0.5">{GENRE_PROFILES[config.genre].description}</div>
+            <div className="flex items-center justify-between mt-1.5">
+              <span className="text-xxs text-daw-text-muted">Live Monitor</span>
+              <button
+                onClick={() => {
+                  toggleMonitoring();
+                  useAIStore.getState().setMonitorEnabled(!monitorEnabled);
+                }}
+                className={`text-[9px] px-2 py-0.5 rounded ${monitorEnabled ? 'bg-green-500/20 text-green-400' : 'bg-daw-bg text-daw-text-muted'}`}
+              >
+                {monitorEnabled ? 'ON' : 'OFF'}
+              </button>
             </div>
-          </div>
+            {clippingAlerts.length > 0 && (
+              <div className="mt-1 text-[9px] text-red-400">Clipping: {clippingAlerts.map((id) => tracks.find((t) => t.id === id)?.name ?? id).join(', ')}</div>
+            )}
+          </Section>
 
-          {/* Live Monitor toggle */}
-          <div className="px-2.5 py-1.5 border-b border-daw-border/10
-                          flex items-center justify-between">
-            <span className="text-xxs text-daw-text-muted">Live Monitor</span>
+          <Section title="AI Composer">
+            <div className="grid grid-cols-2 gap-1">
+              <select
+                value={composer.model}
+                onChange={(e) => setComposer({ model: e.target.value as GeneratorModel })}
+                className="text-[9px] bg-daw-bg border border-daw-border/30 rounded px-1 py-0.5 text-daw-text-dim"
+              >
+                {GENERATOR_MODELS.map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
+              <input
+                type="number"
+                min="1"
+                max="16"
+                value={composer.bars}
+                onChange={(e) => setComposer({ bars: Number(e.target.value) })}
+                className="text-[9px] bg-daw-bg border border-daw-border/30 rounded px-1 py-0.5 text-daw-text-dim"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-1 mt-1">
+              <input
+                type="number"
+                min="0.1"
+                max="1"
+                step="0.05"
+                value={composer.density}
+                onChange={(e) => setComposer({ density: Number(e.target.value) })}
+                className="text-[9px] bg-daw-bg border border-daw-border/30 rounded px-1 py-0.5 text-daw-text-dim"
+              />
+              <input
+                type="number"
+                min="0.1"
+                max="1"
+                step="0.05"
+                value={composer.temperature}
+                onChange={(e) => setComposer({ temperature: Number(e.target.value) })}
+                className="text-[9px] bg-daw-bg border border-daw-border/30 rounded px-1 py-0.5 text-daw-text-dim"
+              />
+            </div>
             <button
               onClick={() => {
-                toggleMonitoring();
-                useAIStore.getState().setMonitorEnabled(!monitorEnabled);
+                const result = generateComposition();
+                if (result) {
+                  useAIStore.getState().logActivity({
+                    id: `log-${Date.now()}`,
+                    description: `Generated ${result.noteCount} notes with ${result.model} into ${result.bars} bars`,
+                    trackId: result.trackId,
+                    timestamp: Date.now(),
+                    undoable: false,
+                  });
+                }
               }}
-              className={`text-[9px] px-2 py-0.5 rounded font-medium transition-all
-                         ${monitorEnabled
-                  ? 'bg-green-500/20 text-green-400'
-                  : 'bg-daw-bg text-daw-text-muted'}`}
+              className="w-full mt-1.5 text-xxs py-1 rounded font-medium bg-daw-ai-accent/20 text-daw-ai-accent hover:bg-daw-ai-accent/30"
             >
-              {monitorEnabled ? 'ON' : 'OFF'}
+              Generate MIDI Idea
             </button>
-          </div>
+          </Section>
 
-          {/* Clipping alerts from real-time monitor */}
-          {clippingAlerts.length > 0 && (
-            <div className="px-2.5 py-1.5 bg-red-500/10 border-b border-red-500/20">
-              <div className="flex items-center gap-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-[10px] font-semibold text-red-400">
-                  Clipping Detected
-                </span>
-              </div>
-              <div className="mt-1 space-y-0.5">
-                {clippingAlerts.map((trackId) => {
-                  const track = tracks.find((t) => t.id === trackId);
-                  return (
-                    <div key={trackId} className="text-xxs text-red-300/80">
-                      {track?.name ?? trackId}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Mix overview */}
           {lastAnalysis && (
-            <div className="px-2.5 py-2 border-b border-daw-border/10">
-              <span className="daw-section-label">Mix Overview</span>
-              <div className="mt-1.5 space-y-1">
-                <StatRow
-                  label="Peak"
-                  value={`${lastAnalysis.overallLevel.peak.toFixed(1)} dB`}
-                  warn={lastAnalysis.overallLevel.clipping}
-                />
-                <StatRow
-                  label="RMS"
-                  value={`${lastAnalysis.overallLevel.rms.toFixed(1)} dB`}
-                />
-                <StatRow
-                  label="DR"
-                  value={`${lastAnalysis.overallLevel.dynamicRange.toFixed(1)} dB`}
-                />
-                <StatRow
-                  label="Width"
-                  value={`${(lastAnalysis.stereoWidth * 100).toFixed(0)}%`}
-                />
-              </div>
-
-              {/* LUFS Loudness */}
+            <Section title="Mix Overview">
+              <StatRow label="Peak" value={`${lastAnalysis.overallLevel.peak.toFixed(1)} dB`} warn={lastAnalysis.overallLevel.clipping} />
+              <StatRow label="RMS" value={`${lastAnalysis.overallLevel.rms.toFixed(1)} dB`} />
+              <StatRow label="DR" value={`${lastAnalysis.overallLevel.dynamicRange.toFixed(1)} dB`} />
+              <StatRow label="Width" value={`${(lastAnalysis.stereoWidth * 100).toFixed(0)}%`} />
               {lastAnalysis.overallLoudness && (
-                <div className="mt-2 pt-2 border-t border-daw-border/10">
-                  <span className="text-[8px] text-daw-ai-accent/70 font-semibold uppercase tracking-wider">
-                    Loudness (LUFS)
-                  </span>
-                  <div className="mt-1 space-y-1">
-                    <LufsRow
-                      label="Integrated"
-                      value={lastAnalysis.overallLoudness.integrated}
-                    />
-                    <LufsRow
-                      label="Short-Term"
-                      value={lastAnalysis.overallLoudness.shortTerm}
-                    />
-                    <LufsRow
-                      label="Momentary"
-                      value={lastAnalysis.overallLoudness.momentary}
-                    />
-                    <StatRow
-                      label="LRA"
-                      value={`${lastAnalysis.overallLoudness.range.toFixed(1)} LU`}
-                    />
-                    <StatRow
-                      label="True Peak"
-                      value={`${lastAnalysis.overallLoudness.truePeak.toFixed(1)} dBTP`}
-                      warn={lastAnalysis.overallLoudness.truePeak > -1}
-                    />
+                <>
+                  <div className="mt-1.5 border-t border-daw-border/10 pt-1.5">
+                    <LufsRow label="Integrated" value={lastAnalysis.overallLoudness.integrated} />
+                    <StatRow label="True Peak" value={`${lastAnalysis.overallLoudness.truePeak.toFixed(1)} dBTP`} warn={lastAnalysis.overallLoudness.truePeak > -1} />
                   </div>
-
-                  {/* Streaming platform compliance */}
-                  <div className="mt-2 pt-1.5 border-t border-daw-border/10">
-                    <span className="text-[7px] text-daw-text-muted/50 uppercase tracking-wider">
-                      Platform Compliance
-                    </span>
-                    <div className="mt-1 space-y-0.5">
-                      {STREAMING_TARGETS.map((platform) => {
-                        const lufsOk = lastAnalysis.overallLoudness!.integrated <= platform.integratedLufs + 1;
-                        const tpOk = lastAnalysis.overallLoudness!.truePeak <= platform.maxTruePeak;
-                        const ok = lufsOk && tpOk;
-                        return (
-                          <div key={platform.name} className="flex items-center justify-between text-[9px]">
-                            <span className="text-daw-text-muted">{platform.name}</span>
-                            <div className="flex items-center gap-1">
-                              <span className="text-[8px] text-daw-text-muted/40">
-                                {platform.integratedLufs} / {platform.maxTruePeak}
-                              </span>
-                              <span className={ok ? 'text-green-400' : 'text-red-400'}>
-                                {ok ? '\u2713' : '\u2717'}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                  <div className="mt-1">
+                    {STREAMING_TARGETS.slice(0, 3).map((platform) => {
+                      const ok = lastAnalysis.overallLoudness!.truePeak <= platform.maxTruePeak;
+                      return <StatRow key={platform.name} label={platform.name} value={`${platform.integratedLufs} LUFS`} warn={!ok} />;
+                    })}
                   </div>
-                </div>
+                </>
               )}
-
-              {/* Gain Staging button */}
               {lastAnalysis.tracks.length >= 2 && (
                 <button
                   onClick={() => {
@@ -223,106 +225,23 @@ export default function AISidebar() {
                     applyGainStaging(result);
                     useAIStore.getState().logActivity({
                       id: `log-${Date.now()}`,
-                      description: `Auto gain staged ${result.tracks.length} tracks to -6 dBFS`,
+                      description: `Auto gain staged ${result.tracks.length} tracks`,
                       trackId: null,
                       timestamp: Date.now(),
                       undoable: true,
                     });
                   }}
-                  className="w-full mt-2 text-xxs py-1 rounded font-medium
-                             transition-all
-                             bg-emerald-600/20 text-emerald-400
-                             hover:bg-emerald-600/30"
+                  className="w-full mt-1.5 text-xxs py-1 rounded font-medium bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30"
                 >
                   Auto Gain Stage
                 </button>
               )}
-            </div>
+            </Section>
           )}
 
-          {/* Masking Alerts */}
-          {lastAnalysis && lastAnalysis.maskingPairs.length > 0 && (
-            <div className="px-2.5 py-2 border-b border-daw-border/10">
-              <span className="daw-section-label text-orange-400">
-                Masking Alerts ({lastAnalysis.maskingPairs.length})
-              </span>
-              <div className="mt-1.5 space-y-1.5">
-                {lastAnalysis.maskingPairs.slice(0, 5).map((pair, i) => {
-                  const trackA = tracks.find((t) => t.id === pair.trackAId);
-                  const trackB = tracks.find((t) => t.id === pair.trackBId);
-                  return (
-                    <div key={i} className="bg-orange-500/5 rounded p-1.5 border border-orange-500/10">
-                      <div className="text-xxs text-orange-300 font-medium">
-                        {trackA?.name ?? '?'} vs {trackB?.name ?? '?'}
-                      </div>
-                      <div className="text-[9px] text-daw-text-muted mt-0.5">
-                        {pair.maskedBands.join(', ')}
-                      </div>
-                      <div className="flex items-center gap-1 mt-1">
-                        <div className="flex-1 h-0.5 bg-daw-border/20 rounded overflow-hidden">
-                          <div
-                            className="h-full bg-orange-500/60 rounded"
-                            style={{ width: `${pair.severity * 100}%` }}
-                          />
-                        </div>
-                        <span className="text-[8px] text-orange-400/60">
-                          {Math.round(pair.severity * 100)}%
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Phase Correlation */}
-          {lastAnalysis && lastAnalysis.phaseCorrelations.length > 0 && (
-            <div className="px-2.5 py-2 border-b border-daw-border/10">
-              <span className="daw-section-label">
-                Phase Correlation
-              </span>
-              <div className="mt-1.5 space-y-1">
-                {lastAnalysis.phaseCorrelations.map((phase) => {
-                  const track = tracks.find((t) => t.id === phase.trackId);
-                  const isWarn = phase.correlation >= 0 && phase.correlation <= 0.5;
-                  const isBad = phase.correlation < 0;
-                  return (
-                    <div key={phase.trackId} className="flex items-center gap-1.5">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xxs text-daw-text-dim truncate">
-                          {track?.name ?? phase.trackId}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <div className="w-12 h-1 bg-daw-border/20 rounded overflow-hidden">
-                          <div
-                            className={`h-full rounded ${
-                              isBad ? 'bg-red-500' : isWarn ? 'bg-yellow-500' : 'bg-green-500'
-                            }`}
-                            style={{ width: `${Math.max(5, (phase.correlation + 1) * 50)}%` }}
-                          />
-                        </div>
-                        <span className={`text-[8px] font-mono w-8 text-right ${
-                          isBad ? 'text-red-400' : isWarn ? 'text-yellow-400' : 'text-green-400'
-                        }`}>
-                          {phase.correlation.toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Suggestions */}
           {pendingSuggestions.length > 0 && (
-            <div className="px-2.5 py-2 border-b border-daw-border/10">
-              <span className="daw-section-label">
-                Suggestions ({pendingSuggestions.length})
-              </span>
-              <div className="mt-2 space-y-1.5">
+            <Section title={`Suggestions (${pendingSuggestions.length})`}>
+              <div className="space-y-1.5 mt-1.5">
                 {pendingSuggestions.map((s) => (
                   <SuggestionCard
                     key={s.id}
@@ -332,66 +251,28 @@ export default function AISidebar() {
                   />
                 ))}
               </div>
-            </div>
+            </Section>
           )}
 
-          {/* Auto-applied */}
           {appliedSuggestions.length > 0 && (
-            <div className="px-2.5 py-2 border-b border-daw-border/10">
-              <span className="daw-section-label">
-                Auto-Applied ({appliedSuggestions.length})
-              </span>
-              <div className="mt-1 space-y-0.5">
-                {appliedSuggestions.map((s) => (
-                  <div
-                    key={s.id}
-                    className="text-xxs text-daw-text-muted flex items-center
-                               gap-1 py-0.5"
-                  >
-                    <span className="text-green-500 text-[8px]">&#10003;</span>
-                    <span className="truncate">{s.title}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <Section title={`Auto-Applied (${appliedSuggestions.length})`}>
+              {appliedSuggestions.map((s) => (
+                <div key={s.id} className="text-xxs text-daw-text-muted py-0.5">{s.title}</div>
+              ))}
+            </Section>
           )}
 
-          {/* Activity log */}
           {activityLog.length > 0 && (
-            <div className="px-2.5 py-2">
-              <span className="daw-section-label">Activity</span>
-              <div className="mt-1 space-y-0.5">
-                {activityLog.slice(0, 15).map((entry) => (
-                  <div
-                    key={entry.id}
-                    className="text-xxs text-daw-text-muted/70 py-0.5
-                               leading-tight"
-                  >
-                    {entry.description}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Empty state */}
-          {suggestions.length === 0 && !lastAnalysis && (
-            <div className="px-4 py-12 text-center">
-              <div className="text-daw-ai-accent/30 text-2xl mb-2">
-                &#9834;
-              </div>
-              <span className="text-xxs text-daw-text-muted">
-                Add tracks and analyze your mix for AI feedback
-              </span>
-            </div>
+            <Section title="Activity">
+              {activityLog.slice(0, 15).map((entry) => (
+                <div key={entry.id} className="text-xxs text-daw-text-muted/70 py-0.5 leading-tight">{entry.description}</div>
+              ))}
+            </Section>
           )}
         </div>
-      )}
-
-      {!enabled && (
+      ) : (
         <div className="flex-1 flex items-center justify-center px-4">
-          <span className="text-xxs text-daw-text-muted text-center
-                           leading-relaxed">
+          <span className="text-xxs text-daw-text-muted text-center leading-relaxed">
             AI Co-Producer is paused.
             <br />
             Enable to get mix analysis and suggestions.
@@ -402,55 +283,46 @@ export default function AISidebar() {
   );
 }
 
-function StatRow({
-  label,
-  value,
-  warn = false,
-}: {
-  label: string;
-  value: string;
-  warn?: boolean;
-}) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="px-2.5 py-2 border-b border-daw-border/10">
+      <span className="daw-section-label">{title}</span>
+      <div className="mt-1">{children}</div>
+    </div>
+  );
+}
+
+function StatRow({ label, value, warn = false }: { label: string; value: string; warn?: boolean }) {
   return (
     <div className="flex justify-between text-xxs">
       <span className="text-daw-text-muted">{label}</span>
-      <span className={warn ? 'text-red-400' : 'text-daw-text-dim'}>
-        {value}
-      </span>
+      <span className={warn ? 'text-red-400' : 'text-daw-text-dim'}>{value}</span>
     </div>
   );
 }
 
 function LufsRow({ label, value }: { label: string; value: number }) {
-  // Color code: green (-16 to -14), yellow (-20 to -16 or -14 to -11), red (> -11 or < -20)
   let color = 'text-daw-text-dim';
-  if (value > -Infinity) {
-    if (value >= -16 && value <= -14) color = 'text-green-400';
-    else if ((value >= -20 && value < -16) || (value > -14 && value <= -11))
-      color = 'text-yellow-400';
-    else if (value > -11 || value < -20) color = 'text-red-400';
-  }
+  if (value >= -16 && value <= -14) color = 'text-green-400';
+  else if ((value >= -20 && value < -16) || (value > -14 && value <= -11)) color = 'text-yellow-400';
+  else if (value > -11 || value < -20) color = 'text-red-400';
 
   return (
     <div className="flex justify-between text-xxs">
       <span className="text-daw-text-muted">{label}</span>
-      <span className={color}>
-        {value > -Infinity ? `${value.toFixed(1)} LUFS` : '- -'}
-      </span>
+      <span className={color}>{value > -Infinity ? `${value.toFixed(1)} LUFS` : '- -'}</span>
     </div>
   );
 }
 
-function describeAction(action: Record<string, unknown> | null): string | null {
+function describeAction(suggestion: AISuggestion): string | null {
+  const action = suggestion.action as { type: string; value?: number; effectType?: string; actions?: unknown[] } | null;
   if (!action) return null;
-  const a = action as { type: string; value?: number; effectType?: string; actions?: unknown[] };
-  switch (a.type) {
-    case 'setVolume': return `Set volume to ${a.value?.toFixed(1)} dB`;
-    case 'setPan': return `Pan to ${(a.value ?? 0) < 0 ? 'L' : 'R'} ${Math.abs(a.value ?? 0).toFixed(1)}`;
-    case 'mute': return 'Mute track';
-    case 'unmute': return 'Unmute track';
-    case 'addEffect': return `Add ${a.effectType ?? 'effect'}`;
-    case 'batch': return `Apply ${a.actions?.length ?? 0} changes`;
+  switch (action.type) {
+    case 'setVolume': return `Volume ${action.value?.toFixed(1)} dB`;
+    case 'setPan': return `Pan ${(action.value ?? 0).toFixed(2)}`;
+    case 'addEffect': return `Add ${action.effectType ?? 'effect'}`;
+    case 'batch': return `Apply ${action.actions?.length ?? 0} changes`;
     default: return null;
   }
 }
@@ -460,89 +332,61 @@ function SuggestionCard({
   onAccept,
   onReject,
 }: {
-  suggestion: { type: string; title: string; description: string; confidence: number; action: object | null };
+  suggestion: AISuggestion;
   onAccept: () => void;
   onReject: () => void;
 }) {
-  const typeColors: Record<string, string> = {
-    clipping: 'bg-red-500/15 text-red-400',
-    level: 'bg-amber-500/15 text-amber-400',
-    eq: 'bg-sky-500/15 text-sky-400',
-    pan: 'bg-emerald-500/15 text-emerald-400',
-    compression: 'bg-violet-500/15 text-violet-400',
-    noise: 'bg-orange-500/15 text-orange-400',
-    masking: 'bg-orange-500/15 text-orange-400',
-    loudness: 'bg-purple-500/15 text-purple-400',
-    'gain-staging': 'bg-green-500/15 text-green-400',
-  };
-  const colorClass = typeColors[suggestion.type]
-    ?? 'bg-daw-ai-accent/15 text-daw-ai-accent';
-
-  const actionLabel = describeAction(suggestion.action as Record<string, unknown> | null);
-
+  const actionLabel = describeAction(suggestion);
   return (
     <div className="bg-daw-bg/40 rounded p-2 border border-daw-border/10">
-      <div className="flex items-start gap-1.5">
-        <span className={`text-[8px] px-1 py-px rounded font-semibold
-                         shrink-0 uppercase ${colorClass}`}>
-          {suggestion.type}
-        </span>
-        <div className="flex-1 min-w-0">
-          <div className="text-xxs font-medium text-daw-text leading-tight">
-            {suggestion.title}
-          </div>
-          <div className="text-xxs text-daw-text-muted mt-0.5 leading-tight">
-            {suggestion.description}
-          </div>
-          {/* Action preview */}
-          {actionLabel && (
-            <div className="text-xxs text-daw-ai-accent/70 mt-1 flex items-center gap-1">
-              <svg width="8" height="8" viewBox="0 0 8 8" fill="none"
-                stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
-                <path d="M1 4h6M5 2l2 2-2 2" />
-              </svg>
-              <span className="italic">{actionLabel}</span>
-            </div>
-          )}
-          {/* Confidence */}
-          <div className="flex items-center gap-1 mt-1">
-            <div className="flex-1 h-0.5 bg-daw-border/20 rounded overflow-hidden">
-              <div
-                className="h-full bg-daw-ai-accent/40 rounded"
-                style={{ width: `${suggestion.confidence * 100}%` }}
-              />
-            </div>
-            <span className="text-[8px] text-daw-text-muted/50">
-              {Math.round(suggestion.confidence * 100)}%
-            </span>
-          </div>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-xxs font-medium text-daw-text">{suggestion.title}</div>
+          <div className="text-xxs text-daw-text-muted mt-0.5">{suggestion.description}</div>
         </div>
+        <span className="text-[8px] text-daw-ai-accent/70">{Math.round(suggestion.confidence * 100)}%</span>
       </div>
+
+      {suggestion.rationale && (
+        <div className="mt-1 text-[9px] text-daw-text-muted/80">
+          Why: {suggestion.rationale}
+        </div>
+      )}
+
+      {suggestion.evidence && suggestion.evidence.length > 0 && (
+        <div className="mt-1 flex flex-wrap gap-1">
+          {suggestion.evidence.slice(0, 3).map((e) => (
+            <span key={`${suggestion.id}-${e.label}`} className="text-[8px] px-1 py-px rounded bg-daw-panel text-daw-text-muted">
+              {e.label}: {String(e.value)}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {suggestion.constraints && suggestion.constraints.length > 0 && (
+        <div className="mt-1 text-[8px] text-amber-400/80">
+          Bounds: {suggestion.constraints.map((c) => `${c.label} ${c.value}`).join(' • ')}
+        </div>
+      )}
+
+      <div className="mt-1 text-[8px] text-daw-ai-accent/70">
+        Mode: {suggestion.applyMode ?? 'manual'} {suggestion.realtimeSafe ? '• RT safe' : '• offline/heavy'} {suggestion.reversible ? '• reversible' : ''}
+      </div>
+
+      {actionLabel && (
+        <div className="mt-1 text-[9px] text-daw-ai-accent/70 italic">{actionLabel}</div>
+      )}
+
       <div className="flex gap-1 mt-1.5">
-        {suggestion.action ? (
-          <button
-            onClick={onAccept}
-            className="flex-1 text-xxs py-0.5 rounded font-medium
-                       bg-green-600/20 text-green-400
-                       hover:bg-green-600/30 transition-colors"
-          >
-            Apply Fix
-          </button>
-        ) : (
-          <button
-            onClick={onReject}
-            className="flex-1 text-xxs py-0.5 rounded font-medium
-                       bg-daw-ai-accent/10 text-daw-ai-accent/70
-                       hover:bg-daw-ai-accent/20 transition-colors"
-          >
-            Noted
-          </button>
-        )}
+        <button
+          onClick={onAccept}
+          className="flex-1 text-xxs py-0.5 rounded font-medium bg-green-600/20 text-green-400 hover:bg-green-600/30"
+        >
+          Apply
+        </button>
         <button
           onClick={onReject}
-          className="flex-1 text-xxs py-0.5 rounded font-medium
-                     bg-daw-bg/60 text-daw-text-muted
-                     hover:text-daw-text-dim transition-colors"
+          className="flex-1 text-xxs py-0.5 rounded font-medium bg-daw-bg/60 text-daw-text-muted hover:text-daw-text-dim"
         >
           Dismiss
         </button>

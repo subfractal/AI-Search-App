@@ -13,6 +13,17 @@ export type SuggestionType =
   | 'gain-staging';
 
 export type SuggestionPriority = 'auto' | 'inline' | 'sidebar';
+export type SuggestionApplyMode = 'manual' | 'realtime-preview' | 'offline-commit' | 'safe-auto';
+
+export interface SuggestionEvidence {
+  label: string;
+  value: string | number | boolean;
+}
+
+export interface SuggestionConstraint {
+  label: string;
+  value: string;
+}
 
 export interface AISuggestion {
   id: string;
@@ -25,16 +36,20 @@ export interface AISuggestion {
   status: SuggestionStatus;
   action: SuggestionAction | null;
   timestamp: number;
+  rationale?: string;
+  evidence?: SuggestionEvidence[];
+  constraints?: SuggestionConstraint[];
+  applyMode?: SuggestionApplyMode;
+  realtimeSafe?: boolean;
+  reversible?: boolean;
 }
 
 export interface SuggestionAction {
   type: 'setVolume' | 'setPan' | 'mute' | 'unmute' | 'addEffect' | 'batch';
   trackId: string;
   value?: number;
-  // For addEffect actions
   effectType?: string;
   effectParams?: Record<string, number | string>;
-  // For batch actions (multiple changes at once)
   actions?: SuggestionAction[];
 }
 
@@ -119,7 +134,6 @@ export interface AIActivityEntry {
   undoable: boolean;
 }
 
-// Genre profiles for context-aware analysis
 export type MixGenre =
   | 'pop'
   | 'edm'
@@ -141,7 +155,6 @@ export interface GenreProfile {
   description: string;
 }
 
-// Streaming platform loudness targets
 export interface StreamingTarget {
   name: string;
   integratedLufs: number;
@@ -149,9 +162,32 @@ export interface StreamingTarget {
   note: string;
 }
 
-// Phase correlation between stereo channels or track pairs
 export interface PhaseCorrelation {
   trackId: string;
-  correlation: number; // -1 (out of phase) to +1 (in phase)
+  correlation: number;
   monoCompatible: boolean;
+}
+
+export type GeneratorModel =
+  | 'markov'
+  | 'lstm'
+  | 'vae'
+  | 'gan'
+  | 'evolutionary'
+  | 'diffusion';
+
+export interface ComposerSettings {
+  model: GeneratorModel;
+  bars: number;
+  density: number;
+  temperature: number;
+  seed: number;
+}
+
+export interface ComposerResult {
+  trackId: string;
+  clipId: string;
+  noteCount: number;
+  model: GeneratorModel;
+  bars: number;
 }
