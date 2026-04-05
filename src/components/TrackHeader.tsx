@@ -142,14 +142,20 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
             </span>
           )}
 
-          {/* Warp indicator */}
+          {/* Warp indicator — click to open warp panel */}
           {warpConfig?.enabled && (
-            <span className="text-xxs px-1 py-px rounded bg-amber-500/15
-                           text-amber-400 leading-none"
-              title={`Warped from ${warpConfig.originalBpm.toFixed(0)} BPM`}
+            <button
+              className="text-xxs px-1 py-px rounded bg-amber-500/15
+                         text-amber-400 leading-none hover:bg-amber-500/25 transition-colors"
+              title={`Warped from ${warpConfig.originalBpm.toFixed(0)} BPM — click to open warp panel`}
+              onClick={(e) => {
+                e.stopPropagation();
+                selectTrack(trackId);
+                window.dispatchEvent(new CustomEvent('daw:open-panel', { detail: 'warp' }));
+              }}
             >
               W
-            </span>
+            </button>
           )}
         </div>
       </div>

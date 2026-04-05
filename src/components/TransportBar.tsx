@@ -307,6 +307,7 @@ export default function TransportBar({
         <PanelBtn panel="instrument" label="Inst" />
         <PanelBtn panel="effects" label="FX" />
         <PanelBtn panel="routing" label="Route" />
+        <PanelBtn panel="warp" label="Warp" />
         <button
           onClick={onPianoRoll}
           className={`daw-button text-xxs px-1.5 py-0.5 shrink-0

@@ -9,9 +9,22 @@ import type { AISuggestion, SuggestionAction, SuggestionApplyMode } from '@/type
 import type { EffectType, EffectParams } from '@/types/effects';
 
 function defaultApplyMode(suggestion: AISuggestion): SuggestionApplyMode {
+  // Never auto-apply addEffect actions — prevents stacking duplicate FX
+  if (suggestion.action?.type === 'addEffect') return 'manual';
+  if (suggestion.action?.type === 'batch') {
+    const hasEffect = suggestion.action.actions?.some((a) => a.type === 'addEffect');
+    if (hasEffect) return 'manual';
+  }
   if (suggestion.type === 'clipping') return 'safe-auto';
   if (suggestion.type === 'loudness' || suggestion.type === 'noise') return 'offline-commit';
   return 'manual';
+}
+
+function getSuggestionSignature(suggestion: AISuggestion): string {
+  const actionKey = suggestion.action
+    ? `${suggestion.action.type}:${suggestion.action.trackId}:${suggestion.action.effectType ?? ''}:${JSON.stringify(suggestion.action.effectParams ?? {})}`
+    : 'no-action';
+  return `${suggestion.type}:${suggestion.targetTrackId ?? 'global'}:${actionKey}`;
 }
 
 function isTrackLocked(trackId: string): boolean {
@@ -128,14 +141,21 @@ export function runAnalysis(): void {
     const analysis = analyzeMix(tracks, config.sampleRate);
     aiState.setAnalysis(analysis);
 
-    const suggestions = generateSuggestions(analysis, tracks, config.genre).map((s) => ({
+    const appliedSigs = aiState.appliedSignatures;
+    const allSuggestions = generateSuggestions(analysis, tracks, config.genre).map((s) => ({
       ...s,
       applyMode: s.applyMode ?? defaultApplyMode(s),
       realtimeSafe: s.realtimeSafe ?? (s.type === 'clipping' || s.type === 'level' || s.type === 'pan' || s.type === 'gain-staging'),
-      reversible: s.reversible ?? !!s.action && ['setVolume', 'setPan', 'batch'].includes(s.action.type),
+      reversible: s.reversible ?? (!!s.action && ['setVolume', 'setPan', 'batch'].includes(s.action.type)),
       evidence: s.evidence ?? [],
       constraints: s.constraints ?? [],
     }));
+
+    // Filter out suggestions that have already been applied
+    const suggestions = allSuggestions.filter((s) => {
+      const sig = getSuggestionSignature(s);
+      return !appliedSigs.includes(sig);
+    });
 
     aiState.clearSuggestions();
 
@@ -150,6 +170,7 @@ export function runAnalysis(): void {
 
       if (eligibleForAuto) {
         applyAction(suggestion.action);
+        aiState.addAppliedSignature(getSuggestionSignature(suggestion));
         aiState.logActivity({
           id: generateId('log'),
           description: `Auto-applied: ${suggestion.title}`,
@@ -178,6 +199,7 @@ export function acceptSuggestion(suggestionId: string): void {
   if (suggestion.action) {
     applyAction(suggestion.action);
     aiState.applySuggestion(suggestionId);
+    aiState.addAppliedSignature(getSuggestionSignature(suggestion));
     aiState.logActivity({
       id: generateId('log'),
       description: `Applied: ${suggestion.title}`,

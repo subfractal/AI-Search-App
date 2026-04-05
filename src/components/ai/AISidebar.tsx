@@ -8,8 +8,16 @@ import {
 import { toggleMonitoring } from '@/services/ai/realtime-monitor';
 import { analyzeGainStaging, applyGainStaging } from '@/services/ai/gain-staging';
 import { STREAMING_TARGETS, GENRE_PROFILES } from '@/services/ai/genre-profiles';
-import { generateComposition } from '@/services/ai/composer-engine';
+import { generateComposition, generateVariation } from '@/services/ai/composer-engine';
+import { runMasteringPipeline } from '@/services/ai/mastering-service';
 import type { AISuggestion, MixGenre, GeneratorModel, SuggestionApplyMode } from '@/types/ai';
+import { isMidiClip } from '@/types/audio';
+
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
 
 const APPLY_MODES: { value: SuggestionApplyMode; label: string }[] = [
   { value: 'manual', label: 'Manual' },
@@ -37,6 +45,9 @@ export default function AISidebar() {
   const toggleTrackLock = useAIStore((s) => s.toggleTrackLock);
   const composer = useAIStore((s) => s.composer);
   const setComposer = useAIStore((s) => s.setComposer);
+  const resetAppliedSignatures = useAIStore((s) => s.resetAppliedSignatures);
+  const masteringInProgress = useAIStore((s) => s.masteringInProgress);
+  const masteringResult = useAIStore((s) => s.masteringResult);
 
   const tracks = useSessionStore((s) => s.tracks);
   const selectedTrackId = useSessionStore((s) => s.selectedTrackId);
@@ -72,6 +83,12 @@ export default function AISidebar() {
               className="w-full text-xxs py-1.5 rounded font-medium bg-daw-ai-suggestion/70 text-white hover:bg-daw-ai-suggestion disabled:opacity-30 disabled:cursor-not-allowed"
             >
               {analyzing ? 'Analyzing...' : 'Analyze Mix'}
+            </button>
+            <button
+              onClick={() => resetAppliedSignatures()}
+              className="w-full mt-1 text-xxs py-1 rounded font-medium bg-daw-bg/60 text-daw-text-muted hover:text-daw-text-dim"
+            >
+              Reset AI Memory
             </button>
           </div>
 
@@ -196,6 +213,29 @@ export default function AISidebar() {
             >
               Generate MIDI Idea
             </button>
+            {(() => {
+              const selTrack = tracks.find((t) => t.id === selectedTrackId);
+              const midiClip = selTrack?.clips.find(isMidiClip);
+              if (!midiClip) return null;
+              return (
+                <button
+                  onClick={() => {
+                    const variation = generateVariation(midiClip, composer.temperature, composer.seed);
+                    useSessionStore.getState().addClipToTrack(selTrack!.id, variation);
+                    useAIStore.getState().logActivity({
+                      id: `log-${Date.now()}`,
+                      description: `Generated Markov variation of "${midiClip.name}" (${variation.notes.length} notes)`,
+                      trackId: selTrack!.id,
+                      timestamp: Date.now(),
+                      undoable: false,
+                    });
+                  }}
+                  className="w-full mt-1 text-xxs py-1 rounded font-medium bg-daw-ai-accent/10 text-daw-ai-accent/70 hover:bg-daw-ai-accent/20"
+                >
+                  Variation of Selected Clip
+                </button>
+              );
+            })()}
           </Section>
 
           {lastAnalysis && (
@@ -235,6 +275,23 @@ export default function AISidebar() {
                 >
                   Auto Gain Stage
                 </button>
+              )}
+              <button
+                onClick={() => runMasteringPipeline(config.genre)}
+                disabled={masteringInProgress || tracks.length === 0}
+                className="w-full mt-1.5 text-xxs py-1 rounded font-medium bg-purple-600/20 text-purple-400 hover:bg-purple-600/30 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                {masteringInProgress ? 'Mastering...' : 'Mix & Master'}
+              </button>
+              {masteringResult && (
+                <div className="mt-1.5 space-y-0.5">
+                  {masteringResult.stages.map((stage) => (
+                    <div key={stage.name} className="flex justify-between text-xxs">
+                      <span className={stage.applied ? 'text-green-400' : 'text-daw-text-muted'}>{stage.name}</span>
+                      <span className="text-daw-text-muted/60 text-[8px] truncate ml-1 max-w-[120px]">{stage.description}</span>
+                    </div>
+                  ))}
+                </div>
               )}
             </Section>
           )}
@@ -343,6 +400,11 @@ function SuggestionCard({
         <div className="min-w-0">
           <div className="text-xxs font-medium text-daw-text">{suggestion.title}</div>
           <div className="text-xxs text-daw-text-muted mt-0.5">{suggestion.description}</div>
+          {suggestion.regionStart !== undefined && suggestion.regionEnd !== undefined && (
+            <div className="text-[8px] text-daw-ai-accent/50 mt-0.5">
+              Region: {formatTime(suggestion.regionStart)}–{formatTime(suggestion.regionEnd)}
+            </div>
+          )}
         </div>
         <span className="text-[8px] text-daw-ai-accent/70">{Math.round(suggestion.confidence * 100)}%</span>
       </div>

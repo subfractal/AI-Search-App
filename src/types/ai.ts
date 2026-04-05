@@ -36,6 +36,8 @@ export interface AISuggestion {
   status: SuggestionStatus;
   action: SuggestionAction | null;
   timestamp: number;
+  regionStart?: number;
+  regionEnd?: number;
   rationale?: string;
   evidence?: SuggestionEvidence[];
   constraints?: SuggestionConstraint[];
@@ -190,4 +192,39 @@ export interface ComposerResult {
   noteCount: number;
   model: GeneratorModel;
   bars: number;
+}
+
+// Region-specific analysis
+export interface TimeRegion {
+  start: number;
+  end: number;
+  label?: string;
+}
+
+export interface RegionAnalysis {
+  region: TimeRegion;
+  level: LevelAnalysis;
+  frequency: FrequencyAnalysis;
+}
+
+// Mastering pipeline
+export interface MasteringStage {
+  name: string;
+  description: string;
+  applied: boolean;
+  effects: string[];
+}
+
+export interface MasteringResult {
+  stages: MasteringStage[];
+  finalLufs: number;
+  finalTruePeak: number;
+  genre: MixGenre;
+}
+
+// Evolutionary AI generation
+export interface EvolutionState {
+  population: number[][][];
+  generation: number;
+  fitness: number[];
 }

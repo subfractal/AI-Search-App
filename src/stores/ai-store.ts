@@ -6,6 +6,7 @@ import type {
   RealtimeLevel,
   SuggestionApplyMode,
   ComposerSettings,
+  MasteringResult,
 } from '@/types/ai';
 
 interface AIStore {
@@ -22,6 +23,9 @@ interface AIStore {
   maxAutoPanDelta: number;
   lockedTrackIds: string[];
   composer: ComposerSettings;
+  appliedSignatures: string[];
+  masteringInProgress: boolean;
+  masteringResult: MasteringResult | null;
 
   setEnabled: (enabled: boolean) => void;
   addSuggestion: (suggestion: AISuggestion) => void;
@@ -40,6 +44,10 @@ interface AIStore {
   setMaxAutoPanDelta: (value: number) => void;
   toggleTrackLock: (trackId: string) => void;
   setComposer: (updates: Partial<ComposerSettings>) => void;
+  addAppliedSignature: (sig: string) => void;
+  resetAppliedSignatures: () => void;
+  setMasteringInProgress: (v: boolean) => void;
+  setMasteringResult: (r: MasteringResult | null) => void;
 }
 
 export const useAIStore = create<AIStore>((set) => ({
@@ -62,6 +70,9 @@ export const useAIStore = create<AIStore>((set) => ({
     temperature: 0.45,
     seed: 1,
   },
+  appliedSignatures: [],
+  masteringInProgress: false,
+  masteringResult: null,
 
   setEnabled: (enabled) => set({ enabled }),
 
@@ -116,4 +127,13 @@ export const useAIStore = create<AIStore>((set) => ({
     set((state) => ({
       composer: { ...state.composer, ...updates },
     })),
+  addAppliedSignature: (sig) =>
+    set((state) => ({
+      appliedSignatures: state.appliedSignatures.includes(sig)
+        ? state.appliedSignatures
+        : [...state.appliedSignatures, sig],
+    })),
+  resetAppliedSignatures: () => set({ appliedSignatures: [], suggestions: [] }),
+  setMasteringInProgress: (v) => set({ masteringInProgress: v }),
+  setMasteringResult: (r) => set({ masteringResult: r }),
 }));

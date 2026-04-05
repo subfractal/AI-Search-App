@@ -10,13 +10,19 @@ import type {
 } from '@/types/ai';
 import type { Track } from '@/types/audio';
 import { isAudioClip } from '@/types/audio';
-import { analyzeTrack } from './analysis-engine';
+import { analyzeTrack, analyzeTrackRegions } from './analysis-engine';
 import { calculateLUFS } from './loudness-meter';
 import { analyzeAllMasking } from './masking-detector';
 import { analyzeGainStaging } from './gain-staging';
 import { getGenreProfile, STREAMING_TARGETS } from './genre-profiles';
 import { analyzePhaseCorrelation } from './phase-detector';
 import { generateId } from '@/utils/id';
+
+function formatRegionTime(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
 
 export function analyzeMix(
   tracks: Track[],
@@ -563,6 +569,89 @@ export function generateSuggestions(
         action: null,
         timestamp: Date.now(),
       });
+    }
+  }
+
+  // Region-specific analysis — find localized issues
+  for (const ta of analysis.tracks) {
+    const track = tracks.find((t) => t.id === ta.trackId);
+    const audioClip = track?.clips.find(isAudioClip);
+    if (!audioClip || audioClip.buffer.length / (audioClip.buffer.sampleRate || 44100) < 5) continue;
+
+    const regions = analyzeTrackRegions(
+      ta.trackId,
+      audioClip.buffer,
+      audioClip.buffer.sampleRate,
+      5,
+    );
+
+    for (const region of regions) {
+      // Region clipping
+      if (region.level.clipping && !ta.level.clipping) {
+        const startFmt = formatRegionTime(region.region.start);
+        const endFmt = formatRegionTime(region.region.end);
+        suggestions.push({
+          id: generateId('sug'),
+          type: 'clipping',
+          priority: 'inline',
+          targetTrackId: ta.trackId,
+          title: `Clipping at ${startFmt}–${endFmt} on "${track?.name ?? 'track'}"`,
+          description:
+            `Peak level is ${region.level.peak.toFixed(1)} dB in this region. ` +
+            'Consider reducing gain or applying a limiter.',
+          confidence: 0.85,
+          status: 'pending',
+          action: null,
+          regionStart: region.region.start,
+          regionEnd: region.region.end,
+          timestamp: Date.now(),
+        });
+      }
+
+      // Region low-end buildup compared to whole-track average
+      const lowDiff = region.frequency.low - ta.frequency.low;
+      if (lowDiff > 8 && region.frequency.low - region.frequency.mid > 12) {
+        const startFmt = formatRegionTime(region.region.start);
+        const endFmt = formatRegionTime(region.region.end);
+        suggestions.push({
+          id: generateId('sug'),
+          type: 'eq',
+          priority: 'sidebar',
+          targetTrackId: ta.trackId,
+          title: `Low end buildup at ${startFmt}–${endFmt}`,
+          description:
+            `Low frequency energy is ${lowDiff.toFixed(0)} dB above track average ` +
+            `in this section of "${track?.name ?? 'track'}".`,
+          confidence: 0.6,
+          status: 'pending',
+          action: null,
+          regionStart: region.region.start,
+          regionEnd: region.region.end,
+          timestamp: Date.now(),
+        });
+      }
+
+      // Region volume spike
+      const peakDiff = region.level.peak - ta.level.rms;
+      if (peakDiff > 20 && region.level.peak > -3) {
+        const startFmt = formatRegionTime(region.region.start);
+        suggestions.push({
+          id: generateId('sug'),
+          type: 'level',
+          priority: 'sidebar',
+          targetTrackId: ta.trackId,
+          title: `Volume spike at ${startFmt} on "${track?.name ?? 'track'}"`,
+          description:
+            `Peak reaches ${region.level.peak.toFixed(1)} dB, ` +
+            `${peakDiff.toFixed(0)} dB above track RMS average.`,
+          confidence: 0.55,
+          status: 'pending',
+          action: null,
+          regionStart: region.region.start,
+          regionEnd: region.region.end,
+          timestamp: Date.now(),
+        });
+      }
     }
   }
 

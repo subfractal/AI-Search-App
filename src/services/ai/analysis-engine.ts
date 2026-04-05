@@ -1,4 +1,4 @@
-import type { LevelAnalysis, FrequencyAnalysis, TrackAnalysis } from '@/types/ai';
+import type { LevelAnalysis, FrequencyAnalysis, TrackAnalysis, RegionAnalysis } from '@/types/ai';
 import { calculateLUFS } from './loudness-meter';
 
 export function analyzeLevels(buffer: AudioBuffer): LevelAnalysis {
@@ -155,6 +155,51 @@ export function estimateNoiseFloor(buffer: AudioBuffer): number {
   rmsValues.sort((a, b) => a - b);
   const p10 = rmsValues[Math.floor(rmsValues.length * 0.1)] ?? 1e-10;
   return 20 * Math.log10(Math.max(p10, 1e-10));
+}
+
+export function sliceBuffer(
+  buffer: AudioBuffer,
+  startSec: number,
+  endSec: number,
+): AudioBuffer {
+  const sr = buffer.sampleRate;
+  const startSample = Math.max(0, Math.floor(startSec * sr));
+  const endSample = Math.min(buffer.length, Math.floor(endSec * sr));
+  const length = Math.max(1, endSample - startSample);
+
+  const ctx = new OfflineAudioContext(buffer.numberOfChannels, length, sr);
+  const sliced = ctx.createBuffer(buffer.numberOfChannels, length, sr);
+  for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+    const src = buffer.getChannelData(ch);
+    const dst = sliced.getChannelData(ch);
+    for (let i = 0; i < length; i++) {
+      dst[i] = src[startSample + i] ?? 0;
+    }
+  }
+  return sliced;
+}
+
+export function analyzeTrackRegions(
+  _trackId: string,
+  buffer: AudioBuffer,
+  sampleRate: number,
+  regionSize: number = 5,
+): RegionAnalysis[] {
+  const duration = buffer.length / sampleRate;
+  const regions: RegionAnalysis[] = [];
+
+  for (let start = 0; start < duration; start += regionSize) {
+    const end = Math.min(start + regionSize, duration);
+    if (end - start < 0.5) break; // skip tiny tail regions
+    const sliced = sliceBuffer(buffer, start, end);
+    regions.push({
+      region: { start, end },
+      level: analyzeLevels(sliced),
+      frequency: analyzeFrequencySpectrum(sliced, sampleRate),
+    });
+  }
+
+  return regions;
 }
 
 export function analyzeTrack(

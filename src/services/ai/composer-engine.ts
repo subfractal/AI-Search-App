@@ -1,6 +1,7 @@
 import { useSessionStore } from '@/stores/session-store';
 import { useAIStore } from '@/stores/ai-store';
 import { generateId } from '@/utils/id';
+import { isMidiClip } from '@/types/audio';
 import type { ComposerResult, GeneratorModel } from '@/types/ai';
 import type { MidiClip, MidiNote } from '@/types/audio';
 
@@ -103,7 +104,7 @@ export function generateComposition(): ComposerResult | null {
   const ai = useAIStore.getState();
   const settings = ai.composer;
 
-  let trackId = session.selectedTrackId;
+  let trackId: string = session.selectedTrackId ?? '';
   const selected = session.tracks.find((t) => t.id === trackId);
 
   if (!selected || selected.type !== 'midi') {
@@ -135,5 +136,102 @@ export function generateComposition(): ComposerResult | null {
     noteCount: notes.length,
     model: settings.model,
     bars: settings.bars,
+  };
+}
+
+// --- Real Markov Chain Learning from existing MIDI clips ---
+
+type TransitionMatrix = Map<string, Map<number, number>>;
+
+export function buildTransitionMatrix(
+  notes: MidiNote[],
+  order: number = 1,
+): TransitionMatrix {
+  const matrix: TransitionMatrix = new Map();
+  const sorted = [...notes].sort((a, b) => a.startTime - b.startTime);
+
+  for (let i = order; i < sorted.length; i++) {
+    const context = sorted
+      .slice(i - order, i)
+      .map((n) => n.pitch)
+      .join(',');
+    const next = sorted[i]!.pitch;
+
+    if (!matrix.has(context)) {
+      matrix.set(context, new Map());
+    }
+    const counts = matrix.get(context)!;
+    counts.set(next, (counts.get(next) ?? 0) + 1);
+  }
+
+  return matrix;
+}
+
+function sampleFromMatrix(
+  matrix: TransitionMatrix,
+  context: string,
+  rng: () => number,
+): number | null {
+  const counts = matrix.get(context);
+  if (!counts || counts.size === 0) return null;
+
+  let total = 0;
+  for (const c of counts.values()) total += c;
+
+  let r = rng() * total;
+  for (const [pitch, count] of counts.entries()) {
+    r -= count;
+    if (r <= 0) return pitch;
+  }
+  return counts.keys().next().value ?? null;
+}
+
+function collectExistingMidiNotes(): MidiNote[] {
+  const session = useSessionStore.getState();
+  const allNotes: MidiNote[] = [];
+  for (const track of session.tracks) {
+    for (const clip of track.clips) {
+      if (isMidiClip(clip)) {
+        allNotes.push(...clip.notes);
+      }
+    }
+  }
+  return allNotes;
+}
+
+export function generateVariation(
+  sourceClip: MidiClip,
+  amount: number,
+  seed: number,
+): MidiClip {
+  const rng = createRng(seed);
+  const allNotes = collectExistingMidiNotes();
+  const matrix = buildTransitionMatrix(
+    allNotes.length > 10 ? allNotes : sourceClip.notes,
+    1,
+  );
+
+  const newNotes: MidiNote[] = sourceClip.notes.map((note) => {
+    if (rng() > amount) return { ...note };
+
+    const context = `${note.pitch}`;
+    const newPitch = sampleFromMatrix(matrix, context, rng);
+
+    return {
+      ...note,
+      pitch: newPitch ?? note.pitch + Math.round((rng() - 0.5) * 4),
+      velocity: Math.max(1, Math.min(127,
+        note.velocity + Math.round((rng() - 0.5) * 20 * amount),
+      )),
+    };
+  });
+
+  return {
+    id: generateId('clip'),
+    trackId: sourceClip.trackId,
+    name: `Variation of ${sourceClip.name}`,
+    notes: newNotes,
+    startTime: 0,
+    duration: sourceClip.duration,
   };
 }

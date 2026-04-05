@@ -9,14 +9,15 @@ import InstrumentRack from '@/components/instruments/InstrumentRack';
 import EffectsRack from '@/components/effects/EffectsRack';
 import PianoRoll from '@/components/PianoRoll';
 import RoutingPanel from '@/components/RoutingPanel';
+import WarpPanel from '@/components/WarpPanel';
 import ExportDialog from '@/components/ExportDialog';
 import HistoryPanel from '@/components/HistoryPanel';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { useSessionStore } from '@/stores/session-store';
-import { isMidiClip } from '@/types/audio';
+import { isMidiClip, isAudioClip } from '@/types/audio';
 import type { MidiClip } from '@/types/audio';
 
-export type BottomPanel = 'mixer' | 'instrument' | 'effects' | 'piano-roll' | 'routing' | null;
+export type BottomPanel = 'mixer' | 'instrument' | 'effects' | 'piano-roll' | 'routing' | 'warp' | null;
 
 function useScreenSize() {
   const [size, setSize] = useState({
@@ -96,6 +97,16 @@ export default function App() {
   const tracks = useSessionStore((s) => s.tracks);
   const selectedTrackId = useSessionStore((s) => s.selectedTrackId);
 
+  // Listen for panel-open requests from child components (e.g. TrackHeader W badge)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const panel = (e as CustomEvent).detail as BottomPanel;
+      if (panel) setBottomPanel(panel);
+    };
+    window.addEventListener('daw:open-panel', handler);
+    return () => window.removeEventListener('daw:open-panel', handler);
+  }, []);
+
   const togglePanel = (panel: BottomPanel) => {
     setBottomPanel((current) => (current === panel ? null : panel));
   };
@@ -142,6 +153,28 @@ export default function App() {
       case 'routing':
         content = <RoutingPanel selectedTrackId={selectedTrackId} />;
         break;
+      case 'warp': {
+        const warpTrack = selectedTrackId
+          ? tracks.find((t) => t.id === selectedTrackId)
+          : null;
+        const warpClip = warpTrack?.clips.find(isAudioClip);
+        if (!warpTrack || !warpClip) {
+          content = (
+            <div className="h-full flex items-center justify-center text-xxs text-daw-text-muted">
+              Select an audio track to warp
+            </div>
+          );
+        } else {
+          content = (
+            <WarpPanel
+              clipId={warpClip.id}
+              trackId={warpTrack.id}
+              buffer={warpClip.buffer}
+            />
+          );
+        }
+        break;
+      }
       case 'piano-roll':
         if (!pianoRollClip) return null;
         content = (
