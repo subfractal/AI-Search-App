@@ -8,6 +8,7 @@ import type {
 import {
   DEFAULT_SYNTH_PARAMS,
   DEFAULT_DRUM_PATTERN,
+  INSTRUMENT_PRESETS,
 } from '@/types/instruments';
 import {
   createInstrument,
@@ -17,7 +18,7 @@ import {
 interface InstrumentStore {
   instruments: Record<string, InstrumentConfig>;
 
-  assignInstrument: (trackId: string, type: InstrumentType) => void;
+  assignInstrument: (trackId: string, type: InstrumentType, presetParams?: SynthParams) => void;
   removeInstrument: (trackId: string) => void;
   updateSynth: (trackId: string, params: Partial<SynthParams>) => void;
   setDrumPattern: (trackId: string, pattern: DrumPattern) => void;
@@ -31,16 +32,23 @@ interface InstrumentStore {
 export const useInstrumentStore = create<InstrumentStore>((set, get) => ({
   instruments: {},
 
-  assignInstrument: (trackId, type) => {
-    const params = DEFAULT_SYNTH_PARAMS;
+  assignInstrument: (trackId, type, presetParams?) => {
+    const params = presetParams ?? DEFAULT_SYNTH_PARAMS;
     createInstrument(trackId, type, params);
+
+    // Find the preset name, or fall back to type-based name
+    const preset = INSTRUMENT_PRESETS.find(
+      (p) => p.type === type && p.params === presetParams,
+    );
+    const name = preset?.name ??
+      (type === 'drum-machine' ? 'Drum Machine' :
+        type === 'fm-synth' ? 'FM Synth' :
+          type === 'am-synth' ? 'AM Synth' :
+            type === 'mono-synth' ? 'Mono Lead' : 'Analog Synth');
 
     const config: InstrumentConfig = {
       type,
-      name: type === 'drum-machine' ? 'Drum Machine' :
-        type === 'fm-synth' ? 'FM Synth' :
-          type === 'am-synth' ? 'AM Synth' :
-            type === 'mono-synth' ? 'Mono Lead' : 'Analog Synth',
+      name,
       synthParams: params,
       drumPattern: type === 'drum-machine'
         ? structuredClone(DEFAULT_DRUM_PATTERN) : undefined,

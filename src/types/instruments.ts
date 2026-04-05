@@ -108,12 +108,252 @@ export const DEFAULT_DRUM_PATTERN: DrumPattern = {
   steps: DEFAULT_DRUM_SOUNDS.map(() => new Array(16).fill(false) as boolean[]),
 };
 
-export const INSTRUMENT_PRESETS: Array<{ name: string; type: InstrumentType }> = [
-  { name: 'Analog Synth', type: 'synth' },
-  { name: 'FM Synth', type: 'fm-synth' },
-  { name: 'AM Synth', type: 'am-synth' },
-  { name: 'Mono Lead', type: 'mono-synth' },
-  { name: 'Drum Machine', type: 'drum-machine' },
+export interface InstrumentPreset {
+  name: string;
+  type: InstrumentType;
+  category: PresetCategory;
+  params?: SynthParams;
+}
+
+export type PresetCategory =
+  | 'keys'
+  | 'bass'
+  | 'lead'
+  | 'pad'
+  | 'pluck'
+  | 'brass'
+  | 'strings'
+  | 'drums';
+
+export const PRESET_CATEGORIES: { id: PresetCategory; label: string }[] = [
+  { id: 'keys', label: 'Keys' },
+  { id: 'bass', label: 'Bass' },
+  { id: 'lead', label: 'Lead' },
+  { id: 'pad', label: 'Pad' },
+  { id: 'pluck', label: 'Pluck' },
+  { id: 'brass', label: 'Brass' },
+  { id: 'strings', label: 'Strings' },
+  { id: 'drums', label: 'Drums' },
+];
+
+export const INSTRUMENT_PRESETS: InstrumentPreset[] = [
+  // ── Keys ──
+  {
+    name: 'Electric Piano', type: 'fm-synth', category: 'keys',
+    params: {
+      oscillator: 'sine', filterType: 'lowpass',
+      filterFrequency: 5000, filterResonance: 0.5,
+      attack: 0.005, decay: 0.8, sustain: 0.4, release: 1.2,
+    },
+  },
+  {
+    name: 'Bright Piano', type: 'synth', category: 'keys',
+    params: {
+      oscillator: 'triangle', filterType: 'lowpass',
+      filterFrequency: 8000, filterResonance: 0.3,
+      attack: 0.002, decay: 1.0, sustain: 0.3, release: 0.8,
+    },
+  },
+  {
+    name: 'Organ', type: 'synth', category: 'keys',
+    params: {
+      oscillator: 'sine', filterType: 'lowpass',
+      filterFrequency: 3000, filterResonance: 1,
+      attack: 0.01, decay: 0.1, sustain: 0.9, release: 0.1,
+    },
+  },
+  {
+    name: 'Clavinet', type: 'fm-synth', category: 'keys',
+    params: {
+      oscillator: 'square', filterType: 'bandpass',
+      filterFrequency: 2500, filterResonance: 3,
+      attack: 0.001, decay: 0.4, sustain: 0.2, release: 0.3,
+    },
+  },
+  // ── Bass ──
+  {
+    name: 'Sub Bass', type: 'mono-synth', category: 'bass',
+    params: {
+      oscillator: 'sine', filterType: 'lowpass',
+      filterFrequency: 400, filterResonance: 2,
+      attack: 0.005, decay: 0.3, sustain: 0.8, release: 0.2,
+    },
+  },
+  {
+    name: 'Analog Bass', type: 'mono-synth', category: 'bass',
+    params: {
+      oscillator: 'sawtooth', filterType: 'lowpass',
+      filterFrequency: 800, filterResonance: 6,
+      attack: 0.005, decay: 0.2, sustain: 0.6, release: 0.15,
+    },
+  },
+  {
+    name: 'Wobble Bass', type: 'mono-synth', category: 'bass',
+    params: {
+      oscillator: 'square', filterType: 'lowpass',
+      filterFrequency: 600, filterResonance: 10,
+      attack: 0.01, decay: 0.4, sustain: 0.5, release: 0.3,
+    },
+  },
+  {
+    name: 'FM Bass', type: 'fm-synth', category: 'bass',
+    params: {
+      oscillator: 'sine', filterType: 'lowpass',
+      filterFrequency: 1200, filterResonance: 2,
+      attack: 0.005, decay: 0.3, sustain: 0.4, release: 0.2,
+    },
+  },
+  // ── Lead ──
+  {
+    name: 'Saw Lead', type: 'mono-synth', category: 'lead',
+    params: {
+      oscillator: 'sawtooth', filterType: 'lowpass',
+      filterFrequency: 4000, filterResonance: 3,
+      attack: 0.01, decay: 0.1, sustain: 0.8, release: 0.3,
+    },
+  },
+  {
+    name: 'Square Lead', type: 'mono-synth', category: 'lead',
+    params: {
+      oscillator: 'square', filterType: 'lowpass',
+      filterFrequency: 3000, filterResonance: 2,
+      attack: 0.01, decay: 0.15, sustain: 0.7, release: 0.25,
+    },
+  },
+  {
+    name: 'Acid Lead', type: 'mono-synth', category: 'lead',
+    params: {
+      oscillator: 'sawtooth', filterType: 'lowpass',
+      filterFrequency: 1500, filterResonance: 15,
+      attack: 0.005, decay: 0.2, sustain: 0.3, release: 0.15,
+    },
+  },
+  {
+    name: 'FM Bell Lead', type: 'fm-synth', category: 'lead',
+    params: {
+      oscillator: 'sine', filterType: 'lowpass',
+      filterFrequency: 6000, filterResonance: 0.5,
+      attack: 0.001, decay: 1.5, sustain: 0.1, release: 1.0,
+    },
+  },
+  // ── Pad ──
+  {
+    name: 'Warm Pad', type: 'synth', category: 'pad',
+    params: {
+      oscillator: 'sawtooth', filterType: 'lowpass',
+      filterFrequency: 1200, filterResonance: 1,
+      attack: 0.8, decay: 1.0, sustain: 0.8, release: 2.0,
+    },
+  },
+  {
+    name: 'Ambient Pad', type: 'synth', category: 'pad',
+    params: {
+      oscillator: 'sine', filterType: 'lowpass',
+      filterFrequency: 2000, filterResonance: 0.5,
+      attack: 1.5, decay: 2.0, sustain: 0.9, release: 3.0,
+    },
+  },
+  {
+    name: 'Dark Pad', type: 'synth', category: 'pad',
+    params: {
+      oscillator: 'triangle', filterType: 'lowpass',
+      filterFrequency: 600, filterResonance: 2,
+      attack: 1.0, decay: 1.5, sustain: 0.7, release: 2.5,
+    },
+  },
+  {
+    name: 'Shimmer Pad', type: 'am-synth', category: 'pad',
+    params: {
+      oscillator: 'sine', filterType: 'lowpass',
+      filterFrequency: 4000, filterResonance: 1,
+      attack: 1.2, decay: 2.0, sustain: 0.85, release: 3.5,
+    },
+  },
+  // ── Pluck ──
+  {
+    name: 'Pluck Synth', type: 'synth', category: 'pluck',
+    params: {
+      oscillator: 'triangle', filterType: 'lowpass',
+      filterFrequency: 5000, filterResonance: 1,
+      attack: 0.001, decay: 0.4, sustain: 0.05, release: 0.3,
+    },
+  },
+  {
+    name: 'Harp', type: 'synth', category: 'pluck',
+    params: {
+      oscillator: 'sine', filterType: 'lowpass',
+      filterFrequency: 4000, filterResonance: 0.5,
+      attack: 0.001, decay: 0.8, sustain: 0.02, release: 0.6,
+    },
+  },
+  {
+    name: 'Guitar', type: 'fm-synth', category: 'pluck',
+    params: {
+      oscillator: 'triangle', filterType: 'lowpass',
+      filterFrequency: 3000, filterResonance: 1.5,
+      attack: 0.002, decay: 0.6, sustain: 0.1, release: 0.5,
+    },
+  },
+  {
+    name: 'Marimba', type: 'fm-synth', category: 'pluck',
+    params: {
+      oscillator: 'sine', filterType: 'lowpass',
+      filterFrequency: 3500, filterResonance: 0.5,
+      attack: 0.001, decay: 0.5, sustain: 0.0, release: 0.3,
+    },
+  },
+  // ── Brass ──
+  {
+    name: 'Brass Stab', type: 'synth', category: 'brass',
+    params: {
+      oscillator: 'sawtooth', filterType: 'lowpass',
+      filterFrequency: 2000, filterResonance: 2,
+      attack: 0.05, decay: 0.3, sustain: 0.6, release: 0.3,
+    },
+  },
+  {
+    name: 'Trumpet', type: 'synth', category: 'brass',
+    params: {
+      oscillator: 'square', filterType: 'lowpass',
+      filterFrequency: 3500, filterResonance: 1.5,
+      attack: 0.08, decay: 0.2, sustain: 0.7, release: 0.2,
+    },
+  },
+  {
+    name: 'French Horn', type: 'synth', category: 'brass',
+    params: {
+      oscillator: 'sawtooth', filterType: 'lowpass',
+      filterFrequency: 1500, filterResonance: 1,
+      attack: 0.15, decay: 0.4, sustain: 0.7, release: 0.5,
+    },
+  },
+  // ── Strings ──
+  {
+    name: 'String Ensemble', type: 'synth', category: 'strings',
+    params: {
+      oscillator: 'sawtooth', filterType: 'lowpass',
+      filterFrequency: 3000, filterResonance: 0.5,
+      attack: 0.4, decay: 0.5, sustain: 0.9, release: 1.0,
+    },
+  },
+  {
+    name: 'Solo Violin', type: 'synth', category: 'strings',
+    params: {
+      oscillator: 'sawtooth', filterType: 'lowpass',
+      filterFrequency: 5000, filterResonance: 1,
+      attack: 0.15, decay: 0.3, sustain: 0.8, release: 0.4,
+    },
+  },
+  {
+    name: 'Cello', type: 'synth', category: 'strings',
+    params: {
+      oscillator: 'sawtooth', filterType: 'lowpass',
+      filterFrequency: 2000, filterResonance: 0.8,
+      attack: 0.2, decay: 0.4, sustain: 0.85, release: 0.6,
+    },
+  },
+  // ── Drums ──
+  { name: 'Drum Machine', type: 'drum-machine', category: 'drums' },
 ];
 
 export const NOTE_NAMES = [

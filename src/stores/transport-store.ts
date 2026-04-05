@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import type { TransportState } from '@/types/audio';
 import * as transport from '@/services/transport-service';
 import { setMetronomeEnabled } from '@/services/metronome-service';
+import { scheduleMidiClips, clearAllScheduledMidi } from '@/services/midi-playback';
+import { useSessionStore } from '@/stores/session-store';
 
 interface TransportStore {
   state: TransportState;
@@ -31,6 +33,7 @@ export const useTransportStore = create<TransportStore>((set, get) => ({
 
   play: async () => {
     await transport.play();
+    scheduleMidiClips(useSessionStore.getState().tracks);
     set({ state: 'playing' });
   },
 
@@ -40,6 +43,7 @@ export const useTransportStore = create<TransportStore>((set, get) => ({
   },
 
   stop: () => {
+    clearAllScheduledMidi();
     transport.stop();
     set({ state: 'stopped' });
   },

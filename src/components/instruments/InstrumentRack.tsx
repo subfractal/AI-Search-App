@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { useSessionStore } from '@/stores/session-store';
 import { useInstrumentStore } from '@/stores/instrument-store';
-import { INSTRUMENT_PRESETS } from '@/types/instruments';
-import type { InstrumentType } from '@/types/instruments';
+import { INSTRUMENT_PRESETS, PRESET_CATEGORIES } from '@/types/instruments';
+import type { InstrumentType, PresetCategory } from '@/types/instruments';
 import SynthPanel from './SynthPanel';
 import DrumMachine from './DrumMachine';
 
@@ -12,6 +13,7 @@ export default function InstrumentRack() {
   );
   const instruments = useInstrumentStore((s) => s.instruments);
   const assignInstrument = useInstrumentStore((s) => s.assignInstrument);
+  const [activeCategory, setActiveCategory] = useState<PresetCategory>('keys');
 
   if (!selectedTrackId || !selectedTrack) {
     return (
@@ -34,17 +36,40 @@ export default function InstrumentRack() {
   const config = instruments[selectedTrackId];
 
   if (!config) {
+    const categoryPresets = INSTRUMENT_PRESETS.filter(
+      (p) => p.category === activeCategory,
+    );
+
     return (
       <div className="p-3">
         <span className="daw-section-label">Load Instrument</span>
-        <div className="flex flex-wrap gap-1.5 mt-2">
-          {INSTRUMENT_PRESETS.map((preset) => (
+
+        {/* Category tabs */}
+        <div className="flex gap-0.5 mt-2 overflow-x-auto scrollbar-none pb-1">
+          {PRESET_CATEGORIES.map((cat) => (
             <button
-              key={preset.type}
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
+              className={`text-[9px] px-2 py-1 rounded shrink-0 transition-all
+                         ${activeCategory === cat.id
+                  ? 'bg-daw-accent/20 text-daw-accent border border-daw-accent/30'
+                  : 'bg-daw-bg text-daw-text-muted/60 border border-daw-border/20 hover:text-daw-text-dim'}`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Presets in selected category */}
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {categoryPresets.map((preset) => (
+            <button
+              key={preset.name}
               onClick={() =>
                 assignInstrument(
                   selectedTrackId,
                   preset.type as InstrumentType,
+                  preset.params,
                 )
               }
               className="text-xxs py-2 px-3 rounded
