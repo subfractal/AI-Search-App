@@ -139,8 +139,8 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
             <span
               className="text-xxs px-1 py-px leading-none font-medium"
               style={{
-                backgroundColor: 'rgba(83, 192, 240, 0.15)',
-                color: '#53c0f0',
+                backgroundColor: 'rgba(209, 209, 209, 0.08)',
+                color: '#D1D1D1',
               }}
               title={`${keyResult.fullName} (${keyResult.camelotCode})`}
             >
@@ -222,8 +222,8 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
             className={`w-6 h-5 text-[9px] font-bold transition-all
                        flex items-center justify-center
                        ${track.armed
-                ? 'bg-red-500/90 text-white'
-                : 'bg-daw-bg/60 text-daw-text-muted/40 hover:text-red-400/60'}`}
+                ? 'bg-[#E63946]/90 text-white'
+                : 'bg-daw-bg/60 text-daw-text-muted/40 hover:text-[#E63946]/60'}`}
             onClick={(e) => {
               e.stopPropagation();
               updateTrack(trackId, { armed: !track.armed });

@@ -20,8 +20,8 @@ export default function HistoryPanel({ open, onClose }: HistoryPanelProps) {
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-1.5
                       border-b border-daw-border">
-        <span className="text-xxs font-semibold text-daw-text-dim uppercase tracking-wide">
-          History
+        <span className="text-[7px] font-mono uppercase tracking-[3px] text-[#E63946]/60">
+          DKT-HISTORY
         </span>
         <button
           onClick={onClose}

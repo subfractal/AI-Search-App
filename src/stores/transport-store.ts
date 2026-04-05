@@ -8,6 +8,7 @@ import { useSessionStore } from '@/stores/session-store';
 interface TransportStore {
   state: TransportState;
   bpm: number;
+  position: number;
   loopEnabled: boolean;
   loopStart: number;
   loopEnd: number;
@@ -21,6 +22,7 @@ interface TransportStore {
   launchScene: (sceneIndex: number) => void;
   stopScene: (sceneIndex: number) => void;
   setBpm: (bpm: number) => void;
+  setPosition: (seconds: number) => void;
   setLoop: (start: number, end: number, enabled: boolean) => void;
   toggleLoop: () => void;
   toggleMetronome: () => void;
@@ -29,6 +31,7 @@ interface TransportStore {
 export const useTransportStore = create<TransportStore>((set, get) => ({
   state: 'stopped',
   bpm: 120,
+  position: 0,
   loopEnabled: false,
   loopStart: 0,
   loopEnd: 16,
@@ -87,6 +90,11 @@ export const useTransportStore = create<TransportStore>((set, get) => ({
   setBpm: (bpm) => {
     transport.setBpm(bpm);
     set({ bpm });
+  },
+
+  setPosition: (seconds) => {
+    transport.seekTo(seconds);
+    set({ position: seconds });
   },
 
   setLoop: (start, end, enabled) => {

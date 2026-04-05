@@ -679,6 +679,9 @@ export default function PianoRoll({ trackId, clip, onClose }: PianoRollProps) {
                    border-daw-border shrink-0 overflow-x-auto scrollbar-none"
         style={{ height: TOOLBAR_HEIGHT }}
       >
+        <span className="text-[7px] font-mono uppercase tracking-[2px] text-[#E63946]/60 shrink-0 mr-1">
+          DKT-MIDI-EDIT
+        </span>
         {/* Tool buttons */}
         <div className="flex items-center gap-0.5 shrink-0">
           {([

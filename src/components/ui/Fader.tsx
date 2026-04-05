@@ -129,7 +129,7 @@ export default function Fader({
             left: (trackW - slotW) / 2 + 1,
             bottom: 5,
             height: `${Math.max(0, pct - 2)}%`,
-            background: 'linear-gradient(to top, rgba(247,127,0,0.15) 0%, rgba(247,127,0,0.02) 100%)',
+            background: 'linear-gradient(to top, rgba(230,57,70,0.2) 0%, rgba(230,57,70,0.03) 100%)',
           }}
         />
 

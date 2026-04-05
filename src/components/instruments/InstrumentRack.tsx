@@ -9,6 +9,7 @@ import SubtractiveSynthPanel from './SubtractiveSynthPanel';
 import WavetableSynthPanel from './WavetableSynthPanel';
 import SamplerPanel from './SamplerPanel';
 import PatternVariationPanel from '@/components/drums/PatternVariationPanel';
+import StepSequencer from './StepSequencer';
 
 export default function InstrumentRack() {
   const selectedTrackId = useSessionStore((s) => s.selectedTrackId);
@@ -133,7 +134,15 @@ export default function InstrumentRack() {
               </div>
             </div>
           );
-          return <SynthPanel trackId={selectedTrackId} />;
+          // For all other synth types, show synth panel + step sequencer
+          return (
+            <div className="flex flex-col h-full">
+              <SynthPanel trackId={selectedTrackId} />
+              <div className="border-t border-daw-border/20 flex-1 min-h-[180px]">
+                <StepSequencer trackId={selectedTrackId} />
+              </div>
+            </div>
+          );
         })()}
       </div>
     </div>

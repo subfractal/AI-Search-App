@@ -586,6 +586,9 @@ export default function Timeline() {
     <div className="w-full h-full flex flex-col">
       {/* ── Clip Editing Toolbar ── */}
       <div className="flex items-center h-7 px-2 gap-1 bg-daw-surface border-b border-daw-border/20 shrink-0">
+        <span className="text-[7px] font-mono uppercase tracking-[2px] text-[#E63946]/60 shrink-0 mr-0.5">
+          DKT-TL
+        </span>
         {/* View mode toggle */}
         <button
           onClick={() => setViewMode(viewMode === 'arrangement' ? 'session' : 'arrangement')}

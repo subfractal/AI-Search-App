@@ -99,7 +99,7 @@ export default function WarpPanel({
     <div className="flex flex-col gap-2 p-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <span className="daw-section-label">Warp</span>
+        <span className="text-[7px] font-mono uppercase tracking-[3px] text-[#E63946]/60">DKT-WARP-ENGINE</span>
         <button
           onClick={() => setEnabled(clipId, !config.enabled)}
           className={

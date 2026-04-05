@@ -82,7 +82,7 @@ export default function AISidebar() {
             <div className={`w-2 h-2 bg-[#E63946]
                             ${analyzing ? 'daw-analyzing' : ''}
                             ${enabled ? '' : 'opacity-40'}`} />
-            <span className="text-[10px] font-semibold tracking-wider uppercase text-[#E63946]">AI Konstrukt</span>
+            <span className="text-[10px] font-semibold tracking-wider uppercase text-[#E63946]">AI Konstrukt Engine</span>
           </div>
           <button
             onClick={() => setEnabled(!enabled)}
@@ -141,7 +141,7 @@ export default function AISidebar() {
             </button>
           </div>
 
-          <Section title="Assistant Policy">
+          <Section title="DKT-AI-POLICY">
             <div className="flex items-center justify-between">
               <span className="text-xxs text-daw-text-muted">Mode</span>
               <select
@@ -176,7 +176,7 @@ export default function AISidebar() {
             )}
           </Section>
 
-          <Section title="Genre & Monitor">
+          <Section title="DKT-GENRE-MON">
             <div className="flex items-center justify-between">
               <span className="text-xxs text-daw-text-muted">Genre</span>
               <select
@@ -207,7 +207,7 @@ export default function AISidebar() {
             )}
           </Section>
 
-          <Section title="AI Composer">
+          <Section title="DKT-AI-COMPOSER">
             <div className="grid grid-cols-2 gap-1">
               <div>
                 <select
@@ -372,7 +372,7 @@ export default function AISidebar() {
           </Section>
 
           {lastAnalysis && (
-            <Section title="Mix Overview">
+            <Section title="DKT-MIX-ANALYSIS">
               <StatRow label="Peak" value={`${lastAnalysis.overallLevel.peak.toFixed(1)} dB`} warn={lastAnalysis.overallLevel.clipping} />
               <StatRow label="RMS" value={`${lastAnalysis.overallLevel.rms.toFixed(1)} dB`} />
               <StatRow label="DR" value={`${lastAnalysis.overallLevel.dynamicRange.toFixed(1)} dB`} />
@@ -480,7 +480,7 @@ export default function AISidebar() {
           )}
 
           {activityLog.length > 0 && (
-            <Section title="Activity">
+            <Section title="DKT-LOG">
               {activityLog.slice(0, 15).map((entry) => (
                 <div key={entry.id} className="text-xxs font-mono text-[#E63946]/70 py-0.5 leading-tight">
                   &gt; {entry.description}

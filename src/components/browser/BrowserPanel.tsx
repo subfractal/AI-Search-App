@@ -41,6 +41,9 @@ export default function BrowserPanel() {
     <div className="flex flex-col h-full">
       {/* Tab bar */}
       <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-daw-border/20 shrink-0">
+        <span className="text-[7px] font-mono uppercase tracking-[2px] text-[#E63946]/60 mr-1 shrink-0">
+          DKT-LIB
+        </span>
         {TABS.map((t) => (
           <button
             key={t.value}

@@ -224,14 +224,24 @@ export default function TransportBar({
       {/* Row 1: Branding + Transport + LCD + Meter */}
       <div className="flex items-center h-14 px-3 gap-3">
 
-        {/* ── DKT Branding ── */}
-        <div className="shrink-0 flex flex-col leading-none mr-1">
-          <span className="text-[8px] font-mono uppercase tracking-[3px] text-daw-text-muted/60">
-            DKT Workstation
-          </span>
-          <span className="text-[16px] font-bold tracking-tight text-daw-text leading-none">
-            de-konstrukt
-          </span>
+        {/* ── DKT Branding + Logo ── */}
+        <div className="shrink-0 flex items-center gap-2 mr-1">
+          {/* Logo mark — DKT block icon */}
+          <div className="w-8 h-8 shrink-0 flex items-center justify-center bg-daw-bg border border-daw-border/40">
+            <svg width="20" height="20" viewBox="0 0 32 32">
+              <rect x="4" y="4" width="10" height="24" fill="#E63946" />
+              <rect x="18" y="4" width="10" height="10" fill="#E63946" />
+              <rect x="18" y="18" width="10" height="10" fill="#F77F00" />
+            </svg>
+          </div>
+          <div className="flex flex-col leading-none">
+            <span className="text-[7px] font-mono uppercase tracking-[4px] text-[#E63946]/80">
+              DKT WORKSTATION PRO
+            </span>
+            <span className="text-[15px] font-bold tracking-tight text-daw-text leading-none">
+              de-konstrukt
+            </span>
+          </div>
         </div>
 
         {/* ── Transport Buttons ── */}

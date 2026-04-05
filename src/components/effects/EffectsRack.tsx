@@ -26,16 +26,17 @@ const CATEGORY_ICONS: Record<string, string> = {
   phaser: 'O',
 };
 
+// Industrial monochrome + Signal Red accent palette
 const CATEGORY_COLORS: Record<string, string> = {
-  eq: 'bg-sky-500/20 text-sky-400',
-  compressor: 'bg-amber-500/20 text-amber-400',
-  filter: 'bg-emerald-500/20 text-emerald-400',
-  pitchShift: 'bg-violet-500/20 text-violet-400',
-  reverb: 'bg-indigo-500/20 text-indigo-400',
-  delay: 'bg-teal-500/20 text-teal-400',
-  chorus: 'bg-pink-500/20 text-pink-400',
-  distortion: 'bg-red-500/20 text-red-400',
-  phaser: 'bg-orange-500/20 text-orange-400',
+  eq: 'bg-[#E63946]/15 text-[#E63946]',
+  compressor: 'bg-[#E63946]/15 text-[#E63946]',
+  filter: 'bg-daw-text-muted/10 text-daw-text-dim',
+  pitchShift: 'bg-daw-text-muted/10 text-daw-text-dim',
+  reverb: 'bg-[#F77F00]/15 text-[#F77F00]',
+  delay: 'bg-[#F77F00]/15 text-[#F77F00]',
+  chorus: 'bg-daw-text-muted/10 text-daw-text-dim',
+  distortion: 'bg-[#E63946]/20 text-[#E63946]',
+  phaser: 'bg-daw-text-muted/10 text-daw-text-dim',
 };
 
 export default function EffectsRack({ trackId, trackName }: EffectsRackProps) {
@@ -85,7 +86,7 @@ export default function EffectsRack({ trackId, trackName }: EffectsRackProps) {
       <div className="flex items-center justify-between px-3 py-2 border-b
                       border-daw-border/20 shrink-0">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-daw-text">FX</span>
+          <span className="text-[8px] font-mono uppercase tracking-[3px] text-[#E63946]/80">DKT-FX-RACK</span>
           <span className="text-xs text-daw-text-muted">{trackName}</span>
           {effects.length > 0 && (
             <span className="text-xxs bg-daw-accent/15 text-daw-accent px-1.5

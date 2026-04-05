@@ -163,15 +163,15 @@ export const DEFAULT_PARAMS: Record<EffectType, EffectParams> = {
 };
 
 export const EFFECT_LABELS: Record<EffectType, string> = {
-  reverb: 'Reverb',
-  delay: 'Delay',
-  eq: 'EQ3',
-  compressor: 'Compressor',
-  chorus: 'Chorus',
-  distortion: 'Distortion',
-  phaser: 'Phaser',
-  filter: 'Filter',
-  pitchShift: 'Pitch Shift',
+  reverb: 'DKT-VERB-01',
+  delay: 'DKT-DLY-01',
+  eq: 'DKT-EQ3-01',
+  compressor: 'DKT-COMP-01',
+  chorus: 'DKT-CHOR-01',
+  distortion: 'DKT-DIST-01',
+  phaser: 'DKT-PHAS-01',
+  filter: 'DKT-FILT-01',
+  pitchShift: 'DKT-PTCH-01',
 };
 
 export interface EffectPreset {

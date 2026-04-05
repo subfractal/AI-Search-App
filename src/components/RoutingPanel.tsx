@@ -45,8 +45,8 @@ function BusMeter({ busId, height = 80 }: { busId: string; height?: number }) {
       const y = height - (i + 1) * (segH + gap);
       const ratio = i / total;
       if (i < filled) {
-        ctx.fillStyle = ratio > 0.92 ? '#ef4444'
-          : ratio > 0.75 ? '#f5c542' : '#4ade80';
+        ctx.fillStyle = ratio > 0.92 ? '#E63946'
+          : ratio > 0.75 ? '#F77F00' : '#D1D1D1';
       } else {
         ctx.fillStyle = '#1a1a1a';
       }
@@ -744,17 +744,20 @@ export default function RoutingPanel({ selectedTrackId }: RoutingPanelProps) {
   const [activeTab, setActiveTab] = useState<TabId>('buses');
 
   const tabs: { id: TabId; label: string }[] = [
-    { id: 'buses', label: 'Buses' },
-    { id: 'sends', label: 'Sends' },
-    { id: 'sidechain', label: 'Sidechain' },
-    { id: 'groups', label: 'Groups' },
-    { id: 'monitor', label: 'Monitor' },
+    { id: 'buses', label: 'DKT-BUS' },
+    { id: 'sends', label: 'DKT-SEND' },
+    { id: 'sidechain', label: 'DKT-SC' },
+    { id: 'groups', label: 'DKT-GRP' },
+    { id: 'monitor', label: 'DKT-MON' },
   ];
 
   return (
     <div className="flex flex-col h-full bg-daw-surface border-t border-daw-border">
       {/* Tab bar */}
-      <div className="flex border-b border-daw-border">
+      <div className="flex items-center border-b border-daw-border">
+        <span className="text-[7px] font-mono uppercase tracking-[3px] text-[#E63946]/60 px-3 shrink-0">
+          DKT-ROUTE
+        </span>
         {tabs.map((tab) => (
           <button
             key={tab.id}
