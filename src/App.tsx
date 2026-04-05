@@ -13,6 +13,7 @@ import WarpPanel from '@/components/WarpPanel';
 import ExportDialog from '@/components/ExportDialog';
 import HistoryPanel from '@/components/HistoryPanel';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { initAudioContext } from '@/services/audio-engine';
 import { useSessionStore } from '@/stores/session-store';
 import { isMidiClip, isAudioClip } from '@/types/audio';
 import type { MidiClip } from '@/types/audio';
@@ -75,6 +76,22 @@ function useResizablePanel(defaultHeight: number, minH: number, maxH: number) {
 export default function App() {
   useKeyboardShortcuts();
   const { isMobile, height: screenH } = useScreenSize();
+
+  // iOS WebKit requires AudioContext to be started during a direct user gesture.
+  // Eagerly init on first tap/click so file loading works reliably.
+  useEffect(() => {
+    const startAudio = () => {
+      initAudioContext();
+      window.removeEventListener('pointerdown', startAudio);
+      window.removeEventListener('touchstart', startAudio);
+    };
+    window.addEventListener('pointerdown', startAudio, { once: true });
+    window.addEventListener('touchstart', startAudio, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', startAudio);
+      window.removeEventListener('touchstart', startAudio);
+    };
+  }, []);
 
   const minPanelH = isMobile ? 100 : 140;
   const maxPanelH = Math.floor(screenH * 0.5);
