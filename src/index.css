@@ -1,0 +1,140 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body, #root {
+    height: 100%;
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  body {
+    background: #0a0a0b;
+    color: #e2e2ea;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #2a2a35;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #35354a;
+  }
+
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
+  ::selection {
+    background: rgba(255, 107, 53, 0.3);
+    color: #fff;
+  }
+
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer components {
+  .daw-button {
+    @apply px-2.5 py-1 rounded text-xs font-medium transition-all duration-100
+           bg-daw-panel text-daw-text-dim border border-daw-border/40
+           hover:bg-daw-panel-hover hover:text-daw-text hover:border-daw-border-light/60
+           active:scale-[0.97]
+           disabled:opacity-25 disabled:cursor-not-allowed disabled:active:scale-100;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.03);
+  }
+
+  .daw-button-active {
+    @apply bg-daw-accent text-white border-daw-accent/80;
+    box-shadow: 0 0 8px rgba(255, 107, 53, 0.2), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+
+  .daw-input {
+    @apply bg-daw-bg border border-daw-border/50 rounded px-2 py-1 text-xs
+           text-daw-text focus:outline-none focus:border-daw-accent/50
+           transition-colors;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+  }
+
+  .daw-panel {
+    @apply bg-daw-surface border-daw-border/30;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+
+  .daw-divider {
+    @apply w-px bg-daw-border/30 self-stretch;
+  }
+
+  .daw-section-label {
+    @apply text-xxs font-semibold text-daw-text-muted uppercase tracking-wider;
+  }
+
+  /* LCD display for transport */
+  .daw-lcd {
+    background: #060810;
+    border: 1px solid #1a1a28;
+    border-radius: 4px;
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.8), inset 0 0 1px rgba(0,0,0,0.5);
+    color: #b8e0ff;
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Track type indicator */
+  .daw-type-audio {
+    color: #3dd68c;
+    background: rgba(61, 214, 140, 0.08);
+    border-color: rgba(61, 214, 140, 0.2);
+  }
+  .daw-type-midi {
+    color: #4ba0ff;
+    background: rgba(75, 160, 255, 0.08);
+    border-color: rgba(75, 160, 255, 0.2);
+  }
+  .daw-type-ai {
+    color: #a78bfa;
+    background: rgba(167, 139, 250, 0.08);
+    border-color: rgba(167, 139, 250, 0.2);
+  }
+
+  /* Analyzing pulse */
+  @keyframes analyze-ring {
+    0% { box-shadow: 0 0 0 0 rgba(167, 139, 250, 0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(167, 139, 250, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(167, 139, 250, 0); }
+  }
+  .daw-analyzing {
+    animation: analyze-ring 1.5s ease-in-out infinite;
+  }
+}
