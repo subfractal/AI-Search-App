@@ -24,9 +24,19 @@ export default function TrackList() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    for (const file of Array.from(files)) {
+    // Capture files immediately — some browsers clear the FileList on input reset
+    const fileList = Array.from(files);
+
+    // Reset input immediately so it can be re-triggered even if loading is slow
+    e.target.value = '';
+
+    for (const file of fileList) {
       try {
         const buffer = await loadAudioFile(file);
+        if (!buffer || buffer.length === 0) {
+          console.warn(`[DAW] Skipping "${file.name}" — decoded buffer is empty`);
+          continue;
+        }
         const name = file.name.replace(/\.[^.]+$/, '');
         const trackId = addAudioTrack(name);
         initStrip(trackId);
@@ -43,12 +53,9 @@ export default function TrackList() {
 
         addClipToTrack(trackId, clip);
       } catch (err) {
-        console.error(`Failed to load ${file.name}:`, err);
+        console.error(`[DAW] Failed to load "${file.name}":`, err);
       }
     }
-
-    // Reset input so same file can be re-selected
-    e.target.value = '';
   };
 
   const handleAddMidi = () => {

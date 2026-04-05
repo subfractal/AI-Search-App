@@ -20,9 +20,28 @@ export function getAudioContext(): AudioContext {
 export async function loadAudioFile(file: File): Promise<AudioBuffer> {
   // Ensure audio context is started before decoding
   await initAudioContext();
-  const arrayBuffer = await file.arrayBuffer();
+
+  // Resume context if it was suspended (mobile browsers, backgrounded tabs)
   const ctx = getAudioContext();
-  return ctx.decodeAudioData(arrayBuffer);
+  if (ctx.state === 'suspended') {
+    await ctx.resume();
+  }
+
+  const arrayBuffer = await file.arrayBuffer();
+  if (arrayBuffer.byteLength === 0) {
+    throw new Error(`File "${file.name}" is empty`);
+  }
+
+  // decodeAudioData can throw or return null on some browsers — wrap defensively
+  try {
+    const buffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
+    return buffer;
+  } catch (err) {
+    // Retry once with a fresh copy (some browsers corrupt the buffer on first decode failure)
+    console.warn(`[DAW] Retrying decode for "${file.name}":`, err);
+    const copy = await file.arrayBuffer();
+    return ctx.decodeAudioData(copy);
+  }
 }
 
 export async function loadAudioFromUrl(url: string): Promise<AudioBuffer> {

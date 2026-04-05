@@ -86,6 +86,8 @@ export const useAIStore = create<AIStore>((set, get) => ({
     density: 0.6,
     temperature: 0.45,
     seed: 1,
+    role: 'general',
+    coproducerMode: 'create',
   },
   appliedSignatures: [],
   masteringInProgress: false,

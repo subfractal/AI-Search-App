@@ -178,12 +178,51 @@ export type GeneratorModel =
   | 'evolutionary'
   | 'diffusion';
 
+// AI Coproducer capability modes
+export type CoproducerMode = 'create' | 'diagnose' | 'improve' | 'organize' | 'commit';
+
+// Musical role for context-aware generation
+export type MusicalRole =
+  | 'bass'
+  | 'lead'
+  | 'pad'
+  | 'chords'
+  | 'arp'
+  | 'drums'
+  | 'percussion'
+  | 'fx'
+  | 'vocal'
+  | 'general';
+
+export const COPRODUCER_MODES: { id: CoproducerMode; label: string; description: string }[] = [
+  { id: 'create', label: 'Create', description: 'Generate new musical material — melodies, chords, bass, drums, fills, transitions, variations' },
+  { id: 'diagnose', label: 'Diagnose', description: 'Analyze mix balance, loudness, masking, phase, density, arrangement repetition, export readiness' },
+  { id: 'improve', label: 'Improve', description: 'Suggest and apply bounded mix changes, routing, grouping, preset/kit swaps, variation paths' },
+  { id: 'organize', label: 'Organize', description: 'Structure the project — naming, colors, groups, folders, buses, assets, templates' },
+  { id: 'commit', label: 'Commit', description: 'Handle render-aware outcomes — bounce prep, stem export, save reusable clips/presets/templates' },
+];
+
+export const MUSICAL_ROLES: { id: MusicalRole; label: string }[] = [
+  { id: 'bass', label: 'Bass' },
+  { id: 'lead', label: 'Lead' },
+  { id: 'pad', label: 'Pad' },
+  { id: 'chords', label: 'Chords' },
+  { id: 'arp', label: 'Arp' },
+  { id: 'drums', label: 'Drums' },
+  { id: 'percussion', label: 'Perc' },
+  { id: 'fx', label: 'FX' },
+  { id: 'vocal', label: 'Vocal' },
+  { id: 'general', label: 'General' },
+];
+
 export interface ComposerSettings {
   model: GeneratorModel;
   bars: number;
   density: number;
   temperature: number;
   seed: number;
+  role: MusicalRole;
+  coproducerMode: CoproducerMode;
 }
 
 export interface ComposerResult {

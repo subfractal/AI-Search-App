@@ -36,15 +36,18 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
 
         try {
           const buffer = await loadAudioFile(file);
-          const trackId = addAudioTrack(
-            file.name.replace(/\.[^.]+$/, ''),
-          );
+          if (!buffer || buffer.length === 0) {
+            console.warn(`[DAW] Skipping "${file.name}" — empty buffer`);
+            continue;
+          }
+          const name = file.name.replace(/\.[^.]+$/, '');
+          const trackId = addAudioTrack(name);
           initStrip(trackId);
 
           const clip: AudioClip = {
             id: generateId('clip'),
             trackId,
-            name: file.name.replace(/\.[^.]+$/, ''),
+            name,
             buffer,
             startTime: 0,
             duration: buffer.duration,
@@ -53,7 +56,7 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
 
           addClipToTrack(trackId, clip);
         } catch (err) {
-          console.error(`Failed to load ${file.name}:`, err);
+          console.error(`[DAW] Failed to load "${file.name}":`, err);
         }
       }
     },

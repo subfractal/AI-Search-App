@@ -12,6 +12,7 @@ import { generateComposition, generateVariation } from '@/services/ai/composer-e
 import { runMasteringPipeline } from '@/services/ai/mastering-service';
 import { FACTORY_TEMPLATES, loadTemplate } from '@/services/templates/template-loader';
 import type { AISuggestion, MixGenre, GeneratorModel, SuggestionApplyMode } from '@/types/ai';
+import { COPRODUCER_MODES, MUSICAL_ROLES } from '@/types/ai';
 import { isMidiClip } from '@/types/audio';
 
 function formatTime(seconds: number): string {
@@ -74,19 +75,41 @@ export default function AISidebar() {
 
   return (
     <div className="h-full flex flex-col bg-daw-ai-bg">
-      <div className="flex items-center justify-between px-2.5 h-8 shrink-0 border-b border-daw-border/20">
-        <div className="flex items-center gap-1.5">
-          <div className={`w-2 h-2 bg-daw-ai-accent
-                          ${analyzing ? 'daw-analyzing' : ''}
-                          ${enabled ? '' : 'opacity-40'}`} />
-          <span className="text-[10px] font-semibold tracking-wider uppercase text-daw-ai-accent">Co-Producer</span>
+      {/* Header — AI KONSTRUKT ENGINE */}
+      <div className="shrink-0 border-b border-daw-border/20">
+        <div className="flex items-center justify-between px-2.5 h-8">
+          <div className="flex items-center gap-1.5">
+            <div className={`w-2 h-2 bg-[#E63946]
+                            ${analyzing ? 'daw-analyzing' : ''}
+                            ${enabled ? '' : 'opacity-40'}`} />
+            <span className="text-[10px] font-semibold tracking-wider uppercase text-[#E63946]">AI Konstrukt</span>
+          </div>
+          <button
+            onClick={() => setEnabled(!enabled)}
+            className={`text-xxs px-1.5 py-px transition-all ${enabled ? 'bg-[#E63946]/20 text-[#E63946]' : 'bg-daw-bg text-daw-text-muted'}`}
+          >
+            {enabled ? 'ON' : 'OFF'}
+          </button>
         </div>
-        <button
-          onClick={() => setEnabled(!enabled)}
-          className={`text-xxs px-1.5 py-px transition-all ${enabled ? 'bg-daw-ai-accent/20 text-daw-ai-accent' : 'bg-daw-bg text-daw-text-muted'}`}
-        >
-          {enabled ? 'ON' : 'OFF'}
-        </button>
+
+        {/* Coproducer Mode Selector */}
+        {enabled && (
+          <div className="flex px-1 pb-1.5 gap-0.5">
+            {COPRODUCER_MODES.map((mode) => (
+              <button
+                key={mode.id}
+                onClick={() => setComposer({ coproducerMode: mode.id })}
+                title={mode.description}
+                className={`flex-1 text-[8px] py-1 font-medium uppercase tracking-wide transition-all
+                           ${composer.coproducerMode === mode.id
+                             ? 'bg-[#E63946]/20 text-[#E63946] border border-[#E63946]/30'
+                             : 'bg-daw-bg/40 text-daw-text-muted hover:text-daw-text-dim border border-transparent'}`}
+              >
+                {mode.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {enabled ? (
@@ -211,6 +234,26 @@ export default function AISidebar() {
             <div className="text-[7px] text-daw-ai-accent/40 mt-0.5">
               {MODEL_DESCRIPTIONS[composer.model]}
             </div>
+
+            {/* Musical Role Selector */}
+            <div className="mt-1.5">
+              <span className="text-[7px] text-daw-text-muted/40">Role</span>
+              <div className="flex flex-wrap gap-0.5 mt-0.5">
+                {MUSICAL_ROLES.map((r) => (
+                  <button
+                    key={r.id}
+                    onClick={() => setComposer({ role: r.id })}
+                    className={`text-[8px] px-1.5 py-0.5 transition-all
+                               ${composer.role === r.id
+                                 ? 'bg-daw-ai-accent/25 text-daw-ai-accent border border-daw-ai-accent/30'
+                                 : 'bg-daw-bg/30 text-daw-text-muted hover:text-daw-text-dim border border-transparent'}`}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-1 mt-1">
               <div>
                 <input

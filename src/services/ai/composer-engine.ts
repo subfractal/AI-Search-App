@@ -3,7 +3,7 @@ import { useAIStore } from '@/stores/ai-store';
 import { useLibraryStore } from '@/stores/library-store';
 import { generateId } from '@/utils/id';
 import { isMidiClip } from '@/types/audio';
-import type { ComposerResult, GeneratorModel } from '@/types/ai';
+import type { ComposerResult, GeneratorModel, MusicalRole } from '@/types/ai';
 import type { MidiClip, MidiNote } from '@/types/audio';
 
 const MODEL_LABELS: Record<GeneratorModel, string> = {
@@ -17,6 +17,33 @@ const MODEL_LABELS: Record<GeneratorModel, string> = {
 
 const MAJOR = [0, 2, 4, 5, 7, 9, 11];
 const MINOR = [0, 2, 3, 5, 7, 8, 10];
+
+// Role-aware generation parameters
+interface RoleConfig {
+  rootRange: number[];   // MIDI root note candidates
+  octaveSpan: number;    // how many octaves to span
+  durPool: number[];     // default note durations (beats)
+  denseDurPool: number[]; // durations when density > 0.7
+  velocityBase: number;
+  chordTones?: boolean;  // generate chords (multiple simultaneous notes)
+  preferredDegrees?: number[]; // scale degrees to favor
+}
+
+const ROLE_CONFIGS: Record<MusicalRole, RoleConfig> = {
+  bass: { rootRange: [28, 31, 33, 35, 36], octaveSpan: 1, durPool: [1, 2, 2, 4], denseDurPool: [0.5, 1, 1, 2], velocityBase: 90, preferredDegrees: [0, 2, 4, 6] },
+  lead: { rootRange: [60, 62, 64, 65, 67], octaveSpan: 2, durPool: [0.25, 0.5, 1, 1], denseDurPool: [0.25, 0.25, 0.5, 0.5], velocityBase: 85 },
+  pad: { rootRange: [48, 50, 52, 53, 55], octaveSpan: 2, durPool: [2, 4, 4, 8], denseDurPool: [1, 2, 2, 4], velocityBase: 60, chordTones: true },
+  chords: { rootRange: [48, 50, 52, 53, 55], octaveSpan: 2, durPool: [1, 2, 2, 4], denseDurPool: [0.5, 1, 1, 2], velocityBase: 75, chordTones: true },
+  arp: { rootRange: [55, 57, 59, 60, 62], octaveSpan: 2, durPool: [0.25, 0.25, 0.5], denseDurPool: [0.125, 0.25, 0.25], velocityBase: 70 },
+  drums: { rootRange: [36, 36, 36, 36], octaveSpan: 0, durPool: [0.25, 0.5, 0.5, 1], denseDurPool: [0.25, 0.25, 0.25, 0.5], velocityBase: 95 },
+  percussion: { rootRange: [42, 44, 46, 49, 51], octaveSpan: 0, durPool: [0.25, 0.5, 0.5], denseDurPool: [0.25, 0.25, 0.5], velocityBase: 80 },
+  fx: { rootRange: [60, 64, 67, 72, 76], octaveSpan: 3, durPool: [0.5, 1, 2, 4], denseDurPool: [0.25, 0.5, 1, 2], velocityBase: 55 },
+  vocal: { rootRange: [55, 57, 59, 60, 62], octaveSpan: 1.5, durPool: [0.5, 1, 1, 2], denseDurPool: [0.25, 0.5, 0.5, 1], velocityBase: 80 },
+  general: { rootRange: [48, 50, 52, 53, 55, 57, 59], octaveSpan: 2, durPool: [0.5, 1, 1, 2], denseDurPool: [0.25, 0.5, 0.5, 1], velocityBase: 82 },
+};
+
+// Drum note map for GM-like mapping
+const DRUM_NOTES = [36, 38, 42, 46, 44, 49, 51, 39, 56, 75]; // kick, snare, hihat, open-hh, pedal-hh, crash, ride, clap, cowbell, claves
 
 function createRng(seed: number): () => number {
   let s = Math.max(1, Math.floor(seed)) % 2147483647;
@@ -34,23 +61,74 @@ function pick<T>(rng: () => number, items: T[]): T {
   return items[Math.floor(rng() * items.length)] ?? items[0]!;
 }
 
+function generateDrumNotes(
+  bars: number,
+  density: number,
+  _temperature: number,
+  seed: number,
+): MidiNote[] {
+  const rng = createRng(seed);
+  const beatsTotal = bars * 4;
+  const notes: MidiNote[] = [];
+  const sixteenth = 0.25;
+
+  for (let step = 0; step < beatsTotal / sixteenth; step++) {
+    const time = step * sixteenth;
+    const beat = step % 16;
+
+    // Kick on 1 and 9 (beat 1 and 3)
+    if (beat === 0 || beat === 8) {
+      notes.push({ pitch: 36, velocity: 100 + Math.round((rng() - 0.5) * 10), startTime: time, duration: sixteenth });
+    }
+    // Snare on 5 and 13 (beat 2 and 4)
+    if (beat === 4 || beat === 12) {
+      notes.push({ pitch: 38, velocity: 95 + Math.round((rng() - 0.5) * 10), startTime: time, duration: sixteenth });
+    }
+    // Hi-hat — density controls fill level
+    if (density > 0.7) {
+      // 16th hats
+      notes.push({ pitch: 42, velocity: 60 + Math.round(rng() * 30), startTime: time, duration: sixteenth });
+    } else if (density > 0.4 && beat % 2 === 0) {
+      // 8th hats
+      notes.push({ pitch: 42, velocity: 65 + Math.round(rng() * 25), startTime: time, duration: sixteenth });
+    } else if (beat % 4 === 0) {
+      // Quarter hats
+      notes.push({ pitch: 42, velocity: 70, startTime: time, duration: sixteenth });
+    }
+    // Extra percussion hits based on density
+    if (rng() < density * 0.15) {
+      const extraNote = pick(rng, DRUM_NOTES.slice(3));
+      notes.push({ pitch: extraNote, velocity: 50 + Math.round(rng() * 40), startTime: time, duration: sixteenth });
+    }
+  }
+
+  return notes.sort((a, b) => a.startTime - b.startTime);
+}
+
 function generateNotes(
   model: GeneratorModel,
   bars: number,
   density: number,
   temperature: number,
   seed: number,
+  role: MusicalRole = 'general',
 ): MidiNote[] {
+  // Special drum generation path
+  if (role === 'drums' || role === 'percussion') {
+    return generateDrumNotes(bars, density, temperature, seed);
+  }
+
   const rng = createRng(seed);
   const beatsTotal = bars * 4;
   const scale = rng() > 0.5 ? MAJOR : MINOR;
-  const root = pick(rng, [48, 50, 52, 53, 55, 57, 59]);
+  const roleConfig = ROLE_CONFIGS[role];
+  const root = pick(rng, roleConfig.rootRange);
   const notes: MidiNote[] = [];
   let time = 0;
   let prevDegree = 0;
 
   while (time < beatsTotal) {
-    const durPool = density > 0.7 ? [0.25, 0.5, 0.5, 1] : [0.5, 1, 1, 2];
+    const durPool = density > 0.7 ? roleConfig.denseDurPool : roleConfig.durPool;
     const duration = Math.min(pick(rng, durPool), beatsTotal - time);
     const gate = rng();
 
@@ -78,7 +156,7 @@ function generateNotes(
           degree = Math.floor(rng() * 7 * clamp01(temperature + 0.4)) % 7;
           break;
         case 'gan':
-          degree = pick(rng, [0, 2, 4, 5, 6]);
+          degree = pick(rng, roleConfig.preferredDegrees ?? [0, 2, 4, 5, 6]);
           break;
         case 'evolutionary':
           degree = (prevDegree + pick(rng, [-2, -1, 1, 2, 3])) % 7;
@@ -89,15 +167,34 @@ function generateNotes(
       }
 
       if (degree < 0) degree += 7;
-      const octave = model === 'diffusion' && rng() > 0.7 ? 12 : 0;
+      const octaveMax = Math.floor(roleConfig.octaveSpan);
+      const octave = model === 'diffusion' && rng() > 0.7 ? 12 * Math.min(octaveMax, 1) : 0;
       const pitch = root + scale[degree]! + octave;
-      const velocityBase = model === 'gan' ? 96 : 82;
-      const velocity = Math.max(40, Math.min(120, Math.round(velocityBase + (rng() - 0.5) * 40 * (temperature + 0.2))));
+      const velocity = Math.max(40, Math.min(120, Math.round(
+        roleConfig.velocityBase + (rng() - 0.5) * 40 * (temperature + 0.2),
+      )));
       notes.push({ pitch, velocity, startTime: time, duration });
+
+      // Add chord tones for pad/chord roles
+      if (roleConfig.chordTones && rng() > 0.3) {
+        const third = scale[(degree + 2) % 7]!;
+        const fifth = scale[(degree + 4) % 7]!;
+        notes.push({ pitch: root + third + octave, velocity: Math.round(velocity * 0.85), startTime: time, duration });
+        if (rng() > 0.4) {
+          notes.push({ pitch: root + fifth + octave, velocity: Math.round(velocity * 0.75), startTime: time, duration });
+        }
+      }
+
       prevDegree = degree;
     }
 
     time += duration;
+  }
+
+  // Arp role: sort notes by pitch within each beat for arpeggiation effect
+  if (role === 'arp') {
+    const sorted = notes.sort((a, b) => a.startTime - b.startTime || a.pitch - b.pitch);
+    return sorted;
   }
 
   if (model === 'evolutionary' && notes.length > 4) {
@@ -117,8 +214,10 @@ export function generateComposition(): ComposerResult | null {
   let trackId: string = session.selectedTrackId ?? '';
   const selected = session.tracks.find((t) => t.id === trackId);
 
+  const roleLabel = settings.role !== 'general' ? ` ${settings.role}` : '';
+
   if (!selected || selected.type !== 'midi') {
-    trackId = session.addMidiTrack(`AI ${MODEL_LABELS[settings.model]} ${settings.bars}bar`);
+    trackId = session.addMidiTrack(`AI${roleLabel} ${MODEL_LABELS[settings.model]} ${settings.bars}bar`);
   }
 
   const notes = generateNotes(
@@ -127,12 +226,13 @@ export function generateComposition(): ComposerResult | null {
     settings.density,
     settings.temperature,
     settings.seed,
+    settings.role,
   );
 
   const clip: MidiClip = {
     id: generateId('clip'),
     trackId,
-    name: `AI ${MODEL_LABELS[settings.model]} ${settings.bars}bar`,
+    name: `AI${roleLabel} ${MODEL_LABELS[settings.model]} ${settings.bars}bar`,
     notes,
     startTime: 0,
     duration: settings.bars * 4,
@@ -144,7 +244,7 @@ export function generateComposition(): ComposerResult | null {
   useLibraryStore.getState().saveClipAsAsset(
     clip,
     clip.name,
-    [settings.model, `${settings.bars}bar`],
+    [settings.model, `${settings.bars}bar`, settings.role],
     true,
   );
 
