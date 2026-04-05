@@ -1,4 +1,7 @@
 import { create } from 'zustand';
+import { useEffectsStore } from '@/stores/effects-store';
+import { useMixerStore } from '@/stores/mixer-store';
+import { useSessionStore } from '@/stores/session-store';
 import type {
   AISuggestion,
   AIActivityEntry,
@@ -7,6 +10,7 @@ import type {
   SuggestionApplyMode,
   ComposerSettings,
   MasteringResult,
+  MasteringDecision,
   OfflineTask,
   ComposerPreset,
 } from '@/types/ai';
@@ -29,6 +33,8 @@ interface AIStore {
   appliedSignatures: string[];
   masteringInProgress: boolean;
   masteringResult: MasteringResult | null;
+  masteringABActive: boolean;
+  masteringDecisions: MasteringDecision[];
   preferredInstrumentFamily: string;
   preferredDrumMode: string;
   preferredVariationIntensity: number;
@@ -56,6 +62,12 @@ interface AIStore {
   resetAppliedSignatures: () => void;
   setMasteringInProgress: (v: boolean) => void;
   setMasteringResult: (r: MasteringResult | null) => void;
+  setMasteringABActive: (active: boolean) => void;
+  setMasteringDecisions: (decisions: MasteringDecision[]) => void;
+  toggleMasteringDecision: (decisionId: string) => void;
+  updateMasteringDecisionParams: (decisionId: string, params: Record<string, number>) => void;
+  removeMasteringDecision: (decisionId: string) => void;
+  revertMastering: () => void;
   setPreferredInstrumentFamily: (family: string) => void;
   setPreferredDrumMode: (mode: string) => void;
   setPreferredVariationIntensity: (intensity: number) => void;
@@ -92,6 +104,8 @@ export const useAIStore = create<AIStore>((set, get) => ({
   appliedSignatures: [],
   masteringInProgress: false,
   masteringResult: null,
+  masteringABActive: true,
+  masteringDecisions: [],
   preferredInstrumentFamily: '',
   preferredDrumMode: '',
   preferredVariationIntensity: 0.5,
@@ -160,6 +174,139 @@ export const useAIStore = create<AIStore>((set, get) => ({
   resetAppliedSignatures: () => set({ appliedSignatures: [], suggestions: [] }),
   setMasteringInProgress: (v) => set({ masteringInProgress: v }),
   setMasteringResult: (r) => set({ masteringResult: r }),
+  setMasteringABActive: (active) => {
+    const decisions = get().masteringDecisions;
+    const result = get().masteringResult;
+    const effects = useEffectsStore.getState();
+    const mixer = useMixerStore.getState();
+    const session = useSessionStore.getState();
+
+    for (const d of decisions) {
+      if (d.effectId) {
+        // Toggle each mastering effect on/off
+        const trackEffects = effects.trackEffects[d.trackId] ?? [];
+        const fx = trackEffects.find((e) => e.id === d.effectId);
+        if (fx && fx.enabled !== active) {
+          effects.toggleEffect(d.trackId, d.effectId);
+        }
+      }
+    }
+
+    // Swap volumes back to snapshot (A) or mastered (B)
+    if (result?.snapshot) {
+      for (const track of session.tracks) {
+        if (active) {
+          // Restore mastered volumes (current state after mastering)
+          // Gain staging decisions have the target volume in params
+          const gainDecision = decisions.find(
+            (d) => d.stage === 'Gain Staging' && d.trackId === track.id,
+          );
+          if (gainDecision) {
+            mixer.setVolume(track.id, gainDecision.params.volume ?? track.volume);
+            session.updateTrack(track.id, { volume: gainDecision.params.volume ?? track.volume });
+          }
+        } else {
+          // Restore original volumes from snapshot
+          const origVol = result.snapshot.trackVolumes[track.id];
+          if (origVol !== undefined) {
+            mixer.setVolume(track.id, origVol);
+            session.updateTrack(track.id, { volume: origVol });
+          }
+        }
+      }
+    }
+
+    set({ masteringABActive: active });
+  },
+  setMasteringDecisions: (decisions) => set({ masteringDecisions: decisions }),
+  toggleMasteringDecision: (decisionId) => {
+    const decisions = get().masteringDecisions;
+    const decision = decisions.find((d) => d.id === decisionId);
+    if (!decision) return;
+
+    if (decision.effectId) {
+      useEffectsStore.getState().toggleEffect(decision.trackId, decision.effectId);
+    } else if (decision.stage === 'Gain Staging') {
+      // Toggle gain staging: swap between original and mastered volume
+      const result = get().masteringResult;
+      const origVol = result?.snapshot?.trackVolumes[decision.trackId];
+      const masteredVol = decision.params.volume;
+      const session = useSessionStore.getState();
+      const currentVol = session.tracks.find((t) => t.id === decision.trackId)?.volume ?? 0;
+      const targetVol = decision.enabled ? (origVol ?? currentVol) : (masteredVol ?? currentVol);
+      useMixerStore.getState().setVolume(decision.trackId, targetVol);
+      session.updateTrack(decision.trackId, { volume: targetVol });
+    }
+
+    set({
+      masteringDecisions: decisions.map((d) =>
+        d.id === decisionId ? { ...d, enabled: !d.enabled } : d,
+      ),
+    });
+  },
+  updateMasteringDecisionParams: (decisionId, params) => {
+    const decisions = get().masteringDecisions;
+    const decision = decisions.find((d) => d.id === decisionId);
+    if (!decision || !decision.effectId) return;
+
+    useEffectsStore.getState().updateEffect(
+      decision.trackId,
+      decision.effectId,
+      params as Record<string, number | string>,
+    );
+
+    set({
+      masteringDecisions: decisions.map((d) =>
+        d.id === decisionId ? { ...d, params: { ...d.params, ...params } } : d,
+      ),
+    });
+  },
+  removeMasteringDecision: (decisionId) => {
+    const decisions = get().masteringDecisions;
+    const decision = decisions.find((d) => d.id === decisionId);
+    if (!decision) return;
+
+    if (decision.effectId) {
+      useEffectsStore.getState().removeEffect(decision.trackId, decision.effectId);
+    } else if (decision.stage === 'Gain Staging') {
+      // Revert gain to original
+      const result = get().masteringResult;
+      const origVol = result?.snapshot?.trackVolumes[decision.trackId];
+      if (origVol !== undefined) {
+        useMixerStore.getState().setVolume(decision.trackId, origVol);
+        useSessionStore.getState().updateTrack(decision.trackId, { volume: origVol });
+      }
+    }
+
+    set({ masteringDecisions: decisions.filter((d) => d.id !== decisionId) });
+  },
+  revertMastering: () => {
+    const decisions = get().masteringDecisions;
+    const result = get().masteringResult;
+
+    // Remove all mastering effects
+    for (const d of decisions) {
+      if (d.effectId) {
+        try { useEffectsStore.getState().removeEffect(d.trackId, d.effectId); } catch { /* already removed */ }
+      }
+    }
+
+    // Restore original volumes and pans from snapshot
+    if (result?.snapshot) {
+      const mixer = useMixerStore.getState();
+      const session = useSessionStore.getState();
+      for (const [trackId, vol] of Object.entries(result.snapshot.trackVolumes)) {
+        mixer.setVolume(trackId, vol);
+        session.updateTrack(trackId, { volume: vol });
+      }
+      for (const [trackId, pan] of Object.entries(result.snapshot.trackPans)) {
+        mixer.setPan(trackId, pan);
+        session.updateTrack(trackId, { pan });
+      }
+    }
+
+    set({ masteringResult: null, masteringDecisions: [], masteringABActive: true });
+  },
 
   setPreferredInstrumentFamily: (family) => set({ preferredInstrumentFamily: family }),
   setPreferredDrumMode: (mode) => set({ preferredDrumMode: mode }),

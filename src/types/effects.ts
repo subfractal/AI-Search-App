@@ -88,6 +88,7 @@ export interface EffectConfig {
   type: EffectType;
   enabled: boolean;
   params: EffectParams;
+  source?: 'user' | 'mastering';
 }
 
 export const DEFAULT_REVERB_PARAMS: ReverbParams = {

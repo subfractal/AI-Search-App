@@ -254,8 +254,40 @@ export interface MasteringStage {
   effects: string[];
 }
 
+// Individual mastering decision — tracks exactly what was applied
+export interface MasteringDecision {
+  id: string;
+  stage: string;
+  trackId: string;
+  trackName: string;
+  effectId: string | null;
+  effectType: string | null;
+  params: Record<string, number>;
+  description: string;
+  enabled: boolean;
+  section?: string;
+}
+
+// Section detected in audio
+export interface AudioSection {
+  label: string;
+  start: number;
+  end: number;
+  energy: number;
+  characteristics: string[];
+}
+
+// Before-state snapshot for A/B comparison
+export interface MasteringSnapshot {
+  trackVolumes: Record<string, number>;
+  trackPans: Record<string, number>;
+}
+
 export interface MasteringResult {
   stages: MasteringStage[];
+  decisions: MasteringDecision[];
+  sections: AudioSection[];
+  snapshot: MasteringSnapshot;
   finalLufs: number;
   finalTruePeak: number;
   genre: MixGenre;

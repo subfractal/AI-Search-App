@@ -10,6 +10,7 @@ import { analyzeGainStaging, applyGainStaging } from '@/services/ai/gain-staging
 import { STREAMING_TARGETS, GENRE_PROFILES } from '@/services/ai/genre-profiles';
 import { generateComposition, generateVariation } from '@/services/ai/composer-engine';
 import { runMasteringPipeline } from '@/services/ai/mastering-service';
+import MasteringBreakdown from '@/components/ai/MasteringBreakdown';
 import { FACTORY_TEMPLATES, loadTemplate } from '@/services/templates/template-loader';
 import type { AISuggestion, MixGenre, GeneratorModel, SuggestionApplyMode } from '@/types/ai';
 import { COPRODUCER_MODES, MUSICAL_ROLES } from '@/types/ai';
@@ -452,17 +453,13 @@ export default function AISidebar() {
               </button>
               {!masteringResult && (
                 <div className="text-[7px] text-daw-text-muted/40 mt-0.5">
-                  Clears pending suggestions — applies gain, EQ, compression &amp; limiting in one pass
+                  Clears pending suggestions — applies gain, EQ, compression &amp; limiting in one pass.
+                  Section-aware processing adapts to intro/verse/chorus dynamics.
                 </div>
               )}
               {masteringResult && (
-                <div className="mt-1.5 space-y-0.5">
-                  {masteringResult.stages.map((stage) => (
-                    <div key={stage.name} className="flex justify-between text-xxs">
-                      <span className={stage.applied ? 'text-green-400' : 'text-daw-text-muted'}>{stage.name}</span>
-                      <span className="text-daw-text-muted/60 text-[8px] truncate ml-1 max-w-[120px]">{stage.description}</span>
-                    </div>
-                  ))}
+                <div className="mt-1.5">
+                  <MasteringBreakdown />
                 </div>
               )}
             </Section>
