@@ -47,11 +47,13 @@ export function detectBeats(buffer: AudioBuffer): number[] {
 }
 
 function detectOnsets(data: Float32Array, sampleRate: number): number[] {
+  // Cap analysis to first 30 seconds — sufficient for BPM detection
+  const maxSamples = Math.min(data.length, sampleRate * 30);
   const windowSize = Math.floor(sampleRate * 0.01);
   const hopSize = Math.floor(windowSize / 2);
   const energies: number[] = [];
 
-  for (let i = 0; i < data.length - windowSize; i += hopSize) {
+  for (let i = 0; i < maxSamples - windowSize; i += hopSize) {
     let energy = 0;
     for (let j = 0; j < windowSize; j++) {
       energy += data[i + j]! * data[i + j]!;

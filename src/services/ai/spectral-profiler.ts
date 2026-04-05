@@ -10,7 +10,14 @@ function computeFFTMagnitudes(
   buffer: AudioBuffer,
   fftSize: number = 2048,
 ): { magnitudes: Float32Array; binHz: number } {
-  const data = buffer.getChannelData(0);
+  const fullData = buffer.getChannelData(0);
+  // Use a representative sample from the middle of the buffer (up to fftSize samples)
+  // Offset into the buffer to skip silence at the start
+  const midOffset = Math.min(
+    Math.floor(fullData.length / 4),
+    Math.floor(buffer.sampleRate * 2),
+  );
+  const data = fullData.subarray(midOffset, midOffset + fftSize * 2);
   const n = Math.min(data.length, fftSize);
   const real = new Float32Array(n);
 

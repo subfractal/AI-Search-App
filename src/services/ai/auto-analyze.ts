@@ -8,6 +8,11 @@ export interface AutoAnalysisResult {
   key: KeyResult | null;
 }
 
+// Yield to the main thread between heavy operations
+function yieldToMain(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 export async function autoAnalyzeClip(
   buffer: AudioBuffer,
 ): Promise<AutoAnalysisResult> {
@@ -19,6 +24,9 @@ export async function autoAnalyzeClip(
   } catch {
     bpm = null;
   }
+
+  // Yield to let the UI breathe between expensive operations
+  await yieldToMain();
 
   try {
     key = detectKey(buffer);

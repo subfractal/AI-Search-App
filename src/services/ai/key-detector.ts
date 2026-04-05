@@ -76,10 +76,13 @@ export function detectKeyFromChromagram(chromagram: number[]): KeyResult {
 }
 
 export function computeChromagram(buffer: AudioBuffer): number[] {
-  const data = buffer.getChannelData(0);
+  const fullData = buffer.getChannelData(0);
   const sampleRate = buffer.sampleRate;
+  // Cap analysis to first 30 seconds — sufficient for key detection
+  const maxSamples = Math.min(fullData.length, sampleRate * 30);
+  const data = fullData.subarray(0, maxSamples);
   const fftSize = 4096;
-  const hopSize = 2048;
+  const hopSize = 4096; // Doubled hop size for speed (was 2048)
   const chromagram = new Float64Array(12);
 
   const minFreq = 60;
