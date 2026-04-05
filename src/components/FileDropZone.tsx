@@ -61,67 +61,74 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
           addClipToTrack(trackId, clip);
           toast.success(`Imported "${name}"`);
 
-          // Auto-classify and organize imported file
-          if (useAIStore.getState().autoOrganizeEnabled) {
-            try {
-              const classification = classifyTrack(trackId, buffer, file.name);
-              if (classification.confidence > 0.4) {
-                const session = useSessionStore.getState();
-                session.updateTrack(trackId, {
-                  name: classification.suggestedName,
-                  color: classification.suggestedColor,
-                  role: classification.suggestedRole,
-                });
+          // Defer all heavy analysis to avoid blocking the UI
+          setTimeout(() => {
+            // Auto-classify and organize imported file
+            if (useAIStore.getState().autoOrganizeEnabled) {
+              try {
+                const classification = classifyTrack(trackId, buffer, file.name);
+                if (classification.confidence > 0.4) {
+                  const session = useSessionStore.getState();
+                  session.updateTrack(trackId, {
+                    name: classification.suggestedName,
+                    color: classification.suggestedColor,
+                    role: classification.suggestedRole,
+                  });
+                  useAIStore.getState().logActivity({
+                    id: `log-${Date.now()}`,
+                    description: `Auto-classified "${name}" as ${classification.suggestedRole} (${Math.round(classification.confidence * 100)}%)`,
+                    trackId,
+                    timestamp: Date.now(),
+                    undoable: false,
+                  });
+                }
+              } catch { /* classification failed silently */ }
+            }
+
+            // Auto gain staging on import
+            if (useAIStore.getState().autoGainStagingOnImport) {
+              try {
+                const data = buffer.getChannelData(0);
+                let peak = 0;
+                // Sample every 64th value for speed
+                const stride = Math.max(1, Math.floor(data.length / 10000));
+                for (let i = 0; i < data.length; i += stride) {
+                  const abs = Math.abs(data[i]!);
+                  if (abs > peak) peak = abs;
+                }
+                const peakDb = 20 * Math.log10(Math.max(peak, 1e-10));
+                const targetPeakDb = -6;
+                const adjustment = targetPeakDb - peakDb;
+                if (Math.abs(adjustment) > 1) {
+                  const session = useSessionStore.getState();
+                  const track = session.tracks.find((t) => t.id === trackId);
+                  if (track) {
+                    const newVol = Math.round((track.volume + adjustment) * 10) / 10;
+                    useMixerStore.getState().setVolume(trackId, newVol);
+                    session.updateTrack(trackId, { volume: newVol });
+                  }
+                }
+              } catch { /* gain staging failed silently */ }
+            }
+          }, 50);
+
+          // Auto-analyze BPM and key in background (further deferred)
+          setTimeout(() => {
+            autoAnalyzeClip(buffer).then((analysis) => {
+              const parts: string[] = [];
+              if (analysis.bpm) parts.push(`BPM: ${Math.round(analysis.bpm.bpm)}`);
+              if (analysis.key) parts.push(`Key: ${analysis.key.key}`);
+              if (parts.length > 0) {
                 useAIStore.getState().logActivity({
                   id: `log-${Date.now()}`,
-                  description: `Auto-classified "${name}" as ${classification.suggestedRole} (${Math.round(classification.confidence * 100)}%)`,
+                  description: `Auto-analyzed "${name}" — ${parts.join(', ')}`,
                   trackId,
                   timestamp: Date.now(),
                   undoable: false,
                 });
               }
-            } catch { /* classification failed silently */ }
-          }
-
-          // Auto gain staging on import
-          if (useAIStore.getState().autoGainStagingOnImport) {
-            try {
-              const data = buffer.getChannelData(0);
-              let peak = 0;
-              for (let i = 0; i < data.length; i++) {
-                const abs = Math.abs(data[i]!);
-                if (abs > peak) peak = abs;
-              }
-              const peakDb = 20 * Math.log10(Math.max(peak, 1e-10));
-              const targetPeakDb = -6;
-              const adjustment = targetPeakDb - peakDb;
-              if (Math.abs(adjustment) > 1) {
-                const session = useSessionStore.getState();
-                const track = session.tracks.find((t) => t.id === trackId);
-                if (track) {
-                  const newVol = Math.round((track.volume + adjustment) * 10) / 10;
-                  useMixerStore.getState().setVolume(trackId, newVol);
-                  session.updateTrack(trackId, { volume: newVol });
-                }
-              }
-            } catch { /* gain staging failed silently */ }
-          }
-
-          // Auto-analyze BPM and key in background
-          autoAnalyzeClip(buffer).then((analysis) => {
-            const parts: string[] = [];
-            if (analysis.bpm) parts.push(`BPM: ${Math.round(analysis.bpm.bpm)}`);
-            if (analysis.key) parts.push(`Key: ${analysis.key.key}`);
-            if (parts.length > 0) {
-              useAIStore.getState().logActivity({
-                id: `log-${Date.now()}`,
-                description: `Auto-analyzed "${name}" — ${parts.join(', ')}`,
-                trackId,
-                timestamp: Date.now(),
-                undoable: false,
-              });
-            }
-          }).catch(() => { /* analysis failed silently */ });
+            }).catch(() => { /* analysis failed silently */ });
+          }, 200);
         } catch (err) {
           console.error(`[DAW] Failed to load "${file.name}":`, err);
           toast.error(`Failed to load "${file.name}"`);

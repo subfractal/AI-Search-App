@@ -8,39 +8,31 @@ import type { SpectralProfile } from '@/types/commands';
 
 function computeFFTMagnitudes(
   buffer: AudioBuffer,
-  fftSize: number = 4096,
+  fftSize: number = 2048,
 ): { magnitudes: Float32Array; binHz: number } {
   const data = buffer.getChannelData(0);
   const n = Math.min(data.length, fftSize);
   const real = new Float32Array(n);
-  const imag = new Float32Array(n);
 
   // Hann window
   for (let i = 0; i < n; i++) {
     real[i] = data[i]! * (0.5 - 0.5 * Math.cos((2 * Math.PI * i) / n));
   }
 
-  // Simple DFT (matching analysis-engine approach)
-  const outReal = new Float32Array(n);
-  const outImag = new Float32Array(n);
-  const step = Math.max(1, Math.floor(n / 512));
+  // Decimated DFT — sample every `step` bins for speed
+  const half = Math.floor(n / 2);
+  const magnitudes = new Float32Array(half);
+  const step = Math.max(1, Math.floor(n / 256));
 
-  for (let k = 0; k < n / 2; k++) {
+  for (let k = 0; k < half; k++) {
     let sr = 0;
     let si = 0;
     for (let t = 0; t < n; t += step) {
       const angle = (2 * Math.PI * k * t) / n;
-      sr += real[t]! * Math.cos(angle) + imag[t]! * Math.sin(angle);
-      si += -real[t]! * Math.sin(angle) + imag[t]! * Math.cos(angle);
+      sr += real[t]! * Math.cos(angle);
+      si -= real[t]! * Math.sin(angle);
     }
-    outReal[k] = sr;
-    outImag[k] = si;
-  }
-
-  const half = n / 2;
-  const magnitudes = new Float32Array(half);
-  for (let i = 0; i < half; i++) {
-    magnitudes[i] = Math.sqrt(outReal[i]! * outReal[i]! + outImag[i]! * outImag[i]!);
+    magnitudes[k] = Math.sqrt(sr * sr + si * si);
   }
 
   return { magnitudes, binHz: buffer.sampleRate / n };
