@@ -20,6 +20,15 @@ import CoComposerPanel from '@/components/ai/CoComposerPanel';
 import PredictiveBar from '@/components/ai/PredictiveBar';
 import VoiceIndicator from '@/components/ai/VoiceIndicator';
 import SpectralVisualizer from '@/components/visualizers/SpectralVisualizer';
+import SessionScanPanel from '@/components/ai/SessionScanPanel';
+import ArrangementMapPanel from '@/components/ai/ArrangementMapPanel';
+import TemplateGeneratorPanel from '@/components/ai/TemplateGeneratorPanel';
+import MidiGeneratorPanel from '@/components/ai/MidiGeneratorPanel';
+import AudioToMidiPanel from '@/components/ai/AudioToMidiPanel';
+import StemSplitPanel from '@/components/ai/StemSplitPanel';
+import ReferenceMatchPanel from '@/components/ai/ReferenceMatchPanel';
+import RoutingBuilderPanel from '@/components/ai/RoutingBuilderPanel';
+import CollabIndicator from '@/components/ai/CollabIndicator';
 import { FACTORY_TEMPLATES, loadTemplate } from '@/services/templates/template-loader';
 import { useUIContextStore } from '@/stores/ui-context-store';
 import type { AISuggestion, MixGenre, GeneratorModel, SuggestionApplyMode } from '@/types/ai';
@@ -688,6 +697,51 @@ export default function AISidebar() {
             <div className="mt-2">
               <VoiceIndicator />
             </div>
+          </Section>
+
+          {/* Session Intelligence */}
+          <Section title="SESSION SCAN">
+            <SessionScanPanel />
+          </Section>
+
+          {/* Arrangement Map */}
+          <Section title="ARRANGEMENT MAP">
+            <ArrangementMapPanel />
+          </Section>
+
+          {/* MIDI Generator */}
+          <Section title="MIDI GENERATOR">
+            <MidiGeneratorPanel />
+          </Section>
+
+          {/* Audio-to-MIDI */}
+          <Section title="AUDIO TO MIDI">
+            <AudioToMidiPanel />
+          </Section>
+
+          {/* Stem Separation */}
+          <Section title="STEM SPLITTER">
+            <StemSplitPanel />
+          </Section>
+
+          {/* Reference Matching */}
+          <Section title="REFERENCE MATCH">
+            <ReferenceMatchPanel />
+          </Section>
+
+          {/* Routing Builder */}
+          <Section title="ROUTING BUILDER">
+            <RoutingBuilderPanel />
+          </Section>
+
+          {/* Template Generator */}
+          <Section title="ADAPTIVE TEMPLATES">
+            <TemplateGeneratorPanel />
+          </Section>
+
+          {/* Collaboration */}
+          <Section title="COLLABORATION">
+            <CollabIndicator />
           </Section>
 
           {/* Skill Level */}
