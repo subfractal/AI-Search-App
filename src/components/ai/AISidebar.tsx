@@ -28,6 +28,15 @@ const APPLY_MODES: { value: SuggestionApplyMode; label: string }[] = [
 
 const GENERATOR_MODELS: GeneratorModel[] = ['markov', 'lstm', 'vae', 'gan', 'evolutionary', 'diffusion'];
 
+const MODEL_DESCRIPTIONS: Record<GeneratorModel, string> = {
+  markov: 'Learns from existing clips — continuation & variation',
+  lstm: 'Sequential phrase continuity — smooth melodic lines',
+  vae: 'Interpolative exploration — blends between ideas',
+  gan: 'Bold patterning — strong chord-tone emphasis',
+  evolutionary: 'Mutation & refinement — evolves patterns over time',
+  diffusion: 'Exploratory — wide leaps and unexpected intervals',
+};
+
 export default function AISidebar() {
   const enabled = useAIStore((s) => s.enabled);
   const setEnabled = useAIStore((s) => s.setEnabled);
@@ -121,7 +130,7 @@ export default function AISidebar() {
                   onClick={() => toggleTrackLock(selectedTrack.id)}
                   className={`text-[9px] px-2 py-0.5 rounded ${selectedLocked ? 'bg-amber-500/20 text-amber-400' : 'bg-daw-bg text-daw-text-muted'}`}
                 >
-                  {selectedLocked ? 'Locked' : 'Unlock AI'}
+                  {selectedLocked ? 'Unlock AI' : 'Lock AI'}
                 </button>
               </div>
             )}
@@ -160,41 +169,56 @@ export default function AISidebar() {
 
           <Section title="AI Composer">
             <div className="grid grid-cols-2 gap-1">
-              <select
-                value={composer.model}
-                onChange={(e) => setComposer({ model: e.target.value as GeneratorModel })}
-                className="text-[9px] bg-daw-bg border border-daw-border/30 rounded px-1 py-0.5 text-daw-text-dim"
-              >
-                {GENERATOR_MODELS.map((m) => <option key={m} value={m}>{m}</option>)}
-              </select>
-              <input
-                type="number"
-                min="1"
-                max="16"
-                value={composer.bars}
-                onChange={(e) => setComposer({ bars: Number(e.target.value) })}
-                className="text-[9px] bg-daw-bg border border-daw-border/30 rounded px-1 py-0.5 text-daw-text-dim"
-              />
+              <div>
+                <select
+                  value={composer.model}
+                  onChange={(e) => setComposer({ model: e.target.value as GeneratorModel })}
+                  className="w-full text-[9px] bg-daw-bg border border-daw-border/30 rounded px-1 py-0.5 text-daw-text-dim"
+                >
+                  {GENERATOR_MODELS.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+                <span className="text-[7px] text-daw-text-muted/40">Model</span>
+              </div>
+              <div>
+                <input
+                  type="number"
+                  min="1"
+                  max="16"
+                  value={composer.bars}
+                  onChange={(e) => setComposer({ bars: Number(e.target.value) })}
+                  className="w-full text-[9px] bg-daw-bg border border-daw-border/30 rounded px-1 py-0.5 text-daw-text-dim"
+                />
+                <span className="text-[7px] text-daw-text-muted/40">Bars (4 beats each)</span>
+              </div>
+            </div>
+            <div className="text-[7px] text-daw-ai-accent/40 mt-0.5">
+              {MODEL_DESCRIPTIONS[composer.model]}
             </div>
             <div className="grid grid-cols-2 gap-1 mt-1">
-              <input
-                type="number"
-                min="0.1"
-                max="1"
-                step="0.05"
-                value={composer.density}
-                onChange={(e) => setComposer({ density: Number(e.target.value) })}
-                className="text-[9px] bg-daw-bg border border-daw-border/30 rounded px-1 py-0.5 text-daw-text-dim"
-              />
-              <input
-                type="number"
-                min="0.1"
-                max="1"
-                step="0.05"
-                value={composer.temperature}
-                onChange={(e) => setComposer({ temperature: Number(e.target.value) })}
-                className="text-[9px] bg-daw-bg border border-daw-border/30 rounded px-1 py-0.5 text-daw-text-dim"
-              />
+              <div>
+                <input
+                  type="number"
+                  min="0.1"
+                  max="1"
+                  step="0.05"
+                  value={composer.density}
+                  onChange={(e) => setComposer({ density: Number(e.target.value) })}
+                  className="w-full text-[9px] bg-daw-bg border border-daw-border/30 rounded px-1 py-0.5 text-daw-text-dim"
+                />
+                <span className="text-[7px] text-daw-text-muted/40">Density (sparse→dense)</span>
+              </div>
+              <div>
+                <input
+                  type="number"
+                  min="0.1"
+                  max="1"
+                  step="0.05"
+                  value={composer.temperature}
+                  onChange={(e) => setComposer({ temperature: Number(e.target.value) })}
+                  className="w-full text-[9px] bg-daw-bg border border-daw-border/30 rounded px-1 py-0.5 text-daw-text-dim"
+                />
+                <span className="text-[7px] text-daw-text-muted/40">Temperature (safe→wild)</span>
+              </div>
             </div>
             <button
               onClick={() => {
@@ -258,6 +282,33 @@ export default function AISidebar() {
                   </div>
                 </>
               )}
+              {/* Issue summary badges */}
+              {(() => {
+                const maskCount = lastAnalysis.maskingPairs?.length ?? 0;
+                const phaseCount = lastAnalysis.phaseCorrelations?.filter((p) => p.correlation < 0.3).length ?? 0;
+                const clipCount = clippingAlerts.length;
+                if (maskCount + phaseCount + clipCount === 0) return null;
+                return (
+                  <div className="flex gap-1 mt-1.5 flex-wrap">
+                    {clipCount > 0 && (
+                      <span className="text-[8px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-400">
+                        Clipping: {clipCount}
+                      </span>
+                    )}
+                    {maskCount > 0 && (
+                      <span className="text-[8px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400">
+                        Masking: {maskCount}
+                      </span>
+                    )}
+                    {phaseCount > 0 && (
+                      <span className="text-[8px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400">
+                        Phase: {phaseCount}
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
+
               {lastAnalysis.tracks.length >= 2 && (
                 <button
                   onClick={() => {

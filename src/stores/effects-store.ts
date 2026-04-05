@@ -7,7 +7,7 @@ import { DEFAULT_PARAMS } from '@/types/effects';
 interface EffectsStore {
   trackEffects: Record<string, EffectConfig[]>;
 
-  addEffect: (trackId: string, type: EffectType, params?: EffectParams) => void;
+  addEffect: (trackId: string, type: EffectType, params?: EffectParams) => string;
   removeEffect: (trackId: string, effectId: string) => void;
   updateEffect: (
     trackId: string,
@@ -45,6 +45,8 @@ export const useEffectsStore = create<EffectsStore>((set, get) => ({
         },
       };
     });
+
+    return config.id;
   },
 
   removeEffect: (trackId, effectId) => {

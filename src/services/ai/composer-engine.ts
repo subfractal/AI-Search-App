@@ -5,6 +5,15 @@ import { isMidiClip } from '@/types/audio';
 import type { ComposerResult, GeneratorModel } from '@/types/ai';
 import type { MidiClip, MidiNote } from '@/types/audio';
 
+const MODEL_LABELS: Record<GeneratorModel, string> = {
+  markov: 'Markov',
+  lstm: 'LSTM',
+  vae: 'VAE',
+  gan: 'GAN',
+  evolutionary: 'Evo',
+  diffusion: 'Diffusion',
+};
+
 const MAJOR = [0, 2, 4, 5, 7, 9, 11];
 const MINOR = [0, 2, 3, 5, 7, 8, 10];
 
@@ -108,7 +117,7 @@ export function generateComposition(): ComposerResult | null {
   const selected = session.tracks.find((t) => t.id === trackId);
 
   if (!selected || selected.type !== 'midi') {
-    trackId = session.addMidiTrack(`AI ${settings.model.toUpperCase()}`);
+    trackId = session.addMidiTrack(`AI ${MODEL_LABELS[settings.model]} ${settings.bars}bar`);
   }
 
   const notes = generateNotes(
@@ -122,13 +131,21 @@ export function generateComposition(): ComposerResult | null {
   const clip: MidiClip = {
     id: generateId('clip'),
     trackId,
-    name: `AI ${settings.model}`,
+    name: `AI ${MODEL_LABELS[settings.model]} ${settings.bars}bar`,
     notes,
     startTime: 0,
     duration: settings.bars * 4,
   };
 
   session.addClipToTrack(trackId, clip);
+
+  ai.logActivity({
+    id: generateId('log'),
+    description: `Generated ${notes.length} notes using ${MODEL_LABELS[settings.model]} (${settings.bars} bars)`,
+    trackId,
+    timestamp: Date.now(),
+    undoable: false,
+  });
 
   return {
     trackId,
@@ -226,7 +243,7 @@ export function generateVariation(
     };
   });
 
-  return {
+  const variation: MidiClip = {
     id: generateId('clip'),
     trackId: sourceClip.trackId,
     name: `Variation of ${sourceClip.name}`,
@@ -234,4 +251,14 @@ export function generateVariation(
     startTime: 0,
     duration: sourceClip.duration,
   };
+
+  useAIStore.getState().logActivity({
+    id: generateId('log'),
+    description: `Created variation of "${sourceClip.name}" (${newNotes.length} notes, ${Math.round(amount * 100)}% change)`,
+    trackId: sourceClip.trackId,
+    timestamp: Date.now(),
+    undoable: false,
+  });
+
+  return variation;
 }

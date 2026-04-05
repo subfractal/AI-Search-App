@@ -1,3 +1,14 @@
+/**
+ * AI Suggestion Engine — Execution Boundary
+ *
+ * Future LLM integration point:
+ * - LLM generates SuggestionAction payloads (typed, bounded)
+ * - canApplySuggestionNow() validates before execution
+ * - applyAction() executes with undo support
+ * - All actions are clamped by maxAutoVolumeDeltaDb / maxAutoPanDelta
+ * - Track locks prevent modification of protected tracks
+ */
+
 import { useSessionStore } from '@/stores/session-store';
 import { useAIStore } from '@/stores/ai-store';
 import { useMixerStore } from '@/stores/mixer-store';
@@ -29,6 +40,46 @@ function getSuggestionSignature(suggestion: AISuggestion): string {
 
 function isTrackLocked(trackId: string): boolean {
   return useAIStore.getState().lockedTrackIds.includes(trackId);
+}
+
+function getTrackName(trackId: string): string {
+  return useSessionStore.getState().tracks.find((t) => t.id === trackId)?.name ?? 'track';
+}
+
+/**
+ * Centralized policy check: can we auto-apply this suggestion right now?
+ * Returns { allowed, reason } — reason explains why it was blocked.
+ */
+export function canApplySuggestionNow(
+  suggestion: AISuggestion,
+  globalMode: SuggestionApplyMode,
+): { allowed: boolean; reason?: string } {
+  if (!suggestion.action)
+    return { allowed: false, reason: 'No action defined' };
+
+  if (suggestion.action.trackId && isTrackLocked(suggestion.action.trackId))
+    return { allowed: false, reason: `Track "${getTrackName(suggestion.action.trackId)}" is locked` };
+
+  switch (globalMode) {
+    case 'manual':
+      return { allowed: false, reason: 'Manual mode — user apply only' };
+    case 'realtime-preview':
+      if (!suggestion.realtimeSafe)
+        return { allowed: false, reason: 'Not realtime-safe' };
+      if (!suggestion.reversible)
+        return { allowed: false, reason: 'Not reversible — preview requires reversibility' };
+      return { allowed: true };
+    case 'offline-commit':
+      return { allowed: true };
+    case 'safe-auto':
+      if (!suggestion.realtimeSafe)
+        return { allowed: false, reason: 'Not realtime-safe' };
+      if (suggestion.confidence < 0.9)
+        return { allowed: false, reason: `Confidence ${Math.round(suggestion.confidence * 100)}% below 90% threshold` };
+      if (suggestion.applyMode !== 'safe-auto')
+        return { allowed: false, reason: `Suggestion mode is "${suggestion.applyMode}", not safe-auto` };
+      return { allowed: true };
+  }
 }
 
 function clampAction(action: SuggestionAction): SuggestionAction {
@@ -65,16 +116,18 @@ function applyAction(action: SuggestionAction | null): void {
   const history = useHistoryStore.getState();
 
   const safeAction = clampAction(action);
+  const trackName = getTrackName(safeAction.trackId);
 
   switch (safeAction.type) {
     case 'setVolume':
       if (safeAction.value !== undefined) {
         const before = session.tracks.find((t) => t.id === safeAction.trackId)?.volume ?? 0;
         const after = safeAction.value;
+        const delta = after - before;
         mixer.setVolume(safeAction.trackId, after);
         session.updateTrack(safeAction.trackId, { volume: after });
         history.pushAction(
-          `Volume ${safeAction.trackId}`,
+          `Applied ${delta > 0 ? '+' : ''}${delta.toFixed(1)} dB to ${trackName}`,
           () => {
             mixer.setVolume(safeAction.trackId, before);
             session.updateTrack(safeAction.trackId, { volume: before });
@@ -93,7 +146,7 @@ function applyAction(action: SuggestionAction | null): void {
         mixer.setPan(safeAction.trackId, after);
         session.updateTrack(safeAction.trackId, { pan: after });
         history.pushAction(
-          `Pan ${safeAction.trackId}`,
+          `Panned ${trackName} to ${after.toFixed(2)}`,
           () => {
             mixer.setPan(safeAction.trackId, before);
             session.updateTrack(safeAction.trackId, { pan: before });
@@ -106,17 +159,34 @@ function applyAction(action: SuggestionAction | null): void {
       }
       break;
     case 'mute':
+    case 'unmute': {
+      const wasMuted = mixer.strips[safeAction.trackId]?.mute ?? false;
       mixer.toggleMute(safeAction.trackId);
+      history.pushAction(
+        `${safeAction.type === 'mute' ? 'Muted' : 'Unmuted'} ${trackName}`,
+        () => {
+          const currentMute = useMixerStore.getState().strips[safeAction.trackId]?.mute ?? false;
+          if (currentMute !== wasMuted) useMixerStore.getState().toggleMute(safeAction.trackId);
+        },
+        () => useMixerStore.getState().toggleMute(safeAction.trackId),
+      );
       break;
-    case 'unmute':
-      mixer.toggleMute(safeAction.trackId);
-      break;
+    }
     case 'addEffect':
       if (safeAction.effectType && safeAction.trackId && !isTrackLocked(safeAction.trackId)) {
-        effects.addEffect(
+        const effectId = effects.addEffect(
           safeAction.trackId,
           safeAction.effectType as EffectType,
           safeAction.effectParams as EffectParams | undefined,
+        );
+        history.pushAction(
+          `Added ${safeAction.effectType} to ${trackName}`,
+          () => useEffectsStore.getState().removeEffect(safeAction.trackId, effectId),
+          () => useEffectsStore.getState().addEffect(
+            safeAction.trackId,
+            safeAction.effectType as EffectType,
+            safeAction.effectParams as EffectParams | undefined,
+          ),
         );
       }
       break;
@@ -160,15 +230,9 @@ export function runAnalysis(): void {
     aiState.clearSuggestions();
 
     for (const suggestion of suggestions) {
-      const eligibleForAuto =
-        aiState.applyMode === 'safe-auto' &&
-        suggestion.applyMode === 'safe-auto' &&
-        suggestion.realtimeSafe &&
-        suggestion.confidence >= 0.9 &&
-        !!suggestion.action &&
-        (!suggestion.targetTrackId || !isTrackLocked(suggestion.targetTrackId));
+      const policy = canApplySuggestionNow(suggestion, aiState.applyMode);
 
-      if (eligibleForAuto) {
+      if (policy.allowed) {
         applyAction(suggestion.action);
         aiState.addAppliedSignature(getSuggestionSignature(suggestion));
         aiState.logActivity({
@@ -179,6 +243,15 @@ export function runAnalysis(): void {
           undoable: Boolean(suggestion.reversible),
         });
         suggestion.status = 'applied';
+      } else if (aiState.applyMode !== 'manual' && suggestion.action) {
+        // Log why auto-apply was skipped (only in non-manual modes)
+        aiState.logActivity({
+          id: generateId('log'),
+          description: `Skipped auto-apply: ${policy.reason}`,
+          trackId: suggestion.targetTrackId,
+          timestamp: Date.now(),
+          undoable: false,
+        });
       }
 
       aiState.addSuggestion(suggestion);

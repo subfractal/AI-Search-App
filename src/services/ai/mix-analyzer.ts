@@ -5,6 +5,8 @@ import type {
   LevelAnalysis,
   LoudnessResult,
   AISuggestion,
+  SuggestionEvidence,
+  SuggestionConstraint,
   MixGenre,
   PhaseCorrelation,
 } from '@/types/ai';
@@ -22,6 +24,13 @@ function formatRegionTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function ev(label: string, value: string | number | boolean): SuggestionEvidence {
+  return { label, value };
+}
+function cst(label: string, value: string): SuggestionConstraint {
+  return { label, value };
 }
 
 export function analyzeMix(
@@ -156,6 +165,12 @@ export function generateSuggestions(
         title: `Clipping detected on "${track?.name ?? 'track'}"`,
         description: `Peak level is ${ta.level.peak.toFixed(1)} dB. ` +
           'Reducing volume by 3 dB to prevent distortion.',
+        rationale: 'Peaks above 0 dBFS cause digital distortion and audible crackling.',
+        evidence: [
+          ev('Peak', `${ta.level.peak > 0 ? '+' : ''}${ta.level.peak.toFixed(1)} dB`),
+          ev('Track', track?.name ?? 'unknown'),
+        ],
+        constraints: [cst('Max gain change', '−3 dB')],
         confidence: 0.95,
         status: 'pending',
         action: {
@@ -189,6 +204,13 @@ export function generateSuggestions(
         description:
           `"${loudTrack?.name}" is ${diff.toFixed(0)} dB louder than ` +
           `"${quietTrack?.name}". Consider reducing it by ${(diff / 2).toFixed(0)} dB.`,
+        rationale: 'Large level differences make quieter elements inaudible and distort the mix balance.',
+        evidence: [
+          ev('Loudest', `${loudTrack?.name} (${loudest.rms.toFixed(1)} dB)`),
+          ev('Quietest', `${quietTrack?.name} (${quietest.rms.toFixed(1)} dB)`),
+          ev('Difference', `${diff.toFixed(1)} dB`),
+        ],
+        constraints: [cst('Max volume delta', '±3 dB')],
         confidence: 0.7,
         status: 'pending',
         action: {
@@ -228,6 +250,13 @@ export function generateSuggestions(
         description:
           `Excessive low-frequency energy detected. ` +
           `Will add 80 Hz high-pass filter to: ${targetNames.join(', ') || 'affected tracks'}.`,
+        rationale: 'Excessive sub-bass energy causes muddiness and reduces headroom for the entire mix.',
+        evidence: [
+          ev('Sub energy', `${analysis.frequencyBalance.low.toFixed(1)} dB`),
+          ev('Mid energy', `${analysis.frequencyBalance.mid.toFixed(1)} dB`),
+          ev('Tracks', targetNames.join(', ') || 'multiple'),
+        ],
+        constraints: [cst('Action', 'Preview recommended')],
         confidence: 0.65,
         status: 'pending',
         action: filterActions.length === 1
@@ -254,6 +283,12 @@ export function generateSuggestions(
         description:
           'The mix has significant low-frequency energy. ' +
           'Will reduce low EQ by 6 dB across tracks to clean up the mix.',
+        rationale: 'Excessive sub-bass energy causes muddiness and reduces headroom for the entire mix.',
+        evidence: [
+          ev('Sub energy', `${analysis.frequencyBalance.low.toFixed(1)} dB`),
+          ev('Mid energy', `${analysis.frequencyBalance.mid.toFixed(1)} dB`),
+        ],
+        constraints: [cst('Action', 'Preview recommended')],
         confidence: 0.65,
         status: 'pending',
         action: { type: 'batch', trackId: '', actions: batchActions },
@@ -291,6 +326,13 @@ export function generateSuggestions(
       description:
         'High-frequency energy is elevated. ' +
         `Will cut highs by 4 dB${targetNames.length > 0 ? ` on: ${targetNames.join(', ')}` : ' across tracks'} to reduce harshness.`,
+      rationale: 'Elevated high frequencies cause listener fatigue and sibilance issues.',
+      evidence: [
+        ev('HF energy', `${analysis.frequencyBalance.high.toFixed(1)} dB`),
+        ev('Mid energy', `${analysis.frequencyBalance.mid.toFixed(1)} dB`),
+        ...(targetNames.length > 0 ? [ev('Tracks', targetNames.join(', '))] : []),
+      ],
+      constraints: [cst('Action', 'Preview recommended')],
       confidence: 0.6,
       status: 'pending',
       action: eqActions.length === 1
@@ -333,6 +375,12 @@ export function generateSuggestions(
       description:
         `All ${activeTracks.length} tracks are centered. Will spread: ${trackNames} ` +
         'for a wider, more engaging mix.',
+      rationale: 'A mono-heavy mix lacks depth and dimension. Pan separation improves clarity.',
+      evidence: [
+        ev('Width', `${Math.round(analysis.stereoWidth * 100)}%`),
+        ev('Centered tracks', activeTracks.length),
+      ],
+      constraints: [cst('Max pan delta', '±0.35')],
       confidence: 0.8,
       status: 'pending',
       action: { type: 'batch', trackId: '', actions: panActions },
@@ -353,6 +401,12 @@ export function generateSuggestions(
         description:
           `Dynamic range is ${ta.level.dynamicRange.toFixed(0)} dB. ` +
           'Will add a gentle compressor to even out the levels.',
+        rationale: 'Very wide dynamics make quiet parts inaudible and loud parts jarring.',
+        evidence: [
+          ev('DR', `${ta.level.dynamicRange.toFixed(1)} dB`),
+          ev('Track', track?.name ?? 'unknown'),
+        ],
+        constraints: [cst('Action', 'Preview recommended')],
         confidence: 0.6,
         status: 'pending',
         action: {
@@ -379,6 +433,12 @@ export function generateSuggestions(
         description:
           `Noise floor at ${ta.noiseFloor.toFixed(0)} dB. ` +
           'Will add a gate filter to reduce background noise in quiet sections.',
+        rationale: 'Audible noise floor degrades mix clarity, especially during quiet passages.',
+        evidence: [
+          ev('Noise floor', `${ta.noiseFloor.toFixed(0)} dB`),
+          ev('Track', track?.name ?? 'unknown'),
+        ],
+        constraints: [cst('Action', 'Offline recommended')],
         confidence: 0.55,
         status: 'pending',
         action: {
@@ -430,6 +490,13 @@ export function generateSuggestions(
           `${eqAdvice}` +
           `Severity: ${Math.round(pair.severity * 100)}%. ` +
           `Apply EQ cut on "${nonDominantTrack?.name}".`,
+        rationale: 'Frequency masking makes instruments compete for the same spectral space, reducing clarity.',
+        evidence: [
+          ev('Bands', pair.maskedBands.join(', ')),
+          ev('Severity', `${Math.round(pair.severity * 100)}%`),
+          ev('Tracks', `${trackA?.name} & ${trackB?.name}`),
+        ],
+        constraints: [cst('Action', 'Manual review')],
         confidence: Math.min(0.85, pair.severity),
         status: 'pending',
         action: {
@@ -465,6 +532,13 @@ export function generateSuggestions(
           `Integrated loudness is ${lufs.toFixed(1)} LUFS. ` +
           `${profile.name} target: ${targetLufs} LUFS. ` +
           (failingPlatforms ? `Will be turned down on: ${failingPlatforms}.` : ''),
+        rationale: 'Exceeding platform loudness targets causes automatic gain reduction and pumping artifacts.',
+        evidence: [
+          ev('LUFS', `${lufs.toFixed(1)}`),
+          ev('Target', `${targetLufs} LUFS`),
+          ev('True peak', `${analysis.overallLoudness!.truePeak.toFixed(1)} dBTP`),
+        ],
+        constraints: [cst('Scope', 'Master bus: manual only')],
         confidence: 0.8,
         status: 'pending',
         action: null,
@@ -481,6 +555,12 @@ export function generateSuggestions(
           `Integrated loudness is ${lufs.toFixed(1)} LUFS. ` +
           `${profile.name} target: ${targetLufs} LUFS. ` +
           `Consider raising levels for competitive loudness.`,
+        rationale: 'A mix significantly below genre loudness targets will sound weak next to other releases.',
+        evidence: [
+          ev('LUFS', `${lufs.toFixed(1)}`),
+          ev('Target', `${targetLufs} LUFS`),
+        ],
+        constraints: [cst('Scope', 'Master bus: manual only')],
         confidence: 0.7,
         status: 'pending',
         action: null,
@@ -506,6 +586,12 @@ export function generateSuggestions(
           `Industry standard ceiling is -1.0 dBTP to prevent inter-sample clipping. ` +
           (failingPeakPlatforms ? `Exceeds limits for: ${failingPeakPlatforms}.` : '') +
           ` Consider adding a limiter with -1.0 dBTP ceiling.`,
+        rationale: 'True peaks above -1.0 dBTP cause inter-sample clipping in lossy codecs (MP3, AAC).',
+        evidence: [
+          ev('True peak', `${analysis.overallLoudness.truePeak > 0 ? '+' : ''}${analysis.overallLoudness.truePeak.toFixed(1)} dBTP`),
+          ev('Ceiling', `${profile.maxTruePeak} dBTP`),
+        ],
+        constraints: [cst('Scope', 'Master bus: manual only')],
         confidence: 0.92,
         status: 'pending',
         action: null,
@@ -525,6 +611,11 @@ export function generateSuggestions(
         description:
           `Dynamic range is ${dr.toFixed(1)} dB, below the ${profile.dynamicRangeMin} dB minimum for ${profile.name}. ` +
           `This can sound fatiguing. Consider reducing compression or limiter settings.`,
+        rationale: 'Excessive compression eliminates dynamics and causes listener fatigue.',
+        evidence: [
+          ev('DR', `${dr.toFixed(1)} dB`),
+          ev('Genre min', `${profile.dynamicRangeMin} dB`),
+        ],
         confidence: 0.65,
         status: 'pending',
         action: null,
@@ -547,6 +638,12 @@ export function generateSuggestions(
           `Phase correlation is ${phase.correlation.toFixed(2)} (negative = out of phase). ` +
           `This track will lose energy or cancel when summed to mono. ` +
           `Check stereo processing or flip polarity on one channel.`,
+        rationale: 'Negative phase correlation causes signal cancellation in mono playback systems.',
+        evidence: [
+          ev('Correlation', phase.correlation.toFixed(2)),
+          ev('Track', track?.name ?? 'unknown'),
+        ],
+        constraints: [cst('Action', 'Manual review')],
         confidence: 0.8,
         status: 'pending',
         action: null,
@@ -564,6 +661,11 @@ export function generateSuggestions(
           `Phase correlation is ${phase.correlation.toFixed(2)}. Very wide stereo content ` +
           `may not translate well to mono playback (phone speakers, PA systems). ` +
           `Consider narrowing bass frequencies while keeping highs wide.`,
+        rationale: 'Very wide stereo may lose energy on mono playback systems like phone speakers.',
+        evidence: [
+          ev('Correlation', phase.correlation.toFixed(2)),
+          ev('Track', track?.name ?? 'unknown'),
+        ],
         confidence: 0.5,
         status: 'pending',
         action: null,
@@ -599,6 +701,12 @@ export function generateSuggestions(
           description:
             `Peak level is ${region.level.peak.toFixed(1)} dB in this region. ` +
             'Consider reducing gain or applying a limiter.',
+          rationale: 'Localized clipping indicates transients or loud passages that exceed 0 dBFS.',
+          evidence: [
+            ev('Peak', `${region.level.peak.toFixed(1)} dB`),
+            ev('Region', `${startFmt}–${endFmt}`),
+          ],
+          constraints: [cst('Max gain', '−3 dB')],
           confidence: 0.85,
           status: 'pending',
           action: null,
@@ -622,6 +730,11 @@ export function generateSuggestions(
           description:
             `Low frequency energy is ${lowDiff.toFixed(0)} dB above track average ` +
             `in this section of "${track?.name ?? 'track'}".`,
+          rationale: 'Localized low-end energy spikes cause muddiness in specific sections.',
+          evidence: [
+            ev('Sub excess', `+${lowDiff.toFixed(0)} dB vs avg`),
+            ev('Region', `${startFmt}–${endFmt}`),
+          ],
           confidence: 0.6,
           status: 'pending',
           action: null,
@@ -644,6 +757,11 @@ export function generateSuggestions(
           description:
             `Peak reaches ${region.level.peak.toFixed(1)} dB, ` +
             `${peakDiff.toFixed(0)} dB above track RMS average.`,
+          rationale: 'Sudden volume spikes cause inconsistent listening experience and potential clipping.',
+          evidence: [
+            ev('Peak', `${region.level.peak.toFixed(1)} dB`),
+            ev('Above avg', `+${peakDiff.toFixed(0)} dB`),
+          ],
           confidence: 0.55,
           status: 'pending',
           action: null,
@@ -668,6 +786,9 @@ export function generateSuggestions(
         value: t.suggestedVolume,
       }));
 
+      const headroom = analysis.overallLevel.peak < 0
+        ? `${Math.abs(analysis.overallLevel.peak).toFixed(1)} dB`
+        : 'none (clipping)';
       suggestions.push({
         id: generateId('sug'),
         type: 'gain-staging',
@@ -677,6 +798,12 @@ export function generateSuggestions(
         description:
           `${tracksNeedingAdjustment.length} track(s) need level adjustment for proper headroom. ` +
           `Target: -6 dBFS peak per track.`,
+        rationale: 'Proper gain staging ensures headroom for mixing and prevents distortion in the signal chain.',
+        evidence: [
+          ev('Tracks to adjust', tracksNeedingAdjustment.length),
+          ev('Headroom', headroom),
+        ],
+        constraints: [cst('Max gain', '±3 dB')],
         confidence: 0.75,
         status: 'pending',
         action: {
