@@ -48,7 +48,7 @@ export function applyChord(
 ): MidiNote[] {
   const result: MidiNote[] = [];
   for (const note of notes) {
-    let intervals = [...params.intervals];
+    const intervals = [...params.intervals];
     // Apply inversion
     for (let inv = 0; inv < params.inversion && intervals.length > 1; inv++) {
       const first = intervals.shift()!;
@@ -152,7 +152,7 @@ export function applyMidiDelay(
   params: MidiDelayParams,
 ): MidiNote[] {
   const result: MidiNote[] = [...notes];
-  const maxRepeats = Math.min(8, Math.ceil(1 / (1 - params.feedback)));
+  const maxRepeats = Math.min(8, Math.ceil(1 / Math.max(0.01, 1 - params.feedback)));
   let current = notes;
 
   for (let i = 1; i <= maxRepeats; i++) {

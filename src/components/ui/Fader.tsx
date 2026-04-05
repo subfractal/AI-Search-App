@@ -96,7 +96,7 @@ export default function Fader({
     <div className="flex flex-col items-center gap-0.5">
       {label && (
         <span className="text-[8px] text-daw-text-muted/50 uppercase leading-none"
-              style={{ letterSpacing: '1.5px' }}>
+          style={{ letterSpacing: '1.5px' }}>
           {label}
         </span>
       )}

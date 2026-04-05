@@ -50,8 +50,8 @@ export default function BrowserPanel() {
             onClick={() => setTab(t.value)}
             className={`text-[9px] uppercase tracking-wide px-2 py-1 font-medium transition-all
                        ${tab === t.value
-                ? 'bg-daw-accent/15 text-daw-accent border border-daw-accent/30'
-                : 'text-daw-text-muted hover:text-daw-text-dim border border-transparent'}`}
+            ? 'bg-daw-accent/15 text-daw-accent border border-daw-accent/30'
+            : 'text-daw-text-muted hover:text-daw-text-dim border border-transparent'}`}
           >
             {t.label}
           </button>
@@ -100,8 +100,8 @@ function ClipsTab({ assets, filter, setFilter, toggleFavorite, removeAsset }: {
             onClick={() => setFilter({ source: sf.value })}
             className={`text-[8px] uppercase px-1.5 py-0.5 transition-all
                        ${filter.source === sf.value
-                ? 'bg-daw-accent/15 text-daw-accent'
-                : 'text-daw-text-muted/50 hover:text-daw-text-dim'}`}
+            ? 'bg-daw-accent/15 text-daw-accent'
+            : 'text-daw-text-muted/50 hover:text-daw-text-dim'}`}
           >
             {sf.label}
           </button>
@@ -110,8 +110,8 @@ function ClipsTab({ assets, filter, setFilter, toggleFavorite, removeAsset }: {
           onClick={() => setFilter({ favoritesOnly: !filter.favoritesOnly })}
           className={`text-[8px] px-1.5 py-0.5 transition-all
                      ${filter.favoritesOnly
-              ? 'bg-amber-500/15 text-amber-400'
-              : 'text-daw-text-muted/50 hover:text-daw-text-dim'}`}
+      ? 'bg-amber-500/15 text-amber-400'
+      : 'text-daw-text-muted/50 hover:text-daw-text-dim'}`}
         >
           Fav
         </button>
@@ -149,8 +149,8 @@ function PresetsTab({ assets, filter, setFilter }: {
             onClick={() => setFilter({ type: tf.value })}
             className={`text-[8px] uppercase px-1.5 py-0.5 transition-all
                        ${filter.type === tf.value
-                ? 'bg-daw-accent/15 text-daw-accent'
-                : 'text-daw-text-muted/50 hover:text-daw-text-dim'}`}
+            ? 'bg-daw-accent/15 text-daw-accent'
+            : 'text-daw-text-muted/50 hover:text-daw-text-dim'}`}
           >
             {tf.label}
           </button>

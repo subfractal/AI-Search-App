@@ -148,8 +148,8 @@ export default function SynthPanel({ trackId }: SynthPanelProps) {
               onClick={() => updateSynth(trackId, { oscillator: osc })}
               className={`flex-1 text-[8px] py-1 transition-all
                          ${params.oscillator === osc
-                  ? 'bg-daw-accent/20 text-daw-accent border border-daw-accent/30'
-                  : 'bg-daw-bg text-daw-text-muted/50 border border-daw-border/20 hover:border-daw-border/40'}`}
+              ? 'bg-daw-accent/20 text-daw-accent border border-daw-accent/30'
+              : 'bg-daw-bg text-daw-text-muted/50 border border-daw-border/20 hover:border-daw-border/40'}`}
             >
               {osc.slice(0, 3).toUpperCase()}
             </button>
@@ -170,8 +170,8 @@ export default function SynthPanel({ trackId }: SynthPanelProps) {
               onClick={() => updateSynth(trackId, { filterType: f })}
               className={`flex-1 text-[8px] py-1 transition-all
                          ${params.filterType === f
-                  ? 'bg-daw-accent/20 text-daw-accent border border-daw-accent/30'
-                  : 'bg-daw-bg text-daw-text-muted/50 border border-daw-border/20 hover:border-daw-border/40'}`}
+              ? 'bg-daw-accent/20 text-daw-accent border border-daw-accent/30'
+              : 'bg-daw-bg text-daw-text-muted/50 border border-daw-border/20 hover:border-daw-border/40'}`}
             >
               {f === 'lowpass' ? 'LP' : f === 'highpass' ? 'HP' : 'BP'}
             </button>

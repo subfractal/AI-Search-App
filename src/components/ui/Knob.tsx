@@ -154,7 +154,7 @@ export default function Knob({
       )}
       {label && (
         <span className="text-[8px] text-daw-text-muted leading-none uppercase"
-              style={{ letterSpacing: '1.5px' }}>
+          style={{ letterSpacing: '1.5px' }}>
           {label}
         </span>
       )}

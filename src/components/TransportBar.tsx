@@ -212,8 +212,8 @@ export default function TransportBar({
       onClick={() => panel ? onTogglePanel(panel) : undefined}
       className={`text-[10px] font-medium px-2 py-0.5 transition-all duration-75
                  ${activePanel === panel
-                   ? 'bg-daw-accent/15 text-daw-accent border border-daw-accent/30'
-                   : 'text-daw-text-muted hover:text-daw-text-dim bg-daw-panel/50 border border-transparent hover:border-daw-border/30'}`}
+      ? 'bg-daw-accent/15 text-daw-accent border border-daw-accent/30'
+      : 'text-daw-text-muted hover:text-daw-text-dim bg-daw-panel/50 border border-transparent hover:border-daw-border/30'}`}
     >
       {label}
     </button>
@@ -221,7 +221,7 @@ export default function TransportBar({
 
   return (
     <div className="bg-daw-transport-bg select-none shrink-0"
-         style={{ borderBottom: '2px solid #1a1a1c' }}>
+      style={{ borderBottom: '2px solid #1a1a1c' }}>
       {/* Row 1: Branding + Transport + LCD + Meter */}
       <div className="flex items-center h-16 px-3 gap-3">
 
@@ -269,8 +269,8 @@ export default function TransportBar({
             onClick={isPlaying ? pause : play}
             className={`daw-hw-btn w-10 h-9 flex items-center justify-center
                        ${isPlaying
-              ? 'text-daw-transport-play !bg-daw-transport-play/15 !border-daw-transport-play/30'
-              : 'text-daw-text-muted/60 hover:text-daw-text'}`}
+      ? 'text-daw-transport-play !bg-daw-transport-play/15 !border-daw-transport-play/30'
+      : 'text-daw-text-muted/60 hover:text-daw-text'}`}
             title={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying ? <IconPause /> : <IconPlay />}
@@ -280,8 +280,8 @@ export default function TransportBar({
             onClick={stop}
             className={`daw-hw-btn w-9 h-9 flex items-center justify-center
                        ${state === 'stopped'
-              ? 'text-daw-text !bg-daw-surface'
-              : 'text-daw-text-muted/60 hover:text-daw-text-dim'}`}
+      ? 'text-daw-text !bg-daw-surface'
+      : 'text-daw-text-muted/60 hover:text-daw-text-dim'}`}
             title="Stop"
           >
             <IconStop />
@@ -291,8 +291,8 @@ export default function TransportBar({
             onClick={pause}
             className={`daw-hw-btn w-9 h-9 flex items-center justify-center
                        ${state === 'paused'
-              ? 'text-daw-text !bg-daw-surface'
-              : 'text-daw-text-muted/60 hover:text-daw-text-dim'}`}
+      ? 'text-daw-text !bg-daw-surface'
+      : 'text-daw-text-muted/60 hover:text-daw-text-dim'}`}
             title="Pause"
           >
             <IconPause />
@@ -302,8 +302,8 @@ export default function TransportBar({
             onClick={toggleRecord}
             className={`daw-hw-btn w-10 h-9 flex items-center justify-center
                        ${isRecording
-              ? 'text-daw-transport-record !bg-daw-transport-record/20 !border-daw-transport-record/40 animate-blink-signal'
-              : 'text-daw-text-muted/40 hover:text-daw-transport-record/70'}`}
+      ? 'text-daw-transport-record !bg-daw-transport-record/20 !border-daw-transport-record/40 animate-blink-signal'
+      : 'text-daw-text-muted/40 hover:text-daw-transport-record/70'}`}
             title="Record"
           >
             <IconRecord />
@@ -313,7 +313,7 @@ export default function TransportBar({
         {/* ── Large LCD Timecode Display ── */}
         <div className="daw-lcd px-4 py-2 flex flex-col items-start min-w-[230px] shrink-0">
           <span className="text-[26px] font-mono leading-none text-daw-lcd-text tracking-wider font-medium"
-                style={{ textShadow: '0 0 12px rgba(230,57,70,0.3)' }}>
+            style={{ textShadow: '0 0 12px rgba(230,57,70,0.3)' }}>
             {timecode}
           </span>
           <div className="flex items-center gap-3 mt-1">
@@ -357,8 +357,8 @@ export default function TransportBar({
             onClick={toggleLoop}
             className={`daw-hw-btn w-9 h-9 flex items-center justify-center
                        ${loopEnabled
-              ? 'text-daw-accent !bg-daw-accent/15 !border-daw-accent/30'
-              : 'text-daw-text-muted/40 hover:text-daw-text-dim'}`}
+      ? 'text-daw-accent !bg-daw-accent/15 !border-daw-accent/30'
+      : 'text-daw-text-muted/40 hover:text-daw-text-dim'}`}
             title="Toggle Loop"
           >
             <IconLoop />
@@ -367,8 +367,8 @@ export default function TransportBar({
             onClick={toggleMetronome}
             className={`daw-hw-btn w-9 h-9 flex items-center justify-center
                        ${metronomeEnabled
-              ? 'text-daw-accent !bg-daw-accent/15 !border-daw-accent/30'
-              : 'text-daw-text-muted/40 hover:text-daw-text-dim'}`}
+      ? 'text-daw-accent !bg-daw-accent/15 !border-daw-accent/30'
+      : 'text-daw-text-muted/40 hover:text-daw-text-dim'}`}
             title="Toggle Metronome"
           >
             <IconMetronome />
@@ -426,13 +426,13 @@ export default function TransportBar({
 
       {/* Row 2: Panel toggles */}
       <div className="flex items-center h-7 px-3 gap-1 overflow-x-auto scrollbar-none"
-           style={{ borderTop: '1px solid #1a1a1c', background: '#080808' }}>
+        style={{ borderTop: '1px solid #1a1a1c', background: '#080808' }}>
         <button
           onClick={onToggleTracks}
           className={`text-[10px] font-medium px-2 py-0.5 transition-all duration-75 shrink-0
                      ${showTracks
-                       ? 'bg-daw-accent/15 text-daw-accent border border-daw-accent/30'
-                       : 'text-daw-text-muted hover:text-daw-text-dim bg-daw-panel/50 border border-transparent hover:border-daw-border/30'}`}
+      ? 'bg-daw-accent/15 text-daw-accent border border-daw-accent/30'
+      : 'text-daw-text-muted hover:text-daw-text-dim bg-daw-panel/50 border border-transparent hover:border-daw-border/30'}`}
         >
           Trk
         </button>
@@ -446,8 +446,8 @@ export default function TransportBar({
           onClick={onPianoRoll}
           className={`text-[10px] font-medium px-2 py-0.5 transition-all duration-75 shrink-0
                      ${activePanel === 'piano-roll'
-                       ? 'bg-daw-accent/15 text-daw-accent border border-daw-accent/30'
-                       : 'text-daw-text-muted hover:text-daw-text-dim bg-daw-panel/50 border border-transparent hover:border-daw-border/30'}`}
+      ? 'bg-daw-accent/15 text-daw-accent border border-daw-accent/30'
+      : 'text-daw-text-muted hover:text-daw-text-dim bg-daw-panel/50 border border-transparent hover:border-daw-border/30'}`}
         >
           Roll
         </button>
@@ -480,8 +480,8 @@ export default function TransportBar({
           onClick={onToggleAI}
           className={`text-[10px] font-medium px-2.5 py-0.5 transition-all duration-75 shrink-0
                      ${showAI
-              ? 'bg-daw-ai-accent/15 text-daw-ai-accent border border-daw-ai-accent/30'
-              : 'text-daw-text-muted hover:text-daw-ai-accent/60 bg-daw-panel/50 border border-transparent'}`}
+      ? 'bg-daw-ai-accent/15 text-daw-ai-accent border border-daw-ai-accent/30'
+      : 'text-daw-text-muted hover:text-daw-ai-accent/60 bg-daw-panel/50 border border-transparent'}`}
         >
           AI
         </button>

@@ -84,7 +84,7 @@ export default function EffectsRack({ trackId, trackName }: EffectsRackProps) {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 shrink-0"
-           style={{ borderBottom: '2px solid #1a1a1c' }}>
+        style={{ borderBottom: '2px solid #1a1a1c' }}>
         <div className="flex items-center gap-2">
           <span className="text-[9px] font-mono font-bold uppercase tracking-[3px] text-[#E63946]/90">FX RACK</span>
           <span className="text-xs text-daw-text-muted font-mono">{trackName}</span>

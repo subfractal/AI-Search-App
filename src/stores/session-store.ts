@@ -219,8 +219,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       tracks: state.tracks.map((t) =>
         t.id === trackId
           ? { ...t, clips: t.clips.map((c) =>
-              c.id === clipId ? { ...c, startTime: Math.max(0, newStartTime) } : c,
-            ) }
+            c.id === clipId ? { ...c, startTime: Math.max(0, newStartTime) } : c,
+          ) }
           : t,
       ),
     })),
@@ -230,8 +230,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       tracks: state.tracks.map((t) =>
         t.id === trackId
           ? { ...t, clips: t.clips.map((c) =>
-              c.id === clipId ? { ...c, duration: Math.max(0.1, newDuration) } : c,
-            ) }
+            c.id === clipId ? { ...c, duration: Math.max(0.1, newDuration) } : c,
+          ) }
           : t,
       ),
     })),

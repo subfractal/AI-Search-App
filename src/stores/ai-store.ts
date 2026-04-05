@@ -208,9 +208,10 @@ export const useAIStore = create<AIStore>((set, get) => ({
           const gainDecision = decisions.find(
             (d) => d.stage === 'Gain Staging' && d.trackId === track.id,
           );
-          if (gainDecision) {
-            mixer.setVolume(track.id, gainDecision.params.volume ?? track.volume);
-            session.updateTrack(track.id, { volume: gainDecision.params.volume ?? track.volume });
+          if (gainDecision && gainDecision.params.volume !== undefined) {
+            const vol = gainDecision.params.volume;
+            mixer.setVolume(track.id, vol);
+            session.updateTrack(track.id, { volume: vol });
           }
         } else {
           // Restore original volumes from snapshot
@@ -237,10 +238,12 @@ export const useAIStore = create<AIStore>((set, get) => ({
       // Toggle gain staging: swap between original and mastered volume
       const result = get().masteringResult;
       const origVol = result?.snapshot?.trackVolumes[decision.trackId];
-      const masteredVol = decision.params.volume;
+      const masteredVol = decision.params.volume ?? undefined;
       const session = useSessionStore.getState();
       const currentVol = session.tracks.find((t) => t.id === decision.trackId)?.volume ?? 0;
-      const targetVol = decision.enabled ? (origVol ?? currentVol) : (masteredVol ?? currentVol);
+      const targetVol = decision.enabled
+        ? (origVol ?? currentVol)
+        : (masteredVol !== undefined ? masteredVol : currentVol);
       useMixerStore.getState().setVolume(decision.trackId, targetVol);
       session.updateTrack(decision.trackId, { volume: targetVol });
     }

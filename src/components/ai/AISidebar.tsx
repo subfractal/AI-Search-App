@@ -83,12 +83,12 @@ export default function AISidebar() {
       {/* Header — AI KONSTRUKT ENGINE */}
       <div className="shrink-0" style={{ borderBottom: '2px solid #1a1a1c' }}>
         <div className="flex items-center justify-between px-3 h-10"
-             style={{ background: 'linear-gradient(to bottom, rgba(230,57,70,0.04), transparent)' }}>
+          style={{ background: 'linear-gradient(to bottom, rgba(230,57,70,0.04), transparent)' }}>
           <div className="flex items-center gap-2">
             <div className={`w-2.5 h-2.5 bg-[#E63946]
                             ${analyzing ? 'daw-analyzing' : ''}
                             ${enabled ? '' : 'opacity-40'}`}
-                 style={{ boxShadow: enabled ? '0 0 8px rgba(230,57,70,0.4)' : 'none' }} />
+            style={{ boxShadow: enabled ? '0 0 8px rgba(230,57,70,0.4)' : 'none' }} />
             <span className="text-[10px] font-bold tracking-[3px] uppercase text-[#E63946] font-mono">
               AI KONSTRUKT
             </span>
@@ -113,8 +113,8 @@ export default function AISidebar() {
                 title={mode.description}
                 className={`flex-1 text-[8px] py-1.5 font-bold font-mono uppercase tracking-wide transition-all
                            ${composer.coproducerMode === mode.id
-                             ? 'bg-[#E63946]/25 text-[#E63946] border border-[#E63946]/40'
-                             : 'daw-hw-btn text-daw-text-muted hover:text-daw-text-dim'}`}
+                ? 'bg-[#E63946]/25 text-[#E63946] border border-[#E63946]/40'
+                : 'daw-hw-btn text-daw-text-muted hover:text-daw-text-dim'}`}
               >
                 {mode.label}
               </button>
@@ -132,8 +132,8 @@ export default function AISidebar() {
               className={`w-full text-xxs py-2 font-bold font-mono uppercase tracking-wider text-white
                          disabled:opacity-30 disabled:cursor-not-allowed transition-all
                          ${analyzing
-                           ? 'bg-daw-ai-suggestion/50 animate-blink-signal'
-                           : 'bg-daw-ai-suggestion/80 hover:bg-daw-ai-suggestion'}`}
+          ? 'bg-daw-ai-suggestion/50 animate-blink-signal'
+          : 'bg-daw-ai-suggestion/80 hover:bg-daw-ai-suggestion'}`}
               style={{ border: '1px solid rgba(230,57,70,0.3)' }}
             >
               {analyzing ? (
@@ -257,8 +257,8 @@ export default function AISidebar() {
                     onClick={() => setComposer({ role: r.id })}
                     className={`text-[8px] px-1.5 py-0.5 transition-all
                                ${composer.role === r.id
-                                 ? 'bg-daw-ai-accent/25 text-daw-ai-accent border border-daw-ai-accent/30'
-                                 : 'bg-daw-bg/30 text-daw-text-muted hover:text-daw-text-dim border border-transparent'}`}
+                    ? 'bg-daw-ai-accent/25 text-daw-ai-accent border border-daw-ai-accent/30'
+                    : 'bg-daw-bg/30 text-daw-text-muted hover:text-daw-text-dim border border-transparent'}`}
                   >
                     {r.label}
                   </button>

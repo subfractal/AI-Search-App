@@ -57,8 +57,8 @@ export default function InstrumentRack() {
               onClick={() => setActiveCategory(cat.id)}
               className={`text-[9px] px-2 py-1 shrink-0 transition-all
                          ${activeCategory === cat.id
-                  ? 'bg-daw-accent/20 text-daw-accent border border-daw-accent/30'
-                  : 'bg-daw-bg text-daw-text-muted/60 border border-daw-border/20 hover:text-daw-text-dim'}`}
+              ? 'bg-daw-accent/20 text-daw-accent border border-daw-accent/30'
+              : 'bg-daw-bg text-daw-text-muted/60 border border-daw-border/20 hover:text-daw-text-dim'}`}
             >
               {cat.label}
             </button>

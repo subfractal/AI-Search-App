@@ -55,8 +55,8 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
     <div
       className={`group flex items-center gap-1.5 px-2 py-1.5 cursor-pointer transition-colors min-h-[72px]
                   ${isSelected
-          ? 'bg-daw-track-selected'
-          : 'bg-daw-track hover:bg-daw-surface-alt'}`}
+      ? 'bg-daw-track-selected'
+      : 'bg-daw-track hover:bg-daw-surface-alt'}`}
       style={{ borderBottom: '2px solid #111113' }}
       onClick={() => selectTrack(trackId)}
     >
@@ -82,8 +82,8 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
                 key={c}
                 className={`w-4 h-4 border transition-all
                            ${c === track.color
-                    ? 'border-white scale-110'
-                    : 'border-transparent hover:border-white/40'}`}
+                ? 'border-white scale-110'
+                : 'border-transparent hover:border-white/40'}`}
                 style={{ backgroundColor: c }}
                 onClick={() => {
                   updateTrack(trackId, { color: c });
@@ -169,8 +169,8 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
             <button
               className={`text-[8px] uppercase tracking-wide px-1 py-px border leading-none font-mono
                          ${track.sequencer?.activeSequencer === 'launcher'
-                  ? 'bg-green-500/15 text-green-400 border-green-500/30'
-                  : 'bg-daw-bg/40 text-daw-text-muted/50 border-daw-border/20 hover:text-daw-text-dim'}`}
+              ? 'bg-green-500/15 text-green-400 border-green-500/30'
+              : 'bg-daw-bg/40 text-daw-text-muted/50 border-daw-border/20 hover:text-daw-text-dim'}`}
               title={`Sequencer: ${track.sequencer?.activeSequencer ?? 'arrangement'} — click to toggle`}
               onClick={(e) => {
                 e.stopPropagation();
@@ -191,8 +191,8 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
             className={`w-7 h-5 text-[9px] font-bold font-mono transition-all
                        flex items-center justify-center
                        ${track.mute
-                ? 'bg-[#F77F00]/90 text-black'
-                : 'daw-hw-btn text-daw-text-muted/60 hover:text-daw-text-dim'}`}
+      ? 'bg-[#F77F00]/90 text-black'
+      : 'daw-hw-btn text-daw-text-muted/60 hover:text-daw-text-dim'}`}
             onClick={(e) => {
               e.stopPropagation();
               toggleMute(trackId);
@@ -205,8 +205,8 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
             className={`w-7 h-5 text-[9px] font-bold font-mono transition-all
                        flex items-center justify-center
                        ${track.solo
-                ? 'bg-[#E63946]/90 text-white'
-                : 'daw-hw-btn text-daw-text-muted/60 hover:text-daw-text-dim'}`}
+      ? 'bg-[#E63946]/90 text-white'
+      : 'daw-hw-btn text-daw-text-muted/60 hover:text-daw-text-dim'}`}
             onClick={(e) => {
               e.stopPropagation();
               toggleSolo(trackId);
@@ -222,8 +222,8 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
             className={`w-6 h-5 text-[9px] font-bold transition-all
                        flex items-center justify-center
                        ${track.armed
-                ? 'bg-[#E63946]/90 text-white'
-                : 'bg-daw-bg/60 text-daw-text-muted/40 hover:text-[#E63946]/60'}`}
+      ? 'bg-[#E63946]/90 text-white'
+      : 'bg-daw-bg/60 text-daw-text-muted/40 hover:text-[#E63946]/60'}`}
             onClick={(e) => {
               e.stopPropagation();
               updateTrack(trackId, { armed: !track.armed });

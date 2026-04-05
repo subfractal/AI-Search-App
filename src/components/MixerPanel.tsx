@@ -32,10 +32,10 @@ export default function MixerPanel() {
       {tracks.length > 0 && (
         <div className="flex flex-col items-center gap-1 px-3 py-2
                         shrink-0 min-w-[80px] w-[84px]"
-             style={{
-               borderLeft: '3px solid #1a1a1c',
-               background: 'linear-gradient(to bottom, rgba(230,57,70,0.04), rgba(230,57,70,0.01), transparent)',
-             }}>
+        style={{
+          borderLeft: '3px solid #1a1a1c',
+          background: 'linear-gradient(to bottom, rgba(230,57,70,0.04), rgba(230,57,70,0.01), transparent)',
+        }}>
           <span className="text-[8px] text-[#E63946] font-bold tracking-[3px] font-mono uppercase">
             MASTER
           </span>
@@ -69,10 +69,10 @@ export default function MixerPanel() {
                 </span>
                 <span className={`text-[10px] font-mono font-bold tabular-nums block leading-tight
                   ${lufs.integrated >= -16 && lufs.integrated <= -14
-                    ? 'text-[#3dd68c]'
-                    : lufs.integrated > -11 || lufs.integrated < -20
-                      ? 'text-[#ef4444]'
-                      : 'text-[#f5c542]'}`}
+              ? 'text-[#3dd68c]'
+              : lufs.integrated > -11 || lufs.integrated < -20
+                ? 'text-[#ef4444]'
+                : 'text-[#f5c542]'}`}
                 >
                   {lufs.integrated > -Infinity
                     ? lufs.integrated.toFixed(1)

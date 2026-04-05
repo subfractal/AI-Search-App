@@ -178,6 +178,8 @@ function createEffectNode(
       const p = params as SaturatorParams;
       return new Tone.Distortion({ distortion: p.drive, wet: p.wet });
     }
+    default:
+      return new Tone.Channel();
   }
 }
 

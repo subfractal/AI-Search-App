@@ -107,9 +107,9 @@ export default function PatternVariationPanel({ trackId }: PatternVariationPanel
                 className={`flex items-center gap-1 px-2 py-1 text-xxs font-mono
                            border shrink-0 transition-colors
                            ${i === activeIdx
-                    ? 'border-daw-accent bg-daw-accent/10 text-daw-text'
-                    : 'border-daw-border/30 text-daw-text-muted hover:border-daw-border'
-                  }`}
+                ? 'border-daw-accent bg-daw-accent/10 text-daw-text'
+                : 'border-daw-border/30 text-daw-text-muted hover:border-daw-border'
+              }`}
               >
                 <span className={`w-1.5 h-1.5 ${roleInfo?.color ?? 'bg-daw-text-muted'}`} />
                 {v.name}
@@ -154,11 +154,11 @@ export default function PatternVariationPanel({ trackId }: PatternVariationPanel
                       }}
                       className={`h-5 flex-1 transition-all duration-75
                                  ${isOn
-                          ? 'bg-daw-accent/70 hover:bg-daw-accent'
-                          : isBarStart
-                            ? 'bg-daw-surface-alt hover:bg-daw-panel border border-daw-border/20'
-                            : 'bg-daw-bg hover:bg-daw-surface border border-daw-border/10'
-                        }`}
+                      ? 'bg-daw-accent/70 hover:bg-daw-accent'
+                      : isBarStart
+                        ? 'bg-daw-surface-alt hover:bg-daw-panel border border-daw-border/20'
+                        : 'bg-daw-bg hover:bg-daw-surface border border-daw-border/10'
+                    }`}
                     />
                   );
                 })}

@@ -118,6 +118,17 @@ export const DEFAULT_MIDI_DELAY_PARAMS: MidiDelayParams = {
   time: 0.25, feedback: 0.5, transpose: 0,
 };
 
+export const MIDI_EFFECT_DEFAULTS: Record<MidiEffectType, MidiEffectParams> = {
+  arpeggiator: DEFAULT_ARP_PARAMS,
+  chord: DEFAULT_CHORD_PARAMS,
+  scale: DEFAULT_SCALE_PARAMS,
+  transposer: DEFAULT_TRANSPOSER_PARAMS,
+  velocity: DEFAULT_VELOCITY_PARAMS,
+  noteRepeat: DEFAULT_NOTE_REPEAT_PARAMS,
+  humanize: DEFAULT_HUMANIZE_PARAMS,
+  midiDelay: DEFAULT_MIDI_DELAY_PARAMS,
+};
+
 export const SCALE_INTERVALS: Record<ScaleType, number[]> = {
   major: [0, 2, 4, 5, 7, 9, 11],
   minor: [0, 2, 3, 5, 7, 8, 10],

@@ -106,8 +106,8 @@ function TrackInspector({ track }: { track: Track }) {
             </span>
             <span className={`text-xxs font-mono uppercase
                             ${track.sequencer.activeSequencer === 'launcher'
-                ? 'text-emerald-400'
-                : 'text-daw-text-muted'}`}>
+          ? 'text-emerald-400'
+          : 'text-daw-text-muted'}`}>
               {track.sequencer.activeSequencer === 'launcher' ? 'LAUNCH' : 'ARR'}
             </span>
           </div>

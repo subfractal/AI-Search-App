@@ -78,8 +78,8 @@ export default function ChannelStrip({ trackId }: ChannelStripProps) {
                   min-w-[60px] w-[68px] shrink-0
                   transition-colors cursor-pointer
                   ${isSelected
-                    ? 'bg-daw-track-selected'
-                    : 'bg-daw-surface hover:bg-daw-surface-alt'}`}
+      ? 'bg-daw-track-selected'
+      : 'bg-daw-surface hover:bg-daw-surface-alt'}`}
       style={{
         borderRight: '2px solid #111113',
         boxShadow: isSelected ? 'inset 0 0 0 1px rgba(230,57,70,0.15)' : 'none',
@@ -106,7 +106,7 @@ export default function ChannelStrip({ trackId }: ChannelStripProps) {
       {effectCount > 0 && (
         <span className="text-[7px] bg-daw-accent/15 text-daw-accent/80
                          px-1.5 py-px font-mono font-bold leading-none"
-              style={{ border: '1px solid rgba(247,127,0,0.2)' }}>
+        style={{ border: '1px solid rgba(247,127,0,0.2)' }}>
           {effectCount}FX
         </span>
       )}
@@ -181,8 +181,8 @@ export default function ChannelStrip({ trackId }: ChannelStripProps) {
           className={`flex-1 h-5 text-[8px] font-bold transition-all
                      flex items-center justify-center
                      ${strip.mute
-              ? 'bg-[#F77F00]/90 text-black'
-              : 'daw-hw-btn text-daw-text-muted/40 hover:text-daw-text-muted'}`}
+      ? 'bg-[#F77F00]/90 text-black'
+      : 'daw-hw-btn text-daw-text-muted/40 hover:text-daw-text-muted'}`}
           onClick={(e) => {
             e.stopPropagation();
             toggleMute(trackId);
@@ -195,8 +195,8 @@ export default function ChannelStrip({ trackId }: ChannelStripProps) {
           className={`flex-1 h-5 text-[8px] font-bold transition-all
                      flex items-center justify-center
                      ${strip.solo
-              ? 'bg-[#E63946]/90 text-white'
-              : 'daw-hw-btn text-daw-text-muted/40 hover:text-daw-text-muted'}`}
+      ? 'bg-[#E63946]/90 text-white'
+      : 'daw-hw-btn text-daw-text-muted/40 hover:text-daw-text-muted'}`}
           onClick={(e) => {
             e.stopPropagation();
             toggleSolo(trackId);

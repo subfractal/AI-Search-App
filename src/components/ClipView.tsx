@@ -36,6 +36,7 @@ function applyMidiEffect(notes: MidiNote[], type: MidiEffectType, params: MidiEf
     case 'noteRepeat': return applyNoteRepeat(notes, params as NoteRepeatParams);
     case 'humanize': return applyHumanize(notes, params as HumanizeParams);
     case 'midiDelay': return applyMidiDelay(notes, params as MidiDelayParams);
+    default: return notes;
   }
 }
 
@@ -177,17 +178,21 @@ function MidiToolsSection({ trackId, clip }: { trackId: string; clip: MidiClip }
   const tracks = useSessionStore((s) => s.tracks);
 
   const handleApply = useCallback(() => {
-    let notes = [...clip.notes];
-    for (const fx of midiEffects) {
-      if (!fx.enabled) continue;
-      notes = applyMidiEffect(notes, fx.type, fx.params);
+    try {
+      let notes = [...clip.notes];
+      for (const fx of midiEffects) {
+        if (!fx.enabled) continue;
+        notes = applyMidiEffect(notes, fx.type, fx.params);
+      }
+      const track = tracks.find((t) => t.id === trackId);
+      if (!track) return;
+      const updatedClips = track.clips.map((c) =>
+        c.id === clip.id ? { ...c, notes } : c,
+      );
+      updateTrack(trackId, { clips: updatedClips });
+    } catch {
+      // Effect application failed — leave clip unchanged
     }
-    const track = tracks.find((t) => t.id === trackId);
-    if (!track) return;
-    const updatedClips = track.clips.map((c) =>
-      c.id === clip.id ? { ...c, notes } : c,
-    );
-    updateTrack(trackId, { clips: updatedClips });
   }, [clip, midiEffects, trackId, tracks, updateTrack]);
 
   const midiTypes: MidiEffectType[] = [

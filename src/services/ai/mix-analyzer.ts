@@ -248,7 +248,7 @@ export function generateSuggestions(
         targetTrackId: lowEndTracks[0] ?? null,
         title: 'Low end buildup',
         description:
-          `Excessive low-frequency energy detected. ` +
+          'Excessive low-frequency energy detected. ' +
           `Will add 80 Hz high-pass filter to: ${targetNames.join(', ') || 'affected tracks'}.`,
         rationale: 'Excessive sub-bass energy causes muddiness and reduces headroom for the entire mix.',
         evidence: [
@@ -554,7 +554,7 @@ export function generateSuggestions(
         description:
           `Integrated loudness is ${lufs.toFixed(1)} LUFS. ` +
           `${profile.name} target: ${targetLufs} LUFS. ` +
-          `Consider raising levels for competitive loudness.`,
+          'Consider raising levels for competitive loudness.',
         rationale: 'A mix significantly below genre loudness targets will sound weak next to other releases.',
         evidence: [
           ev('LUFS', `${lufs.toFixed(1)}`),
@@ -583,9 +583,9 @@ export function generateSuggestions(
         title: `True peak exceeds ${profile.maxTruePeak} dBTP ceiling`,
         description:
           `True peak is ${analysis.overallLoudness.truePeak > 0 ? '+' : ''}${analysis.overallLoudness.truePeak.toFixed(1)} dBTP. ` +
-          `Industry standard ceiling is -1.0 dBTP to prevent inter-sample clipping. ` +
+          'Industry standard ceiling is -1.0 dBTP to prevent inter-sample clipping. ' +
           (failingPeakPlatforms ? `Exceeds limits for: ${failingPeakPlatforms}.` : '') +
-          ` Consider adding a limiter with -1.0 dBTP ceiling.`,
+          ' Consider adding a limiter with -1.0 dBTP ceiling.',
         rationale: 'True peaks above -1.0 dBTP cause inter-sample clipping in lossy codecs (MP3, AAC).',
         evidence: [
           ev('True peak', `${analysis.overallLoudness.truePeak > 0 ? '+' : ''}${analysis.overallLoudness.truePeak.toFixed(1)} dBTP`),
@@ -610,7 +610,7 @@ export function generateSuggestions(
         title: `Over-compressed for ${profile.name}`,
         description:
           `Dynamic range is ${dr.toFixed(1)} dB, below the ${profile.dynamicRangeMin} dB minimum for ${profile.name}. ` +
-          `This can sound fatiguing. Consider reducing compression or limiter settings.`,
+          'This can sound fatiguing. Consider reducing compression or limiter settings.',
         rationale: 'Excessive compression eliminates dynamics and causes listener fatigue.',
         evidence: [
           ev('DR', `${dr.toFixed(1)} dB`),
@@ -636,8 +636,8 @@ export function generateSuggestions(
         title: `Phase issue on "${track?.name ?? 'track'}"`,
         description:
           `Phase correlation is ${phase.correlation.toFixed(2)} (negative = out of phase). ` +
-          `This track will lose energy or cancel when summed to mono. ` +
-          `Check stereo processing or flip polarity on one channel.`,
+          'This track will lose energy or cancel when summed to mono. ' +
+          'Check stereo processing or flip polarity on one channel.',
         rationale: 'Negative phase correlation causes signal cancellation in mono playback systems.',
         evidence: [
           ev('Correlation', phase.correlation.toFixed(2)),
@@ -659,8 +659,8 @@ export function generateSuggestions(
         title: `Wide stereo on "${track?.name ?? 'track'}"`,
         description:
           `Phase correlation is ${phase.correlation.toFixed(2)}. Very wide stereo content ` +
-          `may not translate well to mono playback (phone speakers, PA systems). ` +
-          `Consider narrowing bass frequencies while keeping highs wide.`,
+          'may not translate well to mono playback (phone speakers, PA systems). ' +
+          'Consider narrowing bass frequencies while keeping highs wide.',
         rationale: 'Very wide stereo may lose energy on mono playback systems like phone speakers.',
         evidence: [
           ev('Correlation', phase.correlation.toFixed(2)),
@@ -797,7 +797,7 @@ export function generateSuggestions(
         title: 'Gain staging needed',
         description:
           `${tracksNeedingAdjustment.length} track(s) need level adjustment for proper headroom. ` +
-          `Target: -6 dBFS peak per track.`,
+          'Target: -6 dBFS peak per track.',
         rationale: 'Proper gain staging ensures headroom for mixing and prevents distortion in the signal chain.',
         evidence: [
           ev('Tracks to adjust', tracksNeedingAdjustment.length),

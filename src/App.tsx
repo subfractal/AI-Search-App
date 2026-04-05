@@ -275,7 +275,7 @@ export default function App() {
                 </div>
                 {!isMobile && (
                   <div className="h-44 shrink-0 overflow-y-auto bg-daw-surface"
-                       style={{ borderTop: '2px solid #1a1a1c' }}>
+                    style={{ borderTop: '2px solid #1a1a1c' }}>
                     <InspectorPanel />
                   </div>
                 )}
@@ -295,8 +295,8 @@ export default function App() {
               <div className="daw-zone-border shrink-0" />
               <div className={`shrink-0 flex flex-col
                               ${isMobile
-                  ? 'absolute right-0 top-[84px] bottom-0 w-72 z-30 bg-daw-ai-bg shadow-xl'
-                  : 'w-64 bg-daw-ai-bg'}`}
+              ? 'absolute right-0 top-[84px] bottom-0 w-72 z-30 bg-daw-ai-bg shadow-xl'
+              : 'w-64 bg-daw-ai-bg'}`}
               >
                 <div className="flex-1 min-h-0 overflow-y-auto">
                   <AISidebar />

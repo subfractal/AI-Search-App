@@ -89,9 +89,9 @@ export const useHistoryStore = create<HistoryStore>((set) => ({
       undoCount: historyService.getHistory().length,
       redoCount: historyService.getRedoStack().length,
       lastAction: (() => {
-          const h = historyService.getHistory();
-          return h.length > 0 ? h[h.length - 1]!.description : null;
-        })(),
+        const h = historyService.getHistory();
+        return h.length > 0 ? h[h.length - 1]!.description : null;
+      })(),
     });
   },
 }));

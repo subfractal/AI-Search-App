@@ -181,7 +181,7 @@ export default function Timeline() {
           const relX = x - clipX;
           const edge =
             relX < RESIZE_HANDLE_WIDTH ? 'left' :
-            relX > clipW - RESIZE_HANDLE_WIDTH ? 'right' : 'body';
+              relX > clipW - RESIZE_HANDLE_WIDTH ? 'right' : 'body';
           return { trackId: track.id, trackIndex: i, clip, edge };
         }
       }
@@ -341,7 +341,7 @@ export default function Timeline() {
       selectClip(hit.trackId, hit.clip.id, e.shiftKey || e.metaKey);
       const dragType = hit.edge === 'left' ? 'resize-left' as const
         : hit.edge === 'right' ? 'resize-right' as const
-        : 'move' as const;
+          : 'move' as const;
       dragRef.current = {
         type: dragType,
         trackId: hit.trackId,
@@ -586,7 +586,7 @@ export default function Timeline() {
     <div className="w-full h-full flex flex-col">
       {/* ── Clip Editing Toolbar ── */}
       <div className="flex items-center h-8 px-2.5 gap-1 shrink-0"
-           style={{ background: '#0a0a0c', borderBottom: '2px solid #1a1a1c' }}>
+        style={{ background: '#0a0a0c', borderBottom: '2px solid #1a1a1c' }}>
         <span className="text-[8px] font-mono font-bold uppercase tracking-[3px] text-[#E63946]/80 shrink-0 mr-1">
           TIMELINE
         </span>
@@ -595,8 +595,8 @@ export default function Timeline() {
           onClick={() => setViewMode(viewMode === 'arrangement' ? 'session' : 'arrangement')}
           className={`text-[9px] font-mono uppercase px-2 py-0.5 transition-all font-bold
                      ${viewMode === 'session'
-            ? 'bg-[#E63946]/15 text-[#E63946] border border-[#E63946]/30'
-            : 'daw-hw-btn text-daw-text-muted hover:text-daw-text-dim'}`}
+      ? 'bg-[#E63946]/15 text-[#E63946] border border-[#E63946]/30'
+      : 'daw-hw-btn text-daw-text-muted hover:text-daw-text-dim'}`}
           title={viewMode === 'arrangement' ? 'Switch to Session View' : 'Switch to Arrangement View'}
         >
           {viewMode === 'arrangement' ? 'ARR' : 'SESSION'}
@@ -657,8 +657,8 @@ export default function Timeline() {
           onClick={(e) => { e.stopPropagation(); setShowAutomation((v) => !v); }}
           className={`w-5 h-5 text-[9px] flex items-center justify-center font-bold transition-all
                      ${showAutomation
-            ? 'bg-red-500/25 text-red-400 border border-red-500/50'
-            : 'bg-daw-bg/40 text-daw-text-muted border border-daw-border/20 hover:text-daw-text-dim'}`}
+      ? 'bg-red-500/25 text-red-400 border border-red-500/50'
+      : 'bg-daw-bg/40 text-daw-text-muted border border-daw-border/20 hover:text-daw-text-dim'}`}
           title="Automation"
         >
           A
@@ -667,8 +667,8 @@ export default function Timeline() {
           onClick={(e) => { e.stopPropagation(); setFollowPlayhead((v) => !v); }}
           className={`w-5 h-5 text-[9px] flex items-center justify-center transition-all
                      ${followPlayhead
-            ? 'bg-daw-accent/25 text-daw-accent border border-daw-accent/50'
-            : 'bg-daw-bg/40 text-daw-text-muted border border-daw-border/20 hover:text-daw-text-dim'}`}
+      ? 'bg-daw-accent/25 text-daw-accent border border-daw-accent/50'
+      : 'bg-daw-bg/40 text-daw-text-muted border border-daw-border/20 hover:text-daw-text-dim'}`}
           title="Follow Playhead"
         >
           F

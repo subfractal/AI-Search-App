@@ -658,8 +658,8 @@ function ControlRoomSection() {
               key={path.id}
               className={`flex items-center gap-2 px-2 py-1.5 border transition-colors
                          ${isActive
-                  ? 'bg-daw-accent/10 border-daw-accent/30'
-                  : 'bg-daw-panel border-daw-border hover:bg-daw-surface-alt'}`}
+              ? 'bg-daw-accent/10 border-daw-accent/30'
+              : 'bg-daw-panel border-daw-border hover:bg-daw-surface-alt'}`}
             >
               <button
                 className="text-xxs text-daw-text flex-1 text-left"
@@ -694,8 +694,8 @@ function ControlRoomSection() {
         <button
           className={`text-xxs px-3 py-1.5 font-medium transition-all border
                      ${activeMonitor?.dimEnabled
-              ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-              : 'bg-daw-bg/50 text-daw-text-muted border-daw-border/30 hover:text-daw-text-dim'}`}
+      ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+      : 'bg-daw-bg/50 text-daw-text-muted border-daw-border/30 hover:text-daw-text-dim'}`}
           onClick={toggleDim}
           title="Dim monitor output"
         >
@@ -704,8 +704,8 @@ function ControlRoomSection() {
         <button
           className={`text-xxs px-3 py-1.5 font-medium transition-all border
                      ${activeMonitor?.monoEnabled
-              ? 'bg-sky-500/20 text-sky-400 border-sky-500/30'
-              : 'bg-daw-bg/50 text-daw-text-muted border-daw-border/30 hover:text-daw-text-dim'}`}
+      ? 'bg-sky-500/20 text-sky-400 border-sky-500/30'
+      : 'bg-daw-bg/50 text-daw-text-muted border-daw-border/30 hover:text-daw-text-dim'}`}
           onClick={toggleMono}
           title="Monitor in mono"
         >
@@ -714,8 +714,8 @@ function ControlRoomSection() {
         <button
           className={`text-xxs px-3 py-1.5 font-medium transition-all border
                      ${controlRoom.talkbackEnabled
-              ? 'bg-red-500/20 text-red-400 border-red-500/30'
-              : 'bg-daw-bg/50 text-daw-text-muted border-daw-border/30 hover:text-daw-text-dim'}`}
+      ? 'bg-red-500/20 text-red-400 border-red-500/30'
+      : 'bg-daw-bg/50 text-daw-text-muted border-daw-border/30 hover:text-daw-text-dim'}`}
           onClick={toggleTalkback}
           title="Toggle talkback"
         >

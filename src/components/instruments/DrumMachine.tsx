@@ -116,13 +116,13 @@ export default function DrumMachine({ trackId }: DrumMachineProps) {
                     <div
                       className={`rounded-full transition-all duration-75
                                  ${isOn
-                          ? isActive
-                            ? 'w-3.5 h-3.5 bg-[#E63946] shadow-[0_0_12px_rgba(230,57,70,0.7)]'
-                            : 'w-3 h-3 bg-[#E63946]/90 hover:bg-[#E63946]'
-                          : isActive
-                            ? 'w-2 h-2 bg-daw-text-muted/25'
-                            : 'w-1.5 h-1.5 bg-daw-border/30'
-                        }`}
+                    ? isActive
+                      ? 'w-3.5 h-3.5 bg-[#E63946] shadow-[0_0_12px_rgba(230,57,70,0.7)]'
+                      : 'w-3 h-3 bg-[#E63946]/90 hover:bg-[#E63946]'
+                    : isActive
+                      ? 'w-2 h-2 bg-daw-text-muted/25'
+                      : 'w-1.5 h-1.5 bg-daw-border/30'
+                  }`}
                     />
                   </button>
                 );

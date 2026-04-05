@@ -114,7 +114,7 @@ export default function StepSequencer({ trackId, onStepChange }: StepSequencerPr
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 shrink-0"
-           style={{ borderBottom: '2px solid #1a1a1c' }}>
+        style={{ borderBottom: '2px solid #1a1a1c' }}>
         <div className="flex items-center gap-3">
           <span className="text-[9px] font-mono font-bold uppercase tracking-[3px] text-[#E63946]/90">
             POLY SEQ-{trackId.slice(-2).toUpperCase()}
@@ -233,8 +233,8 @@ export default function StepSequencer({ trackId, onStepChange }: StepSequencerPr
                           <div
                             className={`w-2.5 h-2.5 rounded-full
                                        ${isActive
-                                ? 'bg-[#E63946] shadow-[0_0_6px_rgba(230,57,70,0.5)]'
-                                : 'bg-[#E63946]/80'}`}
+                            ? 'bg-[#E63946] shadow-[0_0_6px_rgba(230,57,70,0.5)]'
+                            : 'bg-[#E63946]/80'}`}
                           />
                         )}
                       </button>

@@ -154,8 +154,8 @@ export default function ExportDialog({ open, onClose }: ExportDialogProps) {
                   className={`flex-1 text-xxs py-1.5 font-medium
                              transition-all border
                              ${exportType === val
-                      ? 'bg-daw-accent/20 text-daw-accent border-daw-accent/40'
-                      : 'bg-daw-bg/40 text-daw-text-muted border-daw-border/30 hover:text-daw-text-dim'}
+                  ? 'bg-daw-accent/20 text-daw-accent border-daw-accent/40'
+                  : 'bg-daw-bg/40 text-daw-text-muted border-daw-border/30 hover:text-daw-text-dim'}
                              disabled:opacity-30 disabled:cursor-not-allowed`}
                 >
                   {label}
@@ -213,8 +213,8 @@ export default function ExportDialog({ open, onClose }: ExportDialogProps) {
               <div className="mt-1.5 space-y-1">
                 <div className={`text-xxs px-2 py-1 flex items-center gap-1.5
                                 ${readiness.ready
-                    ? 'bg-green-500/10 text-green-400'
-                    : 'bg-amber-500/10 text-amber-400'}`}
+                ? 'bg-green-500/10 text-green-400'
+                : 'bg-amber-500/10 text-amber-400'}`}
                 >
                   <span className={`w-2 h-2 ${readiness.ready ? 'bg-green-500' : 'bg-amber-500'}`} />
                   {readiness.ready ? 'Ready to export' : 'Issues detected'}
