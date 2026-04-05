@@ -32,6 +32,8 @@ interface SessionStore {
   setTrackSequencer: (trackId: string, mode: SequencerMode) => void;
   setLauncherSlot: (trackId: string, sceneIndex: number, clip: Clip) => void;
   clearLauncherSlot: (trackId: string, sceneIndex: number) => void;
+  copyClipToArrangement: (trackId: string, sceneIndex: number, startTime: number) => void;
+  copyArrangementToLauncher: (trackId: string, clipId: string, sceneIndex: number) => void;
   returnTrackToArrangement: (trackId: string) => void;
 }
 
@@ -287,6 +289,40 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
             launcherSlots: t.sequencer.launcherSlots.filter((s) => s.sceneIndex !== sceneIndex),
           },
         };
+      }),
+    })),
+
+  copyClipToArrangement: (trackId, sceneIndex, startTime) =>
+    set((state) => ({
+      tracks: state.tracks.map((t) => {
+        if (t.id !== trackId || !t.sequencer) return t;
+        const slot = t.sequencer.launcherSlots.find((s) => s.sceneIndex === sceneIndex);
+        if (!slot?.clip) return t;
+        const arrClip = { ...slot.clip, startTime };
+        return { ...t, clips: [...t.clips, arrClip] };
+      }),
+    })),
+
+  copyArrangementToLauncher: (trackId, clipId, sceneIndex) =>
+    set((state) => ({
+      tracks: state.tracks.map((t) => {
+        if (t.id !== trackId) return t;
+        const clip = t.clips.find((c) => c.id === clipId);
+        if (!clip) return t;
+        const seq: TrackSequencerState = t.sequencer ?? {
+          activeSequencer: 'arrangement',
+          arrangementSuppressedByLauncher: false,
+          launcherSlots: [],
+        };
+        const slots = [...seq.launcherSlots];
+        const idx = slots.findIndex((s) => s.sceneIndex === sceneIndex);
+        const slot = { sceneIndex, clip, playing: false, queued: false };
+        if (idx >= 0) {
+          slots[idx] = slot;
+        } else {
+          slots.push(slot);
+        }
+        return { ...t, sequencer: { ...seq, launcherSlots: slots } };
       }),
     })),
 

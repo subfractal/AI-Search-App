@@ -18,6 +18,7 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
   const selectTrack = useSessionStore((s) => s.selectTrack);
   const updateTrack = useSessionStore((s) => s.updateTrack);
   const removeTrack = useSessionStore((s) => s.removeTrack);
+  const setTrackSequencer = useSessionStore((s) => s.setTrackSequencer);
   const toggleMute = useMixerStore((s) => s.toggleMute);
   const toggleSolo = useMixerStore((s) => s.toggleSolo);
 
@@ -160,6 +161,24 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
               }}
             >
               W
+            </button>
+          )}
+
+          {/* Sequencer mode badge */}
+          {(track.type === 'audio' || track.type === 'midi') && (
+            <button
+              className={`text-[8px] uppercase tracking-wide px-1 py-px border leading-none font-mono
+                         ${track.sequencer?.activeSequencer === 'launcher'
+                  ? 'bg-green-500/15 text-green-400 border-green-500/30'
+                  : 'bg-daw-bg/40 text-daw-text-muted/50 border-daw-border/20 hover:text-daw-text-dim'}`}
+              title={`Sequencer: ${track.sequencer?.activeSequencer ?? 'arrangement'} — click to toggle`}
+              onClick={(e) => {
+                e.stopPropagation();
+                const current = track.sequencer?.activeSequencer ?? 'arrangement';
+                setTrackSequencer(trackId, current === 'arrangement' ? 'launcher' : 'arrangement');
+              }}
+            >
+              {track.sequencer?.activeSequencer === 'launcher' ? 'LAUNCH' : 'ARR'}
             </button>
           )}
         </div>

@@ -17,6 +17,9 @@ interface TransportStore {
   pause: () => void;
   stop: () => void;
   toggleRecord: () => void;
+  sceneCount: number;
+  launchScene: (sceneIndex: number) => void;
+  stopScene: (sceneIndex: number) => void;
   setBpm: (bpm: number) => void;
   setLoop: (start: number, end: number, enabled: boolean) => void;
   toggleLoop: () => void;
@@ -30,6 +33,7 @@ export const useTransportStore = create<TransportStore>((set, get) => ({
   loopStart: 0,
   loopEnd: 16,
   metronomeEnabled: false,
+  sceneCount: 8,
 
   play: async () => {
     await transport.play();
@@ -55,6 +59,28 @@ export const useTransportStore = create<TransportStore>((set, get) => ({
       set({ state: 'stopped' });
     } else {
       set({ state: 'recording' });
+    }
+  },
+
+  launchScene: (sceneIndex) => {
+    const tracks = useSessionStore.getState().tracks;
+    for (const track of tracks) {
+      if (!track.sequencer) continue;
+      const slot = track.sequencer.launcherSlots.find((s) => s.sceneIndex === sceneIndex);
+      if (slot?.clip) {
+        useSessionStore.getState().setTrackSequencer(track.id, 'launcher');
+      }
+    }
+  },
+
+  stopScene: (sceneIndex) => {
+    const tracks = useSessionStore.getState().tracks;
+    for (const track of tracks) {
+      if (!track.sequencer) continue;
+      const slot = track.sequencer.launcherSlots.find((s) => s.sceneIndex === sceneIndex);
+      if (slot) {
+        useSessionStore.getState().returnTrackToArrangement(track.id);
+      }
     }
   },
 
