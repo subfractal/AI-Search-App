@@ -1,6 +1,9 @@
 import * as Tone from 'tone';
 import { createChannel, createPlayer, disposeNode } from './audio-engine';
 import { reconnectTrackEffects } from './effects-service';
+import { createWarpedBuffer } from './warp-service';
+import { useWarpStore } from '@/stores/warp-store';
+import { useTransportStore } from '@/stores/transport-store';
 import type { AudioClip } from '@/types/audio';
 
 interface TrackAudioNode {
@@ -63,7 +66,19 @@ export function addClipPlayer(clip: AudioClip): void {
   const node = trackNodes.get(clip.trackId);
   if (!node) return;
 
-  const player = createPlayer(clip.buffer);
+  // Apply warp time-stretching if configured for this clip
+  let buffer = clip.buffer;
+  const warpConfig = useWarpStore.getState().configs[clip.id];
+  if (warpConfig?.enabled && warpConfig.mode !== 'off') {
+    try {
+      const sessionBpm = useTransportStore.getState().bpm;
+      buffer = createWarpedBuffer(buffer, warpConfig, sessionBpm);
+    } catch {
+      // Warp failed — use original buffer
+    }
+  }
+
+  const player = createPlayer(buffer);
   player.connect(node.channel);
   player.sync().start(clip.startTime, clip.offset, clip.duration);
   node.players.set(clip.id, player);

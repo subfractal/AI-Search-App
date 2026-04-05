@@ -35,7 +35,7 @@ interface EffectEntry {
 
 const trackEffectChains = new Map<string, EffectEntry[]>();
 
-function createEffectNode(
+export function createEffectNode(
   type: EffectType,
   params: EffectParams,
 ): Tone.ToneAudioNode {

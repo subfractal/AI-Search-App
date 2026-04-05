@@ -10,7 +10,7 @@ import {
   removeClipPlayer,
 } from '@/services/track-manager';
 
-export type BottomPanel = 'mixer' | 'instrument' | 'effects' | 'piano-roll' | 'routing' | 'warp' | 'browser' | 'clip-view' | null;
+export type BottomPanel = 'mixer' | 'instrument' | 'effects' | 'piano-roll' | 'routing' | 'warp' | 'browser' | 'clip-view' | 'automation' | null;
 
 export interface ZoneVisibility {
   leftZone: boolean;
@@ -67,6 +67,8 @@ interface SessionStore {
   copyClipToArrangement: (trackId: string, sceneIndex: number, startTime: number) => void;
   copyArrangementToLauncher: (trackId: string, clipId: string, sceneIndex: number) => void;
   returnTrackToArrangement: (trackId: string) => void;
+  freezeTrack: (trackId: string, frozenBuffer: AudioBuffer) => void;
+  unfreezeTrack: (trackId: string) => void;
   setZoneVisibility: (zone: 'leftZone' | 'lowerZone' | 'rightZone', visible: boolean) => void;
   setLowerZonePanel: (panel: BottomPanel) => void;
   toggleZone: (zone: 'leftZone' | 'lowerZone' | 'rightZone') => void;
@@ -509,6 +511,20 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
           },
         };
       }),
+    })),
+
+  freezeTrack: (trackId, frozenBuffer) =>
+    set((state) => ({
+      tracks: state.tracks.map((t) =>
+        t.id === trackId ? { ...t, frozen: true, frozenBuffer } : t,
+      ),
+    })),
+
+  unfreezeTrack: (trackId) =>
+    set((state) => ({
+      tracks: state.tracks.map((t) =>
+        t.id === trackId ? { ...t, frozen: false, frozenBuffer: undefined } : t,
+      ),
     })),
 
   setZoneVisibility: (zone, visible) =>

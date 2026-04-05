@@ -20,6 +20,9 @@ interface TransportStore {
   loopStart: number;
   loopEnd: number;
   metronomeEnabled: boolean;
+  punchInEnabled: boolean;
+  punchInTime: number;
+  punchOutTime: number;
 
   play: () => Promise<void>;
   pause: () => void;
@@ -33,6 +36,8 @@ interface TransportStore {
   setLoop: (start: number, end: number, enabled: boolean) => void;
   toggleLoop: () => void;
   toggleMetronome: () => void;
+  togglePunchIn: () => void;
+  setPunchRegion: (inTime: number, outTime: number) => void;
 }
 
 export const useTransportStore = create<TransportStore>((set, get) => ({
@@ -43,6 +48,9 @@ export const useTransportStore = create<TransportStore>((set, get) => ({
   loopStart: 0,
   loopEnd: 16,
   metronomeEnabled: false,
+  punchInEnabled: false,
+  punchInTime: 0,
+  punchOutTime: 8,
   sceneCount: 8,
 
   play: async () => {
@@ -144,5 +152,13 @@ export const useTransportStore = create<TransportStore>((set, get) => ({
     const next = !get().metronomeEnabled;
     setMetronomeEnabled(next);
     set({ metronomeEnabled: next });
+  },
+
+  togglePunchIn: () => {
+    set({ punchInEnabled: !get().punchInEnabled });
+  },
+
+  setPunchRegion: (inTime, outTime) => {
+    set({ punchInTime: inTime, punchOutTime: outTime });
   },
 }));

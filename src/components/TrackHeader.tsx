@@ -5,6 +5,8 @@ import { useKeyStore } from '@/stores/key-store';
 import { useWarpStore } from '@/stores/warp-store';
 import { useInstrumentStore } from '@/stores/instrument-store';
 import { isAudioClip, TRACK_COLORS } from '@/types/audio';
+import { bounceSession } from '@/services/export-service';
+import { toast } from '@/stores/toast-store';
 
 interface TrackHeaderProps {
   trackId: string;
@@ -54,6 +56,8 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
 
   return (
     <div
+      role="listitem"
+      aria-label={`Track ${track.name}, ${track.type}${isSelected ? ', selected' : ''}`}
       className={`group flex items-center gap-1.5 px-2 py-1.5 cursor-pointer transition-colors min-h-[72px]
                   ${isSelected
       ? 'bg-daw-track-selected'
@@ -187,6 +191,39 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
             </button>
           )}
 
+          {/* Freeze badge */}
+          {(track.type === 'audio' || track.type === 'midi') && (
+            <button
+              className={`text-[8px] uppercase tracking-wide px-1 py-px border leading-none font-mono
+                         ${track.frozen
+                ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30'
+                : 'bg-daw-bg/40 text-daw-text-muted/50 border-daw-border/20 hover:text-cyan-400/60'}`}
+              title={track.frozen ? 'Unfreeze track' : 'Freeze track (render effects to audio)'}
+              aria-label={track.frozen ? `Unfreeze ${track.name}` : `Freeze ${track.name}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (track.frozen) {
+                  useSessionStore.getState().unfreezeTrack(trackId);
+                  toast.info(`Unfroze "${track.name}"`);
+                } else {
+                  const maxDuration = Math.max(
+                    ...track.clips.map((c) => c.startTime + c.duration),
+                    1,
+                  );
+                  toast.info(`Freezing "${track.name}"...`);
+                  bounceSession([track], maxDuration).then((buffer) => {
+                    useSessionStore.getState().freezeTrack(trackId, buffer);
+                    toast.success(`Froze "${track.name}" — effects rendered to audio`);
+                  }).catch(() => {
+                    toast.error(`Failed to freeze "${track.name}"`);
+                  });
+                }
+              }}
+            >
+              {track.frozen ? 'FRZ' : 'frz'}
+            </button>
+          )}
+
           {/* Sequencer mode badge */}
           {(track.type === 'audio' || track.type === 'midi') && (
             <button
@@ -211,7 +248,9 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
       <div className="flex flex-col items-center gap-0.5 shrink-0">
         <div className="flex items-center gap-0.5">
           <button
-            className={`w-7 h-5 text-[9px] font-bold font-mono transition-all
+            aria-label={`Mute ${track.name}`}
+            aria-pressed={track.mute}
+            className={`w-7 h-6 text-[9px] font-bold font-mono transition-all
                        flex items-center justify-center
                        ${track.mute
       ? 'bg-[#F77F00]/90 text-black'
@@ -225,7 +264,9 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
             M
           </button>
           <button
-            className={`w-7 h-5 text-[9px] font-bold font-mono transition-all
+            aria-label={`Solo ${track.name}`}
+            aria-pressed={track.solo}
+            className={`w-7 h-6 text-[9px] font-bold font-mono transition-all
                        flex items-center justify-center
                        ${track.solo
       ? 'bg-[#E63946]/90 text-white'
@@ -242,7 +283,9 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
         <div className="flex items-center gap-0.5">
           {/* Record arm */}
           <button
-            className={`w-6 h-5 text-[9px] font-bold transition-all
+            aria-label={`Record arm ${track.name}`}
+            aria-pressed={track.armed}
+            className={`w-6 h-6 text-[9px] font-bold transition-all
                        flex items-center justify-center
                        ${track.armed
       ? 'bg-[#E63946]/90 text-white'
@@ -257,7 +300,8 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
           </button>
           {/* Delete */}
           <button
-            className="w-6 h-5 text-xxs bg-daw-bg/60
+            aria-label={`Delete ${track.name}`}
+            className="w-6 h-6 text-xxs bg-daw-bg/60
                        text-daw-text-muted/40 hover:text-red-400
                        transition-all flex items-center justify-center
                        opacity-0 group-hover:opacity-100"

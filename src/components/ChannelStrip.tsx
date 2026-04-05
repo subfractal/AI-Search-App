@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useSessionStore } from '@/stores/session-store';
 import { useMixerStore } from '@/stores/mixer-store';
 import { useEffectsStore } from '@/stores/effects-store';
@@ -11,7 +12,7 @@ interface ChannelStripProps {
   trackId: string;
 }
 
-export default function ChannelStrip({ trackId }: ChannelStripProps) {
+export default memo(function ChannelStrip({ trackId }: ChannelStripProps) {
   const track = useSessionStore(
     (s) => s.tracks.find((t) => t.id === trackId),
   );
@@ -178,7 +179,9 @@ export default function ChannelStrip({ trackId }: ChannelStripProps) {
       {/* Mute / Solo */}
       <div className="flex gap-0.5 w-full">
         <button
-          className={`flex-1 h-5 text-[8px] font-bold transition-all
+          aria-label={`Mute ${track.name}`}
+          aria-pressed={strip.mute}
+          className={`flex-1 h-6 text-[8px] font-bold transition-all
                      flex items-center justify-center
                      ${strip.mute
       ? 'bg-[#F77F00]/90 text-black'
@@ -192,7 +195,9 @@ export default function ChannelStrip({ trackId }: ChannelStripProps) {
           M
         </button>
         <button
-          className={`flex-1 h-5 text-[8px] font-bold transition-all
+          aria-label={`Solo ${track.name}`}
+          aria-pressed={strip.solo}
+          className={`flex-1 h-6 text-[8px] font-bold transition-all
                      flex items-center justify-center
                      ${strip.solo
       ? 'bg-[#E63946]/90 text-white'
@@ -213,4 +218,4 @@ export default function ChannelStrip({ trackId }: ChannelStripProps) {
       )}
     </div>
   );
-}
+});

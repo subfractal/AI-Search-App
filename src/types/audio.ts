@@ -62,6 +62,8 @@ export interface Track {
   folderConfig?: FolderTrackConfig;
   groupConfig?: GroupTrackConfig;
   parentTrackId?: string | null;
+  frozen?: boolean;
+  frozenBuffer?: AudioBuffer;
 }
 
 export const TRACK_COLORS = [

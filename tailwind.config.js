@@ -16,10 +16,10 @@ export default {
           'border-heavy': '#333336',
           'border-light': '#2a2a2c',
 
-          // Text — Concrete Gray
+          // Text — Concrete Gray (muted bumped from #555 to #777 for WCAG 4.5:1)
           text: '#D1D1D1',
-          'text-dim': '#888888',
-          'text-muted': '#555555',
+          'text-dim': '#999999',
+          'text-muted': '#777777',
 
           // Accent — Safety Orange
           accent: '#F77F00',

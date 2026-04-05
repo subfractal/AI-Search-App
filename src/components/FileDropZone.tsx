@@ -5,6 +5,7 @@ import { useMixerStore } from '@/stores/mixer-store';
 import { useAIStore } from '@/stores/ai-store';
 import { generateId } from '@/utils/id';
 import { autoAnalyzeClip } from '@/services/ai/auto-analyze';
+import { toast } from '@/stores/toast-store';
 import type { AudioClip } from '@/types/audio';
 
 const ACCEPTED_TYPES = [
@@ -57,6 +58,7 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
           };
 
           addClipToTrack(trackId, clip);
+          toast.success(`Imported "${name}"`);
 
           // Auto-analyze BPM and key in background
           autoAnalyzeClip(buffer).then((analysis) => {
@@ -75,6 +77,7 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
           }).catch(() => { /* analysis failed silently */ });
         } catch (err) {
           console.error(`[DAW] Failed to load "${file.name}":`, err);
+          toast.error(`Failed to load "${file.name}"`);
         }
       }
     },

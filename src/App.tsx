@@ -1,26 +1,45 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import TransportBar from '@/components/TransportBar';
 import TrackList from '@/components/TrackList';
 import Timeline from '@/components/Timeline';
 import MixerPanel from '@/components/MixerPanel';
 import AISidebar from '@/components/ai/AISidebar';
 import FileDropZone from '@/components/FileDropZone';
-import InstrumentRack from '@/components/instruments/InstrumentRack';
-import EffectsRack from '@/components/effects/EffectsRack';
-import PianoRoll from '@/components/PianoRoll';
-import RoutingPanel from '@/components/RoutingPanel';
-import WarpPanel from '@/components/WarpPanel';
-import BrowserPanel from '@/components/browser/BrowserPanel';
-import ClipView from '@/components/ClipView';
 import InspectorPanel from '@/components/InspectorPanel';
 import ExportDialog from '@/components/ExportDialog';
 import HistoryPanel from '@/components/HistoryPanel';
+import ToastContainer from '@/components/ui/ToastContainer';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { initAudioContext } from '@/services/audio-engine';
+import { startAutosave, stopAutosave, checkForRecovery } from '@/services/autosave-service';
 import { useSessionStore } from '@/stores/session-store';
 import type { BottomPanel } from '@/stores/session-store';
 import { isMidiClip, isAudioClip } from '@/types/audio';
 import type { MidiClip } from '@/types/audio';
+
+// Lazy-loaded bottom panels — code-split for smaller initial bundle
+const InstrumentRack = lazy(() => import('@/components/instruments/InstrumentRack'));
+const EffectsRack = lazy(() => import('@/components/effects/EffectsRack'));
+const PianoRoll = lazy(() => import('@/components/PianoRoll'));
+const RoutingPanel = lazy(() => import('@/components/RoutingPanel'));
+const WarpPanel = lazy(() => import('@/components/WarpPanel'));
+const BrowserPanel = lazy(() => import('@/components/browser/BrowserPanel'));
+const ClipView = lazy(() => import('@/components/ClipView'));
+const AutomationPanel = lazy(() => import('@/components/AutomationPanel'));
+
+function PanelSpinner() {
+  return (
+    <div className="h-full flex items-center justify-center">
+      <div className="flex items-center gap-2 text-xxs text-daw-text-muted font-mono">
+        <svg className="animate-spin w-4 h-4" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2"
+            strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round" />
+        </svg>
+        Loading...
+      </div>
+    </div>
+  );
+}
 
 export type { BottomPanel };
 
@@ -82,8 +101,6 @@ export default function App() {
   const { isMobile, height: screenH } = useScreenSize();
 
   // iOS WebKit requires AudioContext to be started during a direct user gesture.
-  // Eagerly init on first tap/click so file loading and track creation work reliably.
-  // Listen on click, pointerdown, AND touchstart — iOS Chrome can be inconsistent.
   useEffect(() => {
     const startAudio = () => {
       initAudioContext();
@@ -99,6 +116,13 @@ export default function App() {
       window.removeEventListener('touchstart', startAudio);
       window.removeEventListener('click', startAudio);
     };
+  }, []);
+
+  // Auto-save session to IndexedDB every 30s + check for recovery on mount
+  useEffect(() => {
+    checkForRecovery();
+    startAutosave();
+    return () => stopAutosave();
   }, []);
 
   const minPanelH = isMobile ? 100 : 140;
@@ -228,6 +252,9 @@ export default function App() {
           />
         );
         break;
+      case 'automation':
+        content = <AutomationPanel />;
+        break;
     }
 
     return (
@@ -242,13 +269,17 @@ export default function App() {
           style={{ background: 'linear-gradient(to bottom, #141416, #0F0F11)' }}
           onMouseDown={onDragStart}
           onTouchStart={onDragStart}
+          role="separator"
+          aria-label="Resize panel"
         >
           <div className="w-12 h-0.5 bg-daw-border/50 group-hover:bg-daw-accent/50
                           transition-colors" />
         </div>
         {/* Panel content — scrollable */}
         <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
-          {content}
+          <Suspense fallback={<PanelSpinner />}>
+            {content}
+          </Suspense>
         </div>
       </div>
     );
@@ -314,6 +345,7 @@ export default function App() {
 
         <ExportDialog open={showExport} onClose={() => setShowExport(false)} />
         <HistoryPanel open={showHistory} onClose={() => setShowHistory(false)} />
+        <ToastContainer />
       </div>
     </FileDropZone>
   );

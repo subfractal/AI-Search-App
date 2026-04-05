@@ -148,8 +148,8 @@ export default function TransportBar({
   onPianoRoll,
 }: TransportBarProps) {
   const {
-    state, bpm, loopEnabled, metronomeEnabled,
-    play, pause, stop, toggleRecord, setBpm, toggleLoop, toggleMetronome,
+    state, bpm, loopEnabled, metronomeEnabled, punchInEnabled,
+    play, pause, stop, toggleRecord, setBpm, toggleLoop, toggleMetronome, togglePunchIn,
   } = useTransportStore();
 
   const timeSignature = useSessionStore((s) => s.config.timeSignature);
@@ -169,18 +169,39 @@ export default function TransportBar({
   const undo = useHistoryStore((s) => s.undo);
   const redo = useHistoryStore((s) => s.redo);
 
-  const [position, setPosition] = useState(0);
+  const beatsPerBar = timeSignature.numerator;
+
+  // Use refs for position display to avoid 60fps store re-renders
+  const positionRef = useRef(0);
+  const timecodeRef = useRef<HTMLSpanElement>(null);
+  const barsRef = useRef<HTMLSpanElement>(null);
   const [bpmInput, setBpmInput] = useState(String(bpm));
   const rafRef = useRef<number>(0);
 
   useEffect(() => {
     const tick = () => {
-      setPosition(getPositionSeconds());
+      const pos = getPositionSeconds();
+      positionRef.current = pos;
+
+      // Direct DOM updates — bypasses React render cycle entirely
+      if (timecodeRef.current) {
+        const ms = Math.floor(pos * 1000);
+        const h = Math.floor(ms / 3600000);
+        const m = Math.floor((ms % 3600000) / 60000);
+        const s = Math.floor((ms % 60000) / 1000);
+        const f = Math.floor((ms % 1000) / (1000 / 30));
+        timecodeRef.current.textContent =
+          `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}:${String(f).padStart(2, '0')}`;
+      }
+      if (barsRef.current) {
+        barsRef.current.textContent = `${formatBarsBeats(pos, bpm, beatsPerBar)}:000`;
+      }
+
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
-  }, []);
+  }, [bpm, beatsPerBar]);
 
   useEffect(() => {
     setBpmInput(String(bpm));
@@ -197,15 +218,6 @@ export default function TransportBar({
 
   const isPlaying = state === 'playing';
   const isRecording = state === 'recording';
-  const beatsPerBar = timeSignature.numerator;
-
-  // Format timecode like DKT-00:03:15:20
-  const totalMs = Math.floor(position * 1000);
-  const hours = Math.floor(totalMs / 3600000);
-  const mins = Math.floor((totalMs % 3600000) / 60000);
-  const secs = Math.floor((totalMs % 60000) / 1000);
-  const frames = Math.floor((totalMs % 1000) / (1000 / 30)); // 30fps frames
-  const timecode = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}:${String(frames).padStart(2, '0')}`;
 
   const PanelBtn = ({ panel, label }: { panel: BottomPanel; label: string }) => (
     <button
@@ -253,6 +265,7 @@ export default function TransportBar({
             className="daw-hw-btn w-9 h-9 flex items-center justify-center
                        text-daw-text-muted/60 hover:text-daw-text-dim"
             title="Rewind"
+            aria-label="Rewind to start"
           >
             <IconRewind />
           </button>
@@ -272,6 +285,7 @@ export default function TransportBar({
       ? 'text-daw-transport-play !bg-daw-transport-play/15 !border-daw-transport-play/30'
       : 'text-daw-text-muted/60 hover:text-daw-text'}`}
             title={isPlaying ? 'Pause' : 'Play'}
+            aria-label={isPlaying ? 'Pause playback' : 'Start playback'}
           >
             {isPlaying ? <IconPause /> : <IconPlay />}
           </button>
@@ -305,6 +319,8 @@ export default function TransportBar({
       ? 'text-daw-transport-record !bg-daw-transport-record/20 !border-daw-transport-record/40 animate-blink-signal'
       : 'text-daw-text-muted/40 hover:text-daw-transport-record/70'}`}
             title="Record"
+            aria-label={isRecording ? 'Stop recording' : 'Start recording'}
+            aria-pressed={isRecording}
           >
             <IconRecord />
           </button>
@@ -312,13 +328,16 @@ export default function TransportBar({
 
         {/* ── Large LCD Timecode Display ── */}
         <div className="daw-lcd px-4 py-2 flex flex-col items-start min-w-[230px] shrink-0">
-          <span className="text-[26px] font-mono leading-none text-daw-lcd-text tracking-wider font-medium"
-            style={{ textShadow: '0 0 12px rgba(230,57,70,0.3)' }}>
-            {timecode}
+          <span
+            ref={timecodeRef}
+            className="text-[26px] font-mono leading-none text-daw-lcd-text tracking-wider font-medium"
+            style={{ textShadow: '0 0 12px rgba(230,57,70,0.3)' }}
+          >
+            00:00:00:00
           </span>
           <div className="flex items-center gap-3 mt-1">
-            <span className="text-[9px] font-mono text-daw-lcd-dim">
-              {formatBarsBeats(position, bpm, beatsPerBar)}:000
+            <span ref={barsRef} className="text-[9px] font-mono text-daw-lcd-dim">
+              1.1.000:000
             </span>
             <span className="text-[9px] font-mono text-daw-lcd-text/80">
               {bpm}.00 BPM
@@ -360,6 +379,8 @@ export default function TransportBar({
       ? 'text-daw-accent !bg-daw-accent/15 !border-daw-accent/30'
       : 'text-daw-text-muted/40 hover:text-daw-text-dim'}`}
             title="Toggle Loop"
+            aria-label="Toggle loop"
+            aria-pressed={loopEnabled}
           >
             <IconLoop />
           </button>
@@ -370,14 +391,29 @@ export default function TransportBar({
       ? 'text-daw-accent !bg-daw-accent/15 !border-daw-accent/30'
       : 'text-daw-text-muted/40 hover:text-daw-text-dim'}`}
             title="Toggle Metronome"
+            aria-label="Toggle metronome"
+            aria-pressed={metronomeEnabled}
           >
             <IconMetronome />
+          </button>
+          <button
+            onClick={togglePunchIn}
+            className={`daw-hw-btn w-9 h-9 flex items-center justify-center text-[8px] font-bold font-mono
+                       ${punchInEnabled
+      ? 'text-[#E63946] !bg-[#E63946]/15 !border-[#E63946]/30'
+      : 'text-daw-text-muted/40 hover:text-daw-text-dim'}`}
+            title="Toggle Punch In/Out"
+            aria-label="Toggle punch in/out recording"
+            aria-pressed={punchInEnabled}
+          >
+            P/I
           </button>
           <button
             onClick={cycleTimeSig}
             className="daw-hw-btn h-9 px-2.5 flex items-center justify-center
                        text-[10px] font-mono text-daw-text-muted/50 hover:text-daw-text-dim"
             title="Cycle Time Signature"
+            aria-label={`Time signature ${timeSignature.numerator}/${timeSignature.denominator}`}
           >
             {timeSignature.numerator}/{timeSignature.denominator}
           </button>
@@ -440,6 +476,7 @@ export default function TransportBar({
         <PanelBtn panel="instrument" label="Inst" />
         <PanelBtn panel="effects" label="FX" />
         <PanelBtn panel="clip-view" label="Clip" />
+        <PanelBtn panel="automation" label="Auto" />
         <PanelBtn panel="routing" label="Rte" />
         <PanelBtn panel="warp" label="Wrp" />
         <PanelBtn panel="browser" label="Lib" />

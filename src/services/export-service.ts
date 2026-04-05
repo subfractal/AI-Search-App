@@ -1,15 +1,21 @@
 import * as Tone from 'tone';
 import type { Track } from '@/types/audio';
 import { isAudioClip } from '@/types/audio';
+import { useEffectsStore } from '@/stores/effects-store';
+import { createEffectNode } from '@/services/effects-service';
 
 /**
  * Bounce (offline-render) the entire session to an AudioBuffer.
+ * Includes the full effects chain for each track.
  */
 export async function bounceSession(
   tracks: Track[],
   duration: number,
   sampleRate: number = 44100,
 ): Promise<AudioBuffer> {
+  // Snapshot effect chains before entering offline context
+  const effectChains = useEffectsStore.getState().trackEffects;
+
   const toneBuffer = await Tone.Offline(({ transport }) => {
     transport.bpm.value = Tone.getTransport().bpm.value;
 
@@ -18,12 +24,36 @@ export async function bounceSession(
 
       const channel = new Tone.Channel(track.volume, track.pan).toDestination();
 
+      // Build offline effects chain for this track
+      const trackFx = effectChains[track.id] ?? [];
+      const enabledFx = trackFx.filter((fx) => fx.enabled);
+      const fxNodes: Tone.ToneAudioNode[] = [];
+
+      for (const fx of enabledFx) {
+        try {
+          const node = createEffectNode(fx.type, fx.params);
+          fxNodes.push(node);
+        } catch {
+          // Skip effects that fail to create in offline context
+        }
+      }
+
+      // Chain: players → fx[0] → fx[1] → ... → channel → destination
+      if (fxNodes.length > 0) {
+        for (let i = 0; i < fxNodes.length - 1; i++) {
+          fxNodes[i]!.connect(fxNodes[i + 1]!);
+        }
+        fxNodes[fxNodes.length - 1]!.connect(channel);
+      }
+
+      const connectTarget = fxNodes.length > 0 ? fxNodes[0]! : channel;
+
       for (const clip of track.clips) {
         if (!isAudioClip(clip)) continue;
 
-        const toneBuffer = new Tone.ToneAudioBuffer(clip.buffer);
-        const player = new Tone.Player(toneBuffer);
-        player.connect(channel);
+        const buf = new Tone.ToneAudioBuffer(clip.buffer);
+        const player = new Tone.Player(buf);
+        player.connect(connectTarget);
         player.sync().start(clip.startTime, clip.offset, clip.duration);
       }
     }

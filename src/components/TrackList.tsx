@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import { useSessionStore } from '@/stores/session-store';
 import { useMixerStore } from '@/stores/mixer-store';
 import { loadAudioFile, initAudioContext } from '@/services/audio-engine';
@@ -13,7 +13,33 @@ export default function TrackList() {
   const addClipToTrack = useSessionStore((s) => s.addClipToTrack);
   const initStrip = useMixerStore((s) => s.initStrip);
   const addFolderTrack = useSessionStore((s) => s.addFolderTrack);
+  const reorderTracks = useSessionStore((s) => s.reorderTracks);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(index));
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIndex(index);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent, toIndex: number) => {
+    e.preventDefault();
+    const fromIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+    if (!isNaN(fromIndex) && fromIndex !== toIndex) {
+      reorderTracks(fromIndex, toIndex);
+    }
+    setDragOverIndex(null);
+  }, [reorderTracks]);
+
+  const handleDragEnd = useCallback(() => {
+    setDragOverIndex(null);
+  }, []);
 
   const handleAddAudioClick = () => {
     fileInputRef.current?.click();
@@ -115,8 +141,18 @@ export default function TrackList() {
 
       {/* Track list */}
       <div className="flex-1 overflow-y-auto">
-        {tracks.map((track) => (
-          <TrackHeader key={track.id} trackId={track.id} />
+        {tracks.map((track, index) => (
+          <div
+            key={track.id}
+            draggable
+            onDragStart={(e) => handleDragStart(e, index)}
+            onDragOver={(e) => handleDragOver(e, index)}
+            onDrop={(e) => handleDrop(e, index)}
+            onDragEnd={handleDragEnd}
+            className={`${dragOverIndex === index ? 'border-t-2 border-daw-accent' : ''}`}
+          >
+            <TrackHeader trackId={track.id} />
+          </div>
         ))}
         {tracks.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full
