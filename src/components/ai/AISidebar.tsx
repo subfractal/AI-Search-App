@@ -450,6 +450,11 @@ export default function AISidebar() {
               >
                 {masteringInProgress ? 'Mastering...' : 'Mix & Master'}
               </button>
+              {!masteringResult && (
+                <div className="text-[7px] text-daw-text-muted/40 mt-0.5">
+                  Clears pending suggestions — applies gain, EQ, compression &amp; limiting in one pass
+                </div>
+              )}
               {masteringResult && (
                 <div className="mt-1.5 space-y-0.5">
                   {masteringResult.stages.map((stage) => (

@@ -72,6 +72,11 @@ export function runMasteringPipeline(genre: MixGenre): MasteringResult {
 
   aiState.setMasteringInProgress(true);
 
+  // Clear pending suggestions — mastering supersedes individual suggestions
+  // to prevent conflicting volume/EQ/compression adjustments
+  aiState.clearSuggestions();
+  aiState.resetAppliedSignatures();
+
   try {
     // Stage 1: Gain Staging
     const analysis = analyzeMix(session.tracks, session.config.sampleRate);

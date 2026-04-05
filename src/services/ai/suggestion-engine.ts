@@ -211,6 +211,20 @@ export function runAnalysis(): void {
     const analysis = analyzeMix(tracks, config.sampleRate);
     aiState.setAnalysis(analysis);
 
+    // If mastering was already applied, skip suggestions that would conflict
+    // with mastering decisions (gain, EQ, compression, limiting)
+    const masteringResult = aiState.masteringResult;
+    const masteredTypes = new Set<string>();
+    if (masteringResult) {
+      for (const stage of masteringResult.stages) {
+        if (!stage.applied) continue;
+        if (stage.name === 'Gain Staging') masteredTypes.add('level').add('gain-staging');
+        if (stage.name === 'EQ Balance') masteredTypes.add('eq').add('frequency');
+        if (stage.name === 'Compression') masteredTypes.add('dynamics');
+        if (stage.name === 'Limiting') masteredTypes.add('clipping').add('loudness');
+      }
+    }
+
     const appliedSigs = aiState.appliedSignatures;
     const allSuggestions = generateSuggestions(analysis, tracks, config.genre).map((s) => ({
       ...s,
@@ -221,10 +235,13 @@ export function runAnalysis(): void {
       constraints: s.constraints ?? [],
     }));
 
-    // Filter out suggestions that have already been applied
+    // Filter out suggestions that have already been applied or conflict with mastering
     const suggestions = allSuggestions.filter((s) => {
       const sig = getSuggestionSignature(s);
-      return !appliedSigs.includes(sig);
+      if (appliedSigs.includes(sig)) return false;
+      // Skip suggestions that overlap with mastering pipeline stages
+      if (masteredTypes.has(s.type)) return false;
+      return true;
     });
 
     aiState.clearSuggestions();
