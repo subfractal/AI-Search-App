@@ -129,8 +129,8 @@ export default function EffectsRack({ trackId, trackName }: EffectsRackProps) {
         </div>
         <select
           className="bg-daw-panel text-daw-text text-xs border border-daw-border/40
-                     px-2 py-1 outline-none cursor-pointer
-                     hover:border-daw-accent/40 transition-colors"
+                     px-2 py-1 outline-none cursor-pointer z-50
+                     hover:border-daw-accent/40 focus:border-daw-accent/60 transition-colors"
           onChange={handleAddEffect}
           defaultValue=""
         >
