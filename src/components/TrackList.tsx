@@ -12,6 +12,7 @@ export default function TrackList() {
   const addMidiTrack = useSessionStore((s) => s.addMidiTrack);
   const addClipToTrack = useSessionStore((s) => s.addClipToTrack);
   const initStrip = useMixerStore((s) => s.initStrip);
+  const addFolderTrack = useSessionStore((s) => s.addFolderTrack);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAddAudioClick = () => {
@@ -59,9 +60,13 @@ export default function TrackList() {
   };
 
   const handleAddMidi = () => {
-    initAudioContext(); // ensure audio context is started on this gesture
+    initAudioContext();
     const id = addMidiTrack();
     initStrip(id);
+  };
+
+  const handleAddFolder = () => {
+    addFolderTrack();
   };
 
   return (
@@ -96,6 +101,15 @@ export default function TrackList() {
           title="Add MIDI track"
         >
           +Mid
+        </button>
+        <span className="text-daw-border">|</span>
+        <button
+          onClick={handleAddFolder}
+          className="text-xxs text-daw-text-muted hover:text-daw-text-dim
+                     transition-colors px-1"
+          title="Add folder track"
+        >
+          +Fld
         </button>
       </div>
 

@@ -3,6 +3,7 @@ import { useSessionStore } from '@/stores/session-store';
 import { useMidiEffectsStore } from '@/stores/midi-effects-store';
 import PianoRoll from '@/components/PianoRoll';
 import WarpPanel from '@/components/WarpPanel';
+import KeyBadge from '@/components/KeyBadge';
 import { isMidiClip, isAudioClip } from '@/types/audio';
 import type { Clip, MidiClip, AudioClip } from '@/types/audio';
 import type { MidiEffectType } from '@/types/midi-effects';
@@ -161,6 +162,11 @@ function ClipProperties({
         <div className="text-[9px] font-mono text-daw-text-muted mt-0.5">
           {midi ? `MIDI — ${(clip as MidiClip).notes.length} notes` : 'Audio'}
         </div>
+        {!midi && isAudioClip(clip) && (
+          <div className="mt-1">
+            <KeyBadge clipId={clip.id} buffer={clip.buffer} compact />
+          </div>
+        )}
       </div>
 
       {/* MIDI tools */}

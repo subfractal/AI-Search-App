@@ -12,6 +12,9 @@ interface EffectsRackProps {
 const EFFECT_TYPES: EffectType[] = [
   'eq', 'compressor', 'filter', 'pitchShift',
   'reverb', 'delay', 'chorus', 'distortion', 'phaser',
+  'gate', 'deesser', 'multibandComp', 'limiter', 'saturator',
+  'flanger', 'tremolo', 'stereoImager', 'exciter',
+  'frequencyShifter', 'ringMod', 'utility',
 ];
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -23,7 +26,19 @@ const CATEGORY_ICONS: Record<string, string> = {
   delay: 'D',
   chorus: 'C',
   distortion: 'X',
-  phaser: 'O',
+  phaser: 'Ph',
+  gate: 'G',
+  deesser: 'De',
+  multibandComp: 'MB',
+  limiter: 'L',
+  saturator: 'Sa',
+  flanger: 'Fl',
+  tremolo: 'Tr',
+  stereoImager: 'St',
+  exciter: 'Ex',
+  frequencyShifter: 'FS',
+  ringMod: 'RM',
+  utility: 'U',
 };
 
 // Industrial monochrome + Signal Red accent palette
@@ -37,6 +52,18 @@ const CATEGORY_COLORS: Record<string, string> = {
   chorus: 'bg-daw-text-muted/10 text-daw-text-dim',
   distortion: 'bg-[#E63946]/20 text-[#E63946]',
   phaser: 'bg-daw-text-muted/10 text-daw-text-dim',
+  gate: 'bg-emerald-500/15 text-emerald-400',
+  deesser: 'bg-emerald-500/15 text-emerald-400',
+  multibandComp: 'bg-[#E63946]/15 text-[#E63946]',
+  limiter: 'bg-[#E63946]/15 text-[#E63946]',
+  saturator: 'bg-[#F77F00]/15 text-[#F77F00]',
+  flanger: 'bg-daw-text-muted/10 text-daw-text-dim',
+  tremolo: 'bg-daw-text-muted/10 text-daw-text-dim',
+  stereoImager: 'bg-purple-500/15 text-purple-400',
+  exciter: 'bg-[#F77F00]/15 text-[#F77F00]',
+  frequencyShifter: 'bg-daw-text-muted/10 text-daw-text-dim',
+  ringMod: 'bg-daw-text-muted/10 text-daw-text-dim',
+  utility: 'bg-daw-text-muted/10 text-daw-text-dim',
 };
 
 export default function EffectsRack({ trackId, trackName }: EffectsRackProps) {

@@ -19,6 +19,7 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
   const updateTrack = useSessionStore((s) => s.updateTrack);
   const removeTrack = useSessionStore((s) => s.removeTrack);
   const setTrackSequencer = useSessionStore((s) => s.setTrackSequencer);
+  const toggleFolderCollapse = useSessionStore((s) => s.toggleFolderCollapse);
   const toggleMute = useMixerStore((s) => s.toggleMute);
   const toggleSolo = useMixerStore((s) => s.toggleSolo);
 
@@ -102,7 +103,11 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
           <span className="text-[8px] font-mono uppercase text-daw-text-muted/50 shrink-0" style={{ letterSpacing: '1px' }}>
             {(() => {
               const trackIndex = useSessionStore.getState().tracks.findIndex((t) => t.id === trackId);
-              const typePrefix = track.type === 'audio' ? 'AUD' : 'SEQ';
+              const typePrefix = track.type === 'audio' ? 'AUD'
+                : track.type === 'folder' ? 'FLD'
+                : track.type === 'group' ? 'GRP'
+                : track.type === 'return' ? 'RTN'
+                : 'SEQ';
               const catalogId = `${typePrefix}-${String(trackIndex + 1).padStart(2, '0')}`;
               return catalogId;
             })()}
@@ -118,12 +123,30 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
         </div>
         <div className="flex items-center gap-1 mt-1 flex-wrap ml-5">
           {/* Type badge — color coded by track type */}
+          {/* Folder collapse toggle */}
+          {track.type === 'folder' && (
+            <button
+              onClick={(e) => { e.stopPropagation(); toggleFolderCollapse(trackId); }}
+              className="text-[9px] font-mono text-daw-text-muted hover:text-daw-text px-0.5"
+              title={track.folderConfig?.collapsed ? 'Expand folder' : 'Collapse folder'}
+            >
+              {track.folderConfig?.collapsed ? '▶' : '▼'}
+            </button>
+          )}
           <span
             className={`text-[9px] uppercase tracking-wide px-1.5 py-px border leading-none font-medium
-                       ${track.type === 'audio' ? 'daw-type-audio' : 'daw-type-midi'}
+                       ${track.type === 'audio' ? 'daw-type-audio'
+                         : track.type === 'folder' ? 'text-amber-400/80 border-amber-400/30 bg-amber-400/10'
+                         : track.type === 'group' ? 'text-emerald-400/80 border-emerald-400/30 bg-emerald-400/10'
+                         : track.type === 'return' ? 'text-purple-400/80 border-purple-400/30 bg-purple-400/10'
+                         : 'daw-type-midi'}
                        ${track.name.startsWith('AI ') ? 'daw-type-ai' : ''}`}
           >
-            {track.type === 'audio' ? 'AUD' : 'MID'}
+            {track.type === 'audio' ? 'AUD'
+              : track.type === 'folder' ? 'FLD'
+              : track.type === 'group' ? 'GRP'
+              : track.type === 'return' ? 'RTN'
+              : 'MID'}
           </span>
 
           {/* Instrument badge for MIDI */}
