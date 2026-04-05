@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSessionStore } from '@/stores/session-store';
 import { useMixerStore } from '@/stores/mixer-store';
 import { useKeyStore } from '@/stores/key-store';
@@ -45,14 +45,16 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
 
   const [showColorPicker, setShowColorPicker] = useState(false);
 
+  // Auto-detect key when audio clip exists — deferred to useEffect to avoid blocking render
+  useEffect(() => {
+    if (firstAudioClip && !keyResult) {
+      detectKey(firstAudioClip.id, firstAudioClip.buffer);
+    }
+  }, [firstAudioClip, keyResult, detectKey]);
+
   if (!track) return null;
 
   const isSelected = selectedTrackId === trackId;
-
-  // Auto-detect key when audio clip exists
-  if (firstAudioClip && !keyResult) {
-    detectKey(firstAudioClip.id, firstAudioClip.buffer);
-  }
 
   return (
     <div

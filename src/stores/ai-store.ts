@@ -145,7 +145,7 @@ export const useAIStore = create<AIStore>((set, get) => ({
 
   addSuggestion: (suggestion) =>
     set((state) => ({
-      suggestions: [...state.suggestions, suggestion],
+      suggestions: [...state.suggestions, suggestion].slice(-200),
     })),
 
   acceptSuggestion: (id) =>

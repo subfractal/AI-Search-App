@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react';
 import { useSessionStore } from '@/stores/session-store';
 import { useMixerStore } from '@/stores/mixer-store';
 import { useAIStore } from '@/stores/ai-store';
@@ -5,8 +6,10 @@ import ChannelStrip from './ChannelStrip';
 import Fader from './ui/Fader';
 import PeakMeter from './ui/PeakMeter';
 
-export default function MixerPanel() {
+export default memo(function MixerPanel() {
   const tracks = useSessionStore((s) => s.tracks);
+  // Stable track ID list — only re-render when tracks are added/removed, not when clips/metadata change
+  const trackIds = useMemo(() => tracks.map((t) => t.id), [tracks]);
   const masterVolume = useMixerStore((s) => s.masterVolume);
   const setMasterVolume = useMixerStore((s) => s.setMasterVolume);
   const lastAnalysis = useAIStore((s) => s.lastAnalysis);
@@ -17,10 +20,10 @@ export default function MixerPanel() {
     <div className="flex h-full">
       {/* Track channel strips — scrollable */}
       <div className="flex overflow-x-auto flex-1 scrollbar-none">
-        {tracks.map((track) => (
-          <ChannelStrip key={track.id} trackId={track.id} />
+        {trackIds.map((id) => (
+          <ChannelStrip key={id} trackId={id} />
         ))}
-        {tracks.length === 0 && (
+        {trackIds.length === 0 && (
           <div className="flex items-center justify-center w-full
                           text-daw-text-muted text-xxs py-8 font-mono uppercase tracking-wider">
             Add tracks to see the mixer
@@ -29,7 +32,7 @@ export default function MixerPanel() {
       </div>
 
       {/* Master channel — always visible */}
-      {tracks.length > 0 && (
+      {trackIds.length > 0 && (
         <div className="flex flex-col items-center gap-1 px-3 py-2
                         shrink-0 min-w-[80px] w-[84px]"
         style={{
@@ -41,8 +44,8 @@ export default function MixerPanel() {
           </span>
 
           <div className="flex gap-0.5 items-stretch flex-1 min-h-0 daw-inset p-0.5">
-            {tracks[0] && (
-              <PeakMeter trackId={tracks[0].id} height={90} width={7} />
+            {trackIds[0] && (
+              <PeakMeter trackId={trackIds[0]} height={90} width={7} />
             )}
             <Fader
               value={masterVolume}
@@ -51,8 +54,8 @@ export default function MixerPanel() {
               width={28}
               showValue={false}
             />
-            {tracks[0] && (
-              <PeakMeter trackId={tracks[0].id} height={90} width={7} />
+            {trackIds[0] && (
+              <PeakMeter trackId={trackIds[0]} height={90} width={7} />
             )}
           </div>
 
@@ -97,4 +100,4 @@ export default function MixerPanel() {
       )}
     </div>
   );
-}
+});

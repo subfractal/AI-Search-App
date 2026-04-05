@@ -10,13 +10,13 @@ import { computeSpectrogram, formatFrequency, binToFrequency } from '@/services/
 import { isAudioClip } from '@/types/audio';
 import type { SpectrogramData } from '@/services/ai/spectral-data';
 
-function magnitudeToColor(value: number, min: number, max: number): string {
+function magnitudeToRGB(value: number, min: number, max: number): [number, number, number] {
   const normalized = Math.max(0, Math.min(1, (value - min) / (max - min)));
   // Cool blue -> warm orange/white (matching daw-accent theme)
   const r = Math.round(normalized * 247);
   const g = Math.round(normalized * 127 * normalized);
   const b = Math.round((1 - normalized) * 200 + normalized * 50);
-  return `rgb(${r},${g},${b})`;
+  return [r, g, b];
 }
 
 interface HoverInfo {
@@ -76,20 +76,35 @@ export default function SpectralVisualizer() {
     const pixelWidth = Math.max(1, width / frames.length);
     const pixelHeight = height / bins;
 
+    // Use ImageData for bulk pixel writes instead of individual fillRect calls
+    const imageData = ctx.createImageData(width, height);
+    const pixels = imageData.data;
+
     for (let x = 0; x < frames.length; x++) {
       const frame = frames[x]!;
+      const pxStart = Math.floor(x * pixelWidth);
+      const pxEnd = Math.min(width, Math.ceil((x + 1) * pixelWidth));
+
       for (let y = 0; y < bins; y++) {
         const mag = frame[y]!;
-        ctx.fillStyle = magnitudeToColor(mag, specData.minMagnitude, specData.maxMagnitude);
+        const [r, g, b] = magnitudeToRGB(mag, specData.minMagnitude, specData.maxMagnitude);
         // Flip Y: low frequencies at bottom
-        ctx.fillRect(
-          x * pixelWidth,
-          height - (y + 1) * pixelHeight,
-          Math.ceil(pixelWidth),
-          Math.ceil(pixelHeight),
-        );
+        const pyStart = Math.floor(height - (y + 1) * pixelHeight);
+        const pyEnd = Math.min(height, Math.ceil(height - y * pixelHeight));
+
+        for (let py = pyStart; py < pyEnd; py++) {
+          for (let px = pxStart; px < pxEnd; px++) {
+            const idx = (py * width + px) * 4;
+            pixels[idx] = r;
+            pixels[idx + 1] = g;
+            pixels[idx + 2] = b;
+            pixels[idx + 3] = 255;
+          }
+        }
       }
     }
+
+    ctx.putImageData(imageData, 0, 0);
 
     // Draw masking highlights if any
     if (maskingPairs.length > 0 && selectedTrackId) {

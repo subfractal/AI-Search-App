@@ -1,3 +1,4 @@
+import { lazy, Suspense, useMemo } from 'react';
 import { useAIStore } from '@/stores/ai-store';
 import { useSessionStore } from '@/stores/session-store';
 import {
@@ -13,22 +14,24 @@ import { generateVariation as generateAdvancedVariation } from '@/services/ai/va
 import type { VariationType } from '@/services/ai/variation-engine';
 import { interpolateClips } from '@/services/ai/pattern-interpolator';
 import { runMasteringPipeline } from '@/services/ai/mastering-service';
-import MasteringBreakdown from '@/components/ai/MasteringBreakdown';
-import DecisionTimeline from '@/components/ai/DecisionTimeline';
-import SpectralMatrixPanel from '@/components/ai/SpectralMatrixPanel';
-import CoComposerPanel from '@/components/ai/CoComposerPanel';
-import PredictiveBar from '@/components/ai/PredictiveBar';
-import VoiceIndicator from '@/components/ai/VoiceIndicator';
-import SpectralVisualizer from '@/components/visualizers/SpectralVisualizer';
-import SessionScanPanel from '@/components/ai/SessionScanPanel';
-import ArrangementMapPanel from '@/components/ai/ArrangementMapPanel';
-import TemplateGeneratorPanel from '@/components/ai/TemplateGeneratorPanel';
-import MidiGeneratorPanel from '@/components/ai/MidiGeneratorPanel';
-import AudioToMidiPanel from '@/components/ai/AudioToMidiPanel';
-import StemSplitPanel from '@/components/ai/StemSplitPanel';
-import ReferenceMatchPanel from '@/components/ai/ReferenceMatchPanel';
-import RoutingBuilderPanel from '@/components/ai/RoutingBuilderPanel';
-import CollabIndicator from '@/components/ai/CollabIndicator';
+
+// Lazy-load heavy sub-panels — only loaded when user opens them
+const MasteringBreakdown = lazy(() => import('@/components/ai/MasteringBreakdown'));
+const DecisionTimeline = lazy(() => import('@/components/ai/DecisionTimeline'));
+const SpectralMatrixPanel = lazy(() => import('@/components/ai/SpectralMatrixPanel'));
+const CoComposerPanel = lazy(() => import('@/components/ai/CoComposerPanel'));
+const PredictiveBar = lazy(() => import('@/components/ai/PredictiveBar'));
+const VoiceIndicator = lazy(() => import('@/components/ai/VoiceIndicator'));
+const SpectralVisualizer = lazy(() => import('@/components/visualizers/SpectralVisualizer'));
+const SessionScanPanel = lazy(() => import('@/components/ai/SessionScanPanel'));
+const ArrangementMapPanel = lazy(() => import('@/components/ai/ArrangementMapPanel'));
+const TemplateGeneratorPanel = lazy(() => import('@/components/ai/TemplateGeneratorPanel'));
+const MidiGeneratorPanel = lazy(() => import('@/components/ai/MidiGeneratorPanel'));
+const AudioToMidiPanel = lazy(() => import('@/components/ai/AudioToMidiPanel'));
+const StemSplitPanel = lazy(() => import('@/components/ai/StemSplitPanel'));
+const ReferenceMatchPanel = lazy(() => import('@/components/ai/ReferenceMatchPanel'));
+const RoutingBuilderPanel = lazy(() => import('@/components/ai/RoutingBuilderPanel'));
+const CollabIndicator = lazy(() => import('@/components/ai/CollabIndicator'));
 import { FACTORY_TEMPLATES, loadTemplate } from '@/services/templates/template-loader';
 import { useUIContextStore } from '@/stores/ui-context-store';
 import type { AISuggestion, MixGenre, GeneratorModel, SuggestionApplyMode } from '@/types/ai';
@@ -96,9 +99,9 @@ export default function AISidebar() {
   const config = useSessionStore((s) => s.config);
   const setConfig = useSessionStore((s) => s.setConfig);
 
-  const pendingSuggestions = suggestions.filter((s) => s.status === 'pending');
-  const appliedSuggestions = suggestions.filter((s) => s.status === 'applied');
-  const selectedTrack = tracks.find((t) => t.id === selectedTrackId) ?? null;
+  const pendingSuggestions = useMemo(() => suggestions.filter((s) => s.status === 'pending'), [suggestions]);
+  const appliedSuggestions = useMemo(() => suggestions.filter((s) => s.status === 'applied'), [suggestions]);
+  const selectedTrack = useMemo(() => tracks.find((t) => t.id === selectedTrackId) ?? null, [tracks, selectedTrackId]);
   const selectedLocked = !!selectedTrackId && lockedTrackIds.includes(selectedTrackId);
 
   return (
@@ -147,6 +150,7 @@ export default function AISidebar() {
       </div>
 
       {enabled ? (
+        <Suspense fallback={<div className="flex-1 flex items-center justify-center text-xxs text-daw-text-muted">Loading...</div>}>
         <div className="flex-1 overflow-y-auto">
           <div className="px-3 py-2.5">
             <button
@@ -747,6 +751,7 @@ export default function AISidebar() {
           {/* Skill Level */}
           <SkillLevelSelector />
         </div>
+        </Suspense>
       ) : (
         <div className="flex-1 flex items-center justify-center px-4">
           <span className="text-xxs text-daw-text-muted text-center leading-relaxed">

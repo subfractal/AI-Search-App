@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { useSessionStore } from '@/stores/session-store';
 import { useMixerStore } from '@/stores/mixer-store';
 import { useEffectsStore } from '@/stores/effects-store';
@@ -30,8 +30,10 @@ export default memo(function ChannelStrip({ trackId }: ChannelStripProps) {
   );
 
   // Sends: find return buses and sends for this track
-  const returnBuses = useRoutingStore((s) =>
-    Object.values(s.buses).filter((b) => b.type === 'return').slice(0, 2),
+  const buses = useRoutingStore((s) => s.buses);
+  const returnBuses = useMemo(
+    () => Object.values(buses).filter((b) => b.type === 'return').slice(0, 2),
+    [buses],
   );
   const sends = useRoutingStore((s) => s.sends);
   const addSend = useRoutingStore((s) => s.addSend);
