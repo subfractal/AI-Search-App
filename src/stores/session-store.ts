@@ -10,10 +10,20 @@ import {
   removeClipPlayer,
 } from '@/services/track-manager';
 
+export type BottomPanel = 'mixer' | 'instrument' | 'effects' | 'piano-roll' | 'routing' | 'warp' | 'browser' | null;
+
+export interface ZoneVisibility {
+  leftZone: boolean;
+  lowerZone: boolean;
+  rightZone: boolean;
+  lowerZonePanel: BottomPanel;
+}
+
 interface SessionStore {
   config: SessionConfig;
   tracks: Track[];
   selectedTrackId: string | null;
+  zones: ZoneVisibility;
 
   setConfig: (config: Partial<SessionConfig>) => void;
   addAudioTrack: (name?: string) => string;
@@ -35,12 +45,21 @@ interface SessionStore {
   copyClipToArrangement: (trackId: string, sceneIndex: number, startTime: number) => void;
   copyArrangementToLauncher: (trackId: string, clipId: string, sceneIndex: number) => void;
   returnTrackToArrangement: (trackId: string) => void;
+  setZoneVisibility: (zone: 'leftZone' | 'lowerZone' | 'rightZone', visible: boolean) => void;
+  setLowerZonePanel: (panel: BottomPanel) => void;
+  toggleZone: (zone: 'leftZone' | 'lowerZone' | 'rightZone') => void;
 }
 
 export const useSessionStore = create<SessionStore>((set, get) => ({
   config: DEFAULT_SESSION_CONFIG,
   tracks: [],
   selectedTrackId: null,
+  zones: {
+    leftZone: true,
+    lowerZone: true,
+    rightZone: true,
+    lowerZonePanel: 'mixer' as BottomPanel,
+  },
 
   setConfig: (updates) =>
     set((state) => ({ config: { ...state.config, ...updates } })),
@@ -339,5 +358,24 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
           },
         };
       }),
+    })),
+
+  setZoneVisibility: (zone, visible) =>
+    set((state) => ({
+      zones: { ...state.zones, [zone]: visible },
+    })),
+
+  setLowerZonePanel: (panel) =>
+    set((state) => ({
+      zones: {
+        ...state.zones,
+        lowerZonePanel: panel,
+        lowerZone: panel !== null,
+      },
+    })),
+
+  toggleZone: (zone) =>
+    set((state) => ({
+      zones: { ...state.zones, [zone]: !state.zones[zone] },
     })),
 }));

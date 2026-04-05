@@ -15,10 +15,11 @@ import HistoryPanel from '@/components/HistoryPanel';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { initAudioContext } from '@/services/audio-engine';
 import { useSessionStore } from '@/stores/session-store';
+import type { BottomPanel } from '@/stores/session-store';
 import { isMidiClip, isAudioClip } from '@/types/audio';
 import type { MidiClip } from '@/types/audio';
 
-export type BottomPanel = 'mixer' | 'instrument' | 'effects' | 'piano-roll' | 'routing' | 'warp' | null;
+export type { BottomPanel };
 
 function useScreenSize() {
   const [size, setSize] = useState({
@@ -101,9 +102,14 @@ export default function App() {
 
   const { height: panelH, onDragStart } = useResizablePanel(defaultPanelH, minPanelH, maxPanelH);
 
-  const [bottomPanel, setBottomPanel] = useState<BottomPanel>('mixer');
-  const [showAI, setShowAI] = useState(!isMobile);
-  const [showTracks, setShowTracks] = useState(!isMobile);
+  const zones = useSessionStore((s) => s.zones);
+  const setLowerZonePanel = useSessionStore((s) => s.setLowerZonePanel);
+  const toggleZone = useSessionStore((s) => s.toggleZone);
+
+  const bottomPanel = zones.lowerZonePanel;
+  const showAI = zones.rightZone;
+  const showTracks = zones.leftZone;
+
   const [showExport, setShowExport] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [pianoRollClip, setPianoRollClip] = useState<{
@@ -118,14 +124,14 @@ export default function App() {
   useEffect(() => {
     const handler = (e: Event) => {
       const panel = (e as CustomEvent).detail as BottomPanel;
-      if (panel) setBottomPanel(panel);
+      if (panel) setLowerZonePanel(panel);
     };
     window.addEventListener('daw:open-panel', handler);
     return () => window.removeEventListener('daw:open-panel', handler);
   }, []);
 
   const togglePanel = (panel: BottomPanel) => {
-    setBottomPanel((current) => (current === panel ? null : panel));
+    setLowerZonePanel(bottomPanel === panel ? null : panel);
   };
 
   const openPianoRoll = () => {
@@ -135,7 +141,7 @@ export default function App() {
     const midiClip = track.clips.find(isMidiClip);
     if (midiClip) {
       setPianoRollClip({ trackId: selectedTrackId, clip: midiClip });
-      setBottomPanel('piano-roll');
+      setLowerZonePanel('piano-roll');
     }
   };
 
@@ -200,7 +206,7 @@ export default function App() {
             clip={pianoRollClip.clip}
             onClose={() => {
               setPianoRollClip(null);
-              setBottomPanel('mixer');
+              setLowerZonePanel('mixer');
             }}
           />
         );
@@ -237,9 +243,9 @@ export default function App() {
           activePanel={bottomPanel}
           onTogglePanel={togglePanel}
           showAI={showAI}
-          onToggleAI={() => setShowAI((v) => !v)}
+          onToggleAI={() => toggleZone('rightZone')}
           showTracks={showTracks}
-          onToggleTracks={() => setShowTracks((v) => !v)}
+          onToggleTracks={() => toggleZone('leftZone')}
           onExport={() => setShowExport(true)}
           onHistory={() => setShowHistory((v) => !v)}
           onPianoRoll={openPianoRoll}
