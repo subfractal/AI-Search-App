@@ -1,4 +1,4 @@
-export type BusType = 'return' | 'group' | 'master';
+export type BusType = 'return' | 'group' | 'master' | 'monitor';
 
 export interface Bus {
   id: string;
@@ -49,3 +49,30 @@ export const BUS_COLORS = [
   '#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3',
   '#54a0ff', '#5f27cd', '#01a3a4', '#10ac84',
 ];
+
+export interface MonitorPath {
+  id: string;
+  name: string;
+  sourceId: string;
+  volume: number;
+  mute: boolean;
+  dimEnabled: boolean;
+  dimAmount: number;
+  monoEnabled: boolean;
+}
+
+export interface ControlRoomState {
+  enabled: boolean;
+  monitorPaths: MonitorPath[];
+  activeMonitorId: string | null;
+  talkbackEnabled: boolean;
+  listenEnabled: boolean;
+}
+
+export const DEFAULT_CONTROL_ROOM: ControlRoomState = {
+  enabled: false,
+  monitorPaths: [],
+  activeMonitorId: null,
+  talkbackEnabled: false,
+  listenEnabled: false,
+};

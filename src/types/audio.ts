@@ -1,4 +1,6 @@
-export type TrackType = 'audio' | 'midi';
+import type { TrackSequencerState, FolderTrackConfig, GroupTrackConfig } from '@/types/project';
+
+export type TrackType = 'audio' | 'midi' | 'group' | 'folder' | 'return';
 export type TransportState = 'playing' | 'recording' | 'paused' | 'stopped';
 
 export interface TimeSignature {
@@ -55,6 +57,11 @@ export interface Track {
   solo: boolean;
   armed: boolean;
   clips: Clip[];
+  role?: string;
+  sequencer?: TrackSequencerState;
+  folderConfig?: FolderTrackConfig;
+  groupConfig?: GroupTrackConfig;
+  parentTrackId?: string | null;
 }
 
 export const TRACK_COLORS = [

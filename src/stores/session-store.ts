@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Track, SessionConfig, AudioClip, Clip } from '@/types/audio';
+import type { TrackSequencerState, SequencerMode } from '@/types/project';
 import { DEFAULT_SESSION_CONFIG, TRACK_COLORS } from '@/types/audio';
 import { generateId } from '@/utils/id';
 import {
@@ -23,6 +24,15 @@ interface SessionStore {
   addClipToTrack: (trackId: string, clip: Clip) => void;
   removeClip: (trackId: string, clipId: string) => void;
   reorderTracks: (fromIndex: number, toIndex: number) => void;
+  addGroupTrack: (name?: string) => string;
+  addFolderTrack: (name?: string) => string;
+  addReturnTrack: (name?: string) => string;
+  moveTrackToFolder: (trackId: string, folderId: string | null) => void;
+  toggleFolderCollapse: (folderId: string) => void;
+  setTrackSequencer: (trackId: string, mode: SequencerMode) => void;
+  setLauncherSlot: (trackId: string, sceneIndex: number, clip: Clip) => void;
+  clearLauncherSlot: (trackId: string, sceneIndex: number) => void;
+  returnTrackToArrangement: (trackId: string) => void;
 }
 
 export const useSessionStore = create<SessionStore>((set, get) => ({
@@ -122,4 +132,176 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       if (moved) tracks.splice(toIndex, 0, moved);
       return { tracks };
     }),
+
+  addGroupTrack: (name) => {
+    const id = generateId('track');
+    const index = get().tracks.length;
+    const color = TRACK_COLORS[index % TRACK_COLORS.length]!;
+    const track: Track = {
+      id,
+      name: name ?? `DKT-GRP-${String(index + 1).padStart(2, '0')}`,
+      type: 'group',
+      color,
+      volume: 0,
+      pan: 0,
+      mute: false,
+      solo: false,
+      armed: false,
+      clips: [],
+      groupConfig: { childTrackIds: [], busId: '' },
+    };
+    createTrackNodes(id);
+    set((state) => ({ tracks: [...state.tracks, track] }));
+    return id;
+  },
+
+  addFolderTrack: (name) => {
+    const id = generateId('track');
+    const index = get().tracks.length;
+    const color = TRACK_COLORS[index % TRACK_COLORS.length]!;
+    const track: Track = {
+      id,
+      name: name ?? `DKT-FLD-${String(index + 1).padStart(2, '0')}`,
+      type: 'folder',
+      color,
+      volume: 0,
+      pan: 0,
+      mute: false,
+      solo: false,
+      armed: false,
+      clips: [],
+      folderConfig: { collapsed: false, childTrackIds: [], summingEnabled: false },
+    };
+    set((state) => ({ tracks: [...state.tracks, track] }));
+    return id;
+  },
+
+  addReturnTrack: (name) => {
+    const id = generateId('track');
+    const index = get().tracks.length;
+    const color = TRACK_COLORS[index % TRACK_COLORS.length]!;
+    const track: Track = {
+      id,
+      name: name ?? `DKT-RTN-${String(index + 1).padStart(2, '0')}`,
+      type: 'return',
+      color,
+      volume: 0,
+      pan: 0,
+      mute: false,
+      solo: false,
+      armed: false,
+      clips: [],
+    };
+    createTrackNodes(id);
+    set((state) => ({ tracks: [...state.tracks, track] }));
+    return id;
+  },
+
+  moveTrackToFolder: (trackId, folderId) =>
+    set((state) => ({
+      tracks: state.tracks.map((t) => {
+        if (t.id === trackId) return { ...t, parentTrackId: folderId };
+        if (t.folderConfig && t.id === folderId && folderId) {
+          return {
+            ...t,
+            folderConfig: {
+              ...t.folderConfig,
+              childTrackIds: [
+                ...t.folderConfig.childTrackIds.filter((id) => id !== trackId),
+                trackId,
+              ],
+            },
+          };
+        }
+        if (t.folderConfig && t.folderConfig.childTrackIds.includes(trackId) && t.id !== folderId) {
+          return {
+            ...t,
+            folderConfig: {
+              ...t.folderConfig,
+              childTrackIds: t.folderConfig.childTrackIds.filter((id) => id !== trackId),
+            },
+          };
+        }
+        return t;
+      }),
+    })),
+
+  toggleFolderCollapse: (folderId) =>
+    set((state) => ({
+      tracks: state.tracks.map((t) =>
+        t.id === folderId && t.folderConfig
+          ? { ...t, folderConfig: { ...t.folderConfig, collapsed: !t.folderConfig.collapsed } }
+          : t,
+      ),
+    })),
+
+  setTrackSequencer: (trackId, mode) =>
+    set((state) => ({
+      tracks: state.tracks.map((t) => {
+        if (t.id !== trackId) return t;
+        const seq: TrackSequencerState = t.sequencer ?? {
+          activeSequencer: 'arrangement',
+          arrangementSuppressedByLauncher: false,
+          launcherSlots: [],
+        };
+        return {
+          ...t,
+          sequencer: {
+            ...seq,
+            activeSequencer: mode,
+            arrangementSuppressedByLauncher: mode === 'launcher',
+          },
+        };
+      }),
+    })),
+
+  setLauncherSlot: (trackId, sceneIndex, clip) =>
+    set((state) => ({
+      tracks: state.tracks.map((t) => {
+        if (t.id !== trackId) return t;
+        const seq: TrackSequencerState = t.sequencer ?? {
+          activeSequencer: 'arrangement',
+          arrangementSuppressedByLauncher: false,
+          launcherSlots: [],
+        };
+        const slots = [...seq.launcherSlots];
+        const idx = slots.findIndex((s) => s.sceneIndex === sceneIndex);
+        const slot = { sceneIndex, clip, playing: false, queued: false };
+        if (idx >= 0) {
+          slots[idx] = slot;
+        } else {
+          slots.push(slot);
+        }
+        return { ...t, sequencer: { ...seq, launcherSlots: slots } };
+      }),
+    })),
+
+  clearLauncherSlot: (trackId, sceneIndex) =>
+    set((state) => ({
+      tracks: state.tracks.map((t) => {
+        if (t.id !== trackId || !t.sequencer) return t;
+        return {
+          ...t,
+          sequencer: {
+            ...t.sequencer,
+            launcherSlots: t.sequencer.launcherSlots.filter((s) => s.sceneIndex !== sceneIndex),
+          },
+        };
+      }),
+    })),
+
+  returnTrackToArrangement: (trackId) =>
+    set((state) => ({
+      tracks: state.tracks.map((t) => {
+        if (t.id !== trackId || !t.sequencer) return t;
+        return {
+          ...t,
+          sequencer: {
+            ...t.sequencer,
+            activeSequencer: 'arrangement' as const,
+            arrangementSuppressedByLauncher: false,
+          },
+        };
+      }),
+    })),
 }));

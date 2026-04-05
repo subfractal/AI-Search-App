@@ -228,3 +228,25 @@ export interface EvolutionState {
   generation: number;
   fitness: number[];
 }
+
+// Offline task model
+export type OfflineTaskStatus = 'pending' | 'running' | 'done' | 'failed';
+export type ActionClass = 'immediate' | 'preview' | 'automation-write' | 'offline-commit';
+
+export interface OfflineTask {
+  id: string;
+  taskType: string;
+  scope: string;
+  params: Record<string, unknown>;
+  status: OfflineTaskStatus;
+  undoable: boolean;
+  resultAssetId?: string;
+  createdAt: number;
+}
+
+// Composer preset
+export interface ComposerPreset {
+  id: string;
+  name: string;
+  settings: ComposerSettings;
+}

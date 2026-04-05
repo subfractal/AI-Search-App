@@ -5,8 +5,10 @@ import type {
   SendConfig,
   SidechainConfig,
   GroupAssignment,
+  ControlRoomState,
+  MonitorPath,
 } from '@/types/routing';
-import { DEFAULT_BUS, BUS_COLORS } from '@/types/routing';
+import { DEFAULT_BUS, BUS_COLORS, DEFAULT_CONTROL_ROOM } from '@/types/routing';
 import { generateId } from '@/utils/id';
 import * as routingService from '@/services/routing-service';
 
@@ -34,6 +36,16 @@ interface RoutingStore {
   // Group actions
   assignToGroup: (trackId: string, groupBusId: string) => void;
   removeFromGroup: (trackId: string) => void;
+
+  // Control room actions
+  controlRoom: ControlRoomState;
+  initControlRoom: () => void;
+  addMonitorPath: (name: string) => string;
+  removeMonitorPath: (id: string) => void;
+  setActiveMonitor: (monitorId: string) => void;
+  toggleDim: () => void;
+  toggleMono: () => void;
+  toggleTalkback: () => void;
 }
 
 export const useRoutingStore = create<RoutingStore>((set, get) => ({
@@ -41,6 +53,7 @@ export const useRoutingStore = create<RoutingStore>((set, get) => ({
   sends: {},
   sidechains: {},
   groupAssignments: [],
+  controlRoom: DEFAULT_CONTROL_ROOM,
 
   addBus: (name, type) => {
     const id = generateId('bus');
@@ -246,4 +259,104 @@ export const useRoutingStore = create<RoutingStore>((set, get) => ({
         .filter((a) => a.trackId !== trackId),
     }));
   },
+
+  initControlRoom: () => {
+    const mainMonitor: MonitorPath = {
+      id: generateId('mon'),
+      name: 'Main',
+      sourceId: 'master',
+      volume: 0,
+      mute: false,
+      dimEnabled: false,
+      dimAmount: -20,
+      monoEnabled: false,
+    };
+    set({
+      controlRoom: {
+        enabled: true,
+        monitorPaths: [mainMonitor],
+        activeMonitorId: mainMonitor.id,
+        talkbackEnabled: false,
+        listenEnabled: false,
+      },
+    });
+  },
+
+  addMonitorPath: (name) => {
+    const id = generateId('mon');
+    const path: MonitorPath = {
+      id,
+      name,
+      sourceId: 'master',
+      volume: 0,
+      mute: false,
+      dimEnabled: false,
+      dimAmount: -20,
+      monoEnabled: false,
+    };
+    set((state) => ({
+      controlRoom: {
+        ...state.controlRoom,
+        monitorPaths: [...state.controlRoom.monitorPaths, path],
+      },
+    }));
+    return id;
+  },
+
+  removeMonitorPath: (id) =>
+    set((state) => ({
+      controlRoom: {
+        ...state.controlRoom,
+        monitorPaths: state.controlRoom.monitorPaths.filter((p) => p.id !== id),
+        activeMonitorId:
+          state.controlRoom.activeMonitorId === id
+            ? state.controlRoom.monitorPaths[0]?.id ?? null
+            : state.controlRoom.activeMonitorId,
+      },
+    })),
+
+  setActiveMonitor: (monitorId) =>
+    set((state) => ({
+      controlRoom: { ...state.controlRoom, activeMonitorId: monitorId },
+    })),
+
+  toggleDim: () =>
+    set((state) => {
+      const active = state.controlRoom.monitorPaths.find(
+        (p) => p.id === state.controlRoom.activeMonitorId,
+      );
+      if (!active) return state;
+      return {
+        controlRoom: {
+          ...state.controlRoom,
+          monitorPaths: state.controlRoom.monitorPaths.map((p) =>
+            p.id === active.id ? { ...p, dimEnabled: !p.dimEnabled } : p,
+          ),
+        },
+      };
+    }),
+
+  toggleMono: () =>
+    set((state) => {
+      const active = state.controlRoom.monitorPaths.find(
+        (p) => p.id === state.controlRoom.activeMonitorId,
+      );
+      if (!active) return state;
+      return {
+        controlRoom: {
+          ...state.controlRoom,
+          monitorPaths: state.controlRoom.monitorPaths.map((p) =>
+            p.id === active.id ? { ...p, monoEnabled: !p.monoEnabled } : p,
+          ),
+        },
+      };
+    }),
+
+  toggleTalkback: () =>
+    set((state) => ({
+      controlRoom: {
+        ...state.controlRoom,
+        talkbackEnabled: !state.controlRoom.talkbackEnabled,
+      },
+    })),
 }));
