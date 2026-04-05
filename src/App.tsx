@@ -10,6 +10,7 @@ import EffectsRack from '@/components/effects/EffectsRack';
 import PianoRoll from '@/components/PianoRoll';
 import RoutingPanel from '@/components/RoutingPanel';
 import WarpPanel from '@/components/WarpPanel';
+import BrowserPanel from '@/components/browser/BrowserPanel';
 import ExportDialog from '@/components/ExportDialog';
 import HistoryPanel from '@/components/HistoryPanel';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
@@ -198,6 +199,9 @@ export default function App() {
         }
         break;
       }
+      case 'browser':
+        content = <BrowserPanel />;
+        break;
       case 'piano-roll':
         if (!pianoRollClip) return null;
         content = (

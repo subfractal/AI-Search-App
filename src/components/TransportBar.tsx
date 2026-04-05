@@ -310,6 +310,7 @@ export default function TransportBar({
         <PanelBtn panel="effects" label="FX" />
         <PanelBtn panel="routing" label="Rte" />
         <PanelBtn panel="warp" label="Wrp" />
+        <PanelBtn panel="browser" label="Lib" />
         <button
           onClick={onPianoRoll}
           className={`text-[10px] font-medium px-2 py-0.5 transition-all duration-75 shrink-0

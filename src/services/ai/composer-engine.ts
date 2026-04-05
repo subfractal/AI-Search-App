@@ -1,5 +1,6 @@
 import { useSessionStore } from '@/stores/session-store';
 import { useAIStore } from '@/stores/ai-store';
+import { useLibraryStore } from '@/stores/library-store';
 import { generateId } from '@/utils/id';
 import { isMidiClip } from '@/types/audio';
 import type { ComposerResult, GeneratorModel } from '@/types/ai';
@@ -138,6 +139,14 @@ export function generateComposition(): ComposerResult | null {
   };
 
   session.addClipToTrack(trackId, clip);
+
+  // Save to library for reuse
+  useLibraryStore.getState().saveClipAsAsset(
+    clip,
+    clip.name,
+    [settings.model, `${settings.bars}bar`],
+    true,
+  );
 
   ai.logActivity({
     id: generateId('log'),
