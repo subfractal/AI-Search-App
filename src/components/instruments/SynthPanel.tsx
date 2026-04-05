@@ -14,6 +14,7 @@ const FILTER_TYPES: FilterType[] = ['lowpass', 'highpass', 'bandpass'];
 function Oscilloscope({ trackId }: { trackId: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
+  const lastDrawRef = useRef(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -26,7 +27,14 @@ function Oscilloscope({ trackId }: { trackId: string }) {
     canvas.height = 64 * dpr;
     ctx.scale(dpr, dpr);
 
-    const draw = () => {
+    const draw = (now?: number) => {
+      // Throttle to ~20fps
+      const t = now ?? performance.now();
+      if (t - lastDrawRef.current < 50) {
+        rafRef.current = requestAnimationFrame(draw);
+        return;
+      }
+      lastDrawRef.current = t;
       const w = 160;
       const h = 64;
       const mid = h / 2;

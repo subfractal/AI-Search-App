@@ -212,6 +212,9 @@ export default function Timeline() {
     return () => { active = false; cancelAnimationFrame(id); };
   }, [followPlayhead, transportState, pps, scrollX]);
 
+  // Track canvas size — only resize when container dimensions actually change
+  const canvasSizeRef = useRef({ w: 0, h: 0 });
+
   // Draw
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -219,13 +222,20 @@ export default function Timeline() {
     if (!canvas || !container) return;
     const { width, height } = container.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
+    const targetW = Math.round(width * dpr);
+    const targetH = Math.round(height * dpr);
+
+    // Only resize canvas when dimensions actually change (avoids GPU reallocation)
+    if (canvasSizeRef.current.w !== targetW || canvasSizeRef.current.h !== targetH) {
+      canvas.width = targetW;
+      canvas.height = targetH;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      canvasSizeRef.current = { w: targetW, h: targetH };
+    }
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    ctx.scale(dpr, dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     ctx.fillStyle = '#141414';
     ctx.fillRect(0, 0, width, height);
@@ -324,10 +334,14 @@ export default function Timeline() {
     const position = getPositionSeconds();
     drawPlayhead(ctx, position, pps, scrollX, height);
 
-    rafRef.current = requestAnimationFrame(draw);
-  }, [tracks, bpm, pps, scrollX, scrollY, loopEnabled, loopStart, loopEnd, beatsPerBar, showAutomation, automationLanes, selectedClips]);
+    // Only loop RAF when transport is playing (playhead moving)
+    if (transportState === 'playing' || transportState === 'recording') {
+      rafRef.current = requestAnimationFrame(draw);
+    }
+  }, [tracks, bpm, pps, scrollX, scrollY, loopEnabled, loopStart, loopEnd, beatsPerBar, showAutomation, automationLanes, selectedClips, transportState]);
 
   useEffect(() => {
+    // Always draw once when state changes; RAF loop handles continuous updates during playback
     rafRef.current = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(rafRef.current);
   }, [draw]);

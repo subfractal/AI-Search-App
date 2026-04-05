@@ -17,18 +17,30 @@ function BusMeter({ busId, height = 80 }: { busId: string; height?: number }) {
   const rafRef = useRef<number>(0);
   const peakRef = useRef(0);
   const decayRef = useRef(0);
+  const lastDrawRef = useRef(0);
+  const sizedRef = useRef(false);
   const width = 6;
 
-  const draw = useCallback(() => {
+  const draw = useCallback((now: number) => {
+    // Throttle to ~20fps
+    if (now - lastDrawRef.current < 50) {
+      rafRef.current = requestAnimationFrame(draw);
+      return;
+    }
+    lastDrawRef.current = now;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
-    ctx.scale(dpr, dpr);
+    if (!sizedRef.current) {
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.scale(dpr, dpr);
+      sizedRef.current = true;
+    }
 
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, width, height);

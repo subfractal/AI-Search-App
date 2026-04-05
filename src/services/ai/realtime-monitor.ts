@@ -13,7 +13,7 @@ const AUTO_ANALYSIS_DEBOUNCE_MS = 10000;
 // Per-track clipping start times
 const clippingStartTimes = new Map<string, number>();
 
-export function startMonitoring(intervalMs: number = 100): void {
+export function startMonitoring(intervalMs: number = 500): void {
   if (monitorInterval !== null) return;
 
   monitorInterval = setInterval(() => {

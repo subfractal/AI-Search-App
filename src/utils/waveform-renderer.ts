@@ -1,3 +1,59 @@
+// Waveform cache: keyed by buffer + pixelWidth to avoid recomputing min/max every frame
+interface WaveformCache {
+  maxArr: Float32Array;
+  minArr: Float32Array;
+  absArr: Float32Array;
+  width: number;
+}
+
+const waveformCache = new WeakMap<AudioBuffer, Map<number, WaveformCache>>();
+
+function getWaveformData(buffer: AudioBuffer, pixelWidth: number): WaveformCache {
+  let sizeMap = waveformCache.get(buffer);
+  if (!sizeMap) {
+    sizeMap = new Map();
+    waveformCache.set(buffer, sizeMap);
+  }
+
+  const cached = sizeMap.get(pixelWidth);
+  if (cached) return cached;
+
+  // Evict old sizes to prevent memory bloat (keep at most 3 resolutions)
+  if (sizeMap.size > 3) {
+    const first = sizeMap.keys().next().value;
+    if (first !== undefined) sizeMap.delete(first);
+  }
+
+  const data = buffer.getChannelData(0);
+  const step = Math.ceil(data.length / pixelWidth);
+  const w = pixelWidth;
+  const maxArr = new Float32Array(w);
+  const minArr = new Float32Array(w);
+  const absArr = new Float32Array(w);
+
+  for (let i = 0; i < w; i++) {
+    const start = Math.floor(i * step);
+    let max = 0;
+    let min = 0;
+    let absMax = 0;
+    const end = Math.min(start + step, data.length);
+    for (let j = start; j < end; j++) {
+      const s = data[j]!;
+      if (s > max) max = s;
+      if (s < min) min = s;
+      const a = Math.abs(s);
+      if (a > absMax) absMax = a;
+    }
+    maxArr[i] = max;
+    minArr[i] = min;
+    absArr[i] = absMax;
+  }
+
+  const entry: WaveformCache = { maxArr, minArr, absArr, width: w };
+  sizeMap.set(pixelWidth, entry);
+  return entry;
+}
+
 export function drawWaveform(
   ctx: CanvasRenderingContext2D,
   buffer: AudioBuffer,
@@ -7,8 +63,8 @@ export function drawWaveform(
   height: number,
   color: string,
 ): void {
-  const data = buffer.getChannelData(0);
-  const step = Math.ceil(data.length / width);
+  const pixelWidth = Math.max(1, Math.round(width));
+  const { maxArr, minArr, absArr } = getWaveformData(buffer, pixelWidth);
   const halfHeight = height / 2;
   const centerY = y + halfHeight;
 
@@ -17,25 +73,13 @@ export function drawWaveform(
   ctx.moveTo(x, centerY);
 
   // Top half
-  for (let i = 0; i < width; i++) {
-    const start = Math.floor(i * step);
-    let max = 0;
-    for (let j = 0; j < step && start + j < data.length; j++) {
-      const sample = data[start + j]!;
-      if (sample > max) max = sample;
-    }
-    ctx.lineTo(x + i, centerY - max * halfHeight * 0.95);
+  for (let i = 0; i < pixelWidth; i++) {
+    ctx.lineTo(x + i, centerY - maxArr[i]! * halfHeight * 0.95);
   }
 
   // Bottom half (reverse)
-  for (let i = width - 1; i >= 0; i--) {
-    const start = Math.floor(i * step);
-    let min = 0;
-    for (let j = 0; j < step && start + j < data.length; j++) {
-      const sample = data[start + j]!;
-      if (sample < min) min = sample;
-    }
-    ctx.lineTo(x + i, centerY - min * halfHeight * 0.95);
+  for (let i = pixelWidth - 1; i >= 0; i--) {
+    ctx.lineTo(x + i, centerY - minArr[i]! * halfHeight * 0.95);
   }
 
   ctx.closePath();
@@ -44,15 +88,10 @@ export function drawWaveform(
 
   // Draw waveform outline — crisp edge
   ctx.beginPath();
-  for (let i = 0; i < width; i++) {
-    const start = Math.floor(i * step);
-    let max = 0;
-    for (let j = 0; j < step && start + j < data.length; j++) {
-      const sample = Math.abs(data[start + j]!);
-      if (sample > max) max = sample;
-    }
-    const top = centerY - max * halfHeight * 0.95;
-    const bottom = centerY + max * halfHeight * 0.95;
+  for (let i = 0; i < pixelWidth; i++) {
+    const amp = absArr[i]! * halfHeight * 0.95;
+    const top = centerY - amp;
+    const bottom = centerY + amp;
     ctx.moveTo(x + i, top);
     ctx.lineTo(x + i, bottom);
   }

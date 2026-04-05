@@ -96,10 +96,21 @@ function IconMetronome() {
 /* ── Master Meter (simple canvas-based) ── */
 function MasterMeter() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const lastDrawRef = useRef(0);
+  const transportState = useTransportStore((s) => s.state);
 
   useEffect(() => {
     let raf: number;
-    const draw = () => {
+    const isActive = transportState === 'playing' || transportState === 'recording';
+
+    const draw = (now: number) => {
+      // Throttle to ~15fps (66ms) — meters don't need 60fps
+      if (now - lastDrawRef.current < 66) {
+        if (isActive) raf = requestAnimationFrame(draw);
+        return;
+      }
+      lastDrawRef.current = now;
+
       const canvas = canvasRef.current;
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
@@ -109,8 +120,8 @@ function MasterMeter() {
       ctx.clearRect(0, 0, w, h);
 
       // Simulated meter levels (would connect to real audio analysis)
-      const levelL = 0.3 + Math.random() * 0.15;
-      const levelR = 0.3 + Math.random() * 0.12;
+      const levelL = isActive ? 0.3 + Math.random() * 0.15 : 0;
+      const levelR = isActive ? 0.3 + Math.random() * 0.12 : 0;
       const barH = (h - 2) / 2;
 
       // Left channel
@@ -127,11 +138,13 @@ function MasterMeter() {
       ctx.fillStyle = '#222224';
       ctx.fillRect(rW, barH + 2, w - rW, barH);
 
-      raf = requestAnimationFrame(draw);
+      if (isActive) raf = requestAnimationFrame(draw);
     };
+
+    // Draw once immediately (shows cleared state when stopped)
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [transportState]);
 
   return <canvas ref={canvasRef} width={80} height={14} className="shrink-0" />;
 }
