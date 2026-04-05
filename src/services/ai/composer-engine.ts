@@ -103,8 +103,8 @@ export function generateComposition(): ComposerResult | null {
   const ai = useAIStore.getState();
   const settings = ai.composer;
 
-  let trackId = session.selectedTrackId;
-  const selected = session.tracks.find((t) => t.id === trackId);
+  let trackId: string = session.selectedTrackId ?? '';
+  const selected = trackId ? session.tracks.find((t) => t.id === trackId) ?? null : null;
 
   if (!selected || selected.type !== 'midi') {
     trackId = session.addMidiTrack(`AI ${settings.model.toUpperCase()}`);

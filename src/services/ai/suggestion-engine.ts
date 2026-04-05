@@ -132,7 +132,7 @@ export function runAnalysis(): void {
       ...s,
       applyMode: s.applyMode ?? defaultApplyMode(s),
       realtimeSafe: s.realtimeSafe ?? (s.type === 'clipping' || s.type === 'level' || s.type === 'pan' || s.type === 'gain-staging'),
-      reversible: s.reversible ?? !!s.action && ['setVolume', 'setPan', 'batch'].includes(s.action.type),
+      reversible: s.reversible ?? (!!s.action && ['setVolume', 'setPan', 'batch'].includes(s.action.type)),
       evidence: s.evidence ?? [],
       constraints: s.constraints ?? [],
     }));
