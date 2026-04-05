@@ -70,10 +70,13 @@ export default function AISidebar() {
 
   return (
     <div className="h-full flex flex-col bg-daw-ai-bg">
-      <div className="flex items-center justify-between px-2.5 h-7 shrink-0 border-b border-daw-border/20">
+      <div className="flex items-center justify-between px-2.5 h-8 shrink-0 border-b border-daw-border/20"
+           style={{ background: 'linear-gradient(to right, rgba(167,139,250,0.04), transparent)' }}>
         <div className="flex items-center gap-1.5">
-          <div className="w-1.5 h-1.5 rounded-full bg-daw-ai-accent shadow-[0_0_4px_rgba(167,139,250,0.4)]" />
-          <span className="daw-section-label text-daw-ai-accent">Co-Producer</span>
+          <div className={`w-2 h-2 rounded-full bg-daw-ai-accent
+                          ${analyzing ? 'daw-analyzing' : ''}
+                          ${enabled ? 'shadow-[0_0_6px_rgba(167,139,250,0.5)]' : 'opacity-40'}`} />
+          <span className="text-[10px] font-semibold tracking-wider uppercase text-daw-ai-accent">Co-Producer</span>
         </div>
         <button
           onClick={() => setEnabled(!enabled)}
@@ -89,9 +92,21 @@ export default function AISidebar() {
             <button
               onClick={() => runAnalysis()}
               disabled={analyzing || tracks.length === 0}
-              className="w-full text-xxs py-1.5 rounded font-medium bg-daw-ai-suggestion/70 text-white hover:bg-daw-ai-suggestion disabled:opacity-30 disabled:cursor-not-allowed"
+              className={`w-full text-xxs py-1.5 rounded font-medium text-white
+                         disabled:opacity-30 disabled:cursor-not-allowed transition-all
+                         ${analyzing
+                           ? 'bg-daw-ai-suggestion/50 animate-pulse-soft'
+                           : 'bg-daw-ai-suggestion/70 hover:bg-daw-ai-suggestion'}`}
+              style={analyzing ? { boxShadow: '0 0 12px rgba(124,58,237,0.2)' } : undefined}
             >
-              {analyzing ? 'Analyzing...' : 'Analyze Mix'}
+              {analyzing ? (
+                <span className="flex items-center justify-center gap-1.5">
+                  <svg className="animate-spin w-3 h-3" viewBox="0 0 16 16" fill="none">
+                    <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round" />
+                  </svg>
+                  Analyzing...
+                </span>
+              ) : 'Analyze Mix'}
             </button>
             <button
               onClick={() => resetAppliedSignatures()}
@@ -445,8 +460,10 @@ function SuggestionCard({
   onReject: () => void;
 }) {
   const actionLabel = describeAction(suggestion);
+  const confPct = Math.round(suggestion.confidence * 100);
+  const confColor = confPct >= 90 ? '#3dd68c' : confPct >= 70 ? '#f5c542' : '#ef4444';
   return (
-    <div className="bg-daw-bg/40 rounded p-2 border border-daw-border/10">
+    <div className="bg-daw-bg/40 rounded-md p-2 border border-daw-border/15 hover:border-daw-ai-accent/20 transition-colors">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="text-xxs font-medium text-daw-text">{suggestion.title}</div>
@@ -457,7 +474,13 @@ function SuggestionCard({
             </div>
           )}
         </div>
-        <span className="text-[8px] text-daw-ai-accent/70">{Math.round(suggestion.confidence * 100)}%</span>
+        {/* Confidence meter */}
+        <div className="flex flex-col items-center gap-0.5 shrink-0">
+          <span className="text-[8px] font-mono font-medium" style={{ color: confColor }}>{confPct}%</span>
+          <div className="w-5 h-1 rounded-full bg-daw-bg/80 overflow-hidden">
+            <div className="h-full rounded-full" style={{ width: `${confPct}%`, backgroundColor: confColor }} />
+          </div>
+        </div>
       </div>
 
       {suggestion.rationale && (

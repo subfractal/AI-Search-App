@@ -29,14 +29,12 @@ export default function PeakMeter({
     if (!ctx) return;
 
     const draw = (now: number) => {
-      // Throttle to ~30fps to reduce CPU usage
       if (now - lastDrawRef.current < 33) {
         rafRef.current = requestAnimationFrame(draw);
         return;
       }
       lastDrawRef.current = now;
 
-      // Size canvas once (or on dimension change)
       if (!sizedRef.current) {
         const dpr = window.devicePixelRatio || 1;
         canvas.width = width * dpr;
@@ -45,7 +43,11 @@ export default function PeakMeter({
         sizedRef.current = true;
       }
 
-      ctx.fillStyle = '#0a0a0a';
+      // Dark background with subtle gradient
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
+      bgGrad.addColorStop(0, '#08080c');
+      bgGrad.addColorStop(1, '#0a0a10');
+      ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, width, height);
 
       const db = getTrackLevel(trackId);
@@ -61,10 +63,20 @@ export default function PeakMeter({
         const ratio = i / totalSegments;
 
         if (i < filledSegments) {
-          ctx.fillStyle = ratio > 0.92 ? '#ef4444'
-            : ratio > 0.75 ? '#f5c542' : '#4ade80';
+          if (ratio > 0.92) {
+            ctx.fillStyle = '#ef4444';
+          } else if (ratio > 0.75) {
+            ctx.fillStyle = '#f5c542';
+          } else {
+            ctx.fillStyle = '#3dd68c';
+          }
         } else {
-          ctx.fillStyle = '#1a1a1a';
+          // Dimmed segments for visual depth
+          ctx.fillStyle = ratio > 0.92
+            ? 'rgba(239,68,68,0.06)'
+            : ratio > 0.75
+              ? 'rgba(245,197,66,0.04)'
+              : 'rgba(61,214,140,0.04)';
         }
 
         ctx.fillRect(1, segY, width - 2, segmentHeight);
@@ -82,11 +94,13 @@ export default function PeakMeter({
         peakHoldRef.current = Math.max(peakHoldRef.current - 0.01, normalized);
       }
 
-      const peakY = height - peakHoldRef.current * height;
-      ctx.fillStyle = peakHoldRef.current > 0.92 ? '#ef4444' : '#fff';
-      ctx.fillRect(1, peakY, width - 2, 1);
+      if (peakHoldRef.current > 0.02) {
+        const peakY = height - peakHoldRef.current * height;
+        ctx.fillStyle = peakHoldRef.current > 0.92 ? '#ef4444' : 'rgba(255,255,255,0.7)';
+        ctx.fillRect(1, peakY, width - 2, 1);
+      }
 
-      // True peak indicator (red line) if provided
+      // True peak indicator
       if (truePeakDb !== undefined && truePeakDb > -60) {
         const tpNorm = Math.max(0, Math.min(1, (truePeakDb + 60) / 66));
         const tpY = height - tpNorm * height;

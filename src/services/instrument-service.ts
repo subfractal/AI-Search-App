@@ -207,4 +207,35 @@ export function disposeInstrument(trackId: string): void {
     entry.noise?.dispose();
   }
   trackInstruments.delete(trackId);
+
+  // Clean up analyser
+  const analyser = trackAnalysers.get(trackId);
+  if (analyser) {
+    analyser.disconnect();
+    trackAnalysers.delete(trackId);
+  }
+}
+
+// --- Analyser nodes for oscilloscope display ---
+const trackAnalysers = new Map<string, AnalyserNode>();
+
+export function getAnalyserNode(trackId: string): AnalyserNode | null {
+  const existing = trackAnalysers.get(trackId);
+  if (existing) return existing;
+
+  const node = getTrackNodes(trackId);
+  if (!node) return null;
+
+  // Access the raw Web Audio context and create an AnalyserNode
+  const ctx = Tone.getContext().rawContext;
+  if (!ctx) return null;
+
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 2048;
+  analyser.smoothingTimeConstant = 0.8;
+
+  // Connect the Tone.js channel to the analyser
+  Tone.connect(node.channel, analyser);
+  trackAnalysers.set(trackId, analyser);
+  return analyser;
 }

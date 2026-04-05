@@ -30,10 +30,11 @@ export default function MixerPanel() {
 
       {/* Master channel — always visible */}
       {tracks.length > 0 && (
-        <div className="flex flex-col items-center gap-0.5 px-2 py-1
-                        border-l-2 border-daw-accent/15 bg-daw-bg/30
-                        min-w-[72px] w-[76px] shrink-0">
-          <span className="text-[8px] text-daw-accent font-bold tracking-wider">
+        <div className="flex flex-col items-center gap-0.5 px-2 py-1.5
+                        border-l border-daw-accent/20 shrink-0
+                        min-w-[72px] w-[76px]"
+             style={{ background: 'linear-gradient(to bottom, rgba(255,107,53,0.03), transparent)' }}>
+          <span className="text-[8px] text-daw-accent font-bold tracking-widest">
             MASTER
           </span>
 
@@ -57,19 +58,19 @@ export default function MixerPanel() {
             {masterVolume > 0 ? '+' : ''}{masterVolume.toFixed(1)}
           </span>
 
-          {/* LUFS readout */}
+          {/* LUFS readout — LCD style */}
           {lufs && (
-            <div className="w-full border-t border-daw-border/20 pt-0.5 mt-0.5">
+            <div className="w-full daw-lcd px-1.5 py-1 mt-0.5">
               <div className="text-center">
-                <span className="text-[7px] text-daw-text-muted/50 block">
+                <span className="text-[6px] text-daw-lcd-dim uppercase tracking-widest block">
                   LUFS
                 </span>
-                <span className={`text-[9px] font-mono font-bold tabular-nums block
+                <span className={`text-[10px] font-mono font-bold tabular-nums block leading-tight
                   ${lufs.integrated >= -16 && lufs.integrated <= -14
-                    ? 'text-green-400'
+                    ? 'text-[#3dd68c]'
                     : lufs.integrated > -11 || lufs.integrated < -20
-                      ? 'text-red-400'
-                      : 'text-yellow-400'}`}
+                      ? 'text-[#ef4444]'
+                      : 'text-[#f5c542]'}`}
                 >
                   {lufs.integrated > -Infinity
                     ? lufs.integrated.toFixed(1)
@@ -77,11 +78,11 @@ export default function MixerPanel() {
                 </span>
               </div>
               <div className="text-center mt-0.5">
-                <span className="text-[7px] text-daw-text-muted/50 block">
+                <span className="text-[6px] text-daw-lcd-dim uppercase tracking-widest block">
                   TP
                 </span>
-                <span className={`text-[8px] font-mono tabular-nums block
-                  ${lufs.truePeak > -1 ? 'text-red-400' : 'text-daw-text-muted'}`}
+                <span className={`text-[9px] font-mono tabular-nums block leading-tight
+                  ${lufs.truePeak > -1 ? 'text-[#ef4444]' : 'text-daw-lcd-text/50'}`}
                 >
                   {lufs.truePeak > -Infinity
                     ? `${lufs.truePeak.toFixed(1)}`

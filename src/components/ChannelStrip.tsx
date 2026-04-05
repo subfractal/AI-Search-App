@@ -75,11 +75,11 @@ export default function ChannelStrip({ trackId }: ChannelStripProps) {
   return (
     <div
       className={`flex flex-col items-center gap-1 px-1.5 py-1.5
-                  min-w-[56px] w-[62px] shrink-0
+                  min-w-[56px] w-[64px] shrink-0
                   border-r border-daw-border/10
                   transition-colors cursor-pointer
                   ${isSelected
-                    ? 'bg-daw-accent/5'
+                    ? 'bg-daw-track-selected'
                     : 'bg-daw-surface hover:bg-daw-surface-alt'}`}
       onClick={() => selectTrack(trackId)}
     >
@@ -87,10 +87,11 @@ export default function ChannelStrip({ trackId }: ChannelStripProps) {
       <div className="w-full text-center">
         <div className="flex items-center justify-center gap-0.5">
           <div
-            className="w-1 h-1 rounded-full shrink-0"
-            style={{ backgroundColor: track.color }}
+            className="w-1.5 h-1.5 rounded-full shrink-0"
+            style={{ backgroundColor: track.type === 'audio' ? '#3dd68c' : '#4ba0ff' }}
           />
-          <span className="text-[7px] text-daw-text-muted/40 uppercase">
+          <span className={`text-[7px] uppercase font-medium
+                           ${track.type === 'audio' ? 'text-daw-type-audio/60' : 'text-daw-type-midi/60'}`}>
             {track.type === 'audio' ? 'A' : 'M'}
           </span>
         </div>

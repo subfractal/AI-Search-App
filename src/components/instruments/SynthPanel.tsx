@@ -1,5 +1,6 @@
+import { useRef, useEffect } from 'react';
 import { useInstrumentStore } from '@/stores/instrument-store';
-import { triggerNote } from '@/services/instrument-service';
+import { triggerNote, getAnalyserNode } from '@/services/instrument-service';
 import type { OscillatorType, FilterType } from '@/types/instruments';
 import Knob from '@/components/ui/Knob';
 
@@ -9,6 +10,116 @@ interface SynthPanelProps {
 
 const OSC_TYPES: OscillatorType[] = ['sine', 'triangle', 'sawtooth', 'square'];
 const FILTER_TYPES: FilterType[] = ['lowpass', 'highpass', 'bandpass'];
+
+function Oscilloscope({ trackId }: { trackId: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rafRef = useRef<number>(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = 160 * dpr;
+    canvas.height = 64 * dpr;
+    ctx.scale(dpr, dpr);
+
+    const draw = () => {
+      const w = 160;
+      const h = 64;
+      const mid = h / 2;
+
+      // Dark background
+      ctx.fillStyle = '#060810';
+      ctx.fillRect(0, 0, w, h);
+
+      // Grid lines
+      ctx.strokeStyle = '#1a1a28';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(0, mid);
+      ctx.lineTo(w, mid);
+      ctx.moveTo(w / 4, 0);
+      ctx.lineTo(w / 4, h);
+      ctx.moveTo(w / 2, 0);
+      ctx.lineTo(w / 2, h);
+      ctx.moveTo(3 * w / 4, 0);
+      ctx.lineTo(3 * w / 4, h);
+      ctx.stroke();
+
+      const analyser = getAnalyserNode(trackId);
+      if (analyser) {
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Float32Array(bufferLength);
+        analyser.getFloatTimeDomainData(dataArray);
+
+        // Check if there's actual signal
+        let hasSignal = false;
+        for (let i = 0; i < bufferLength; i++) {
+          if (Math.abs(dataArray[i] ?? 0) > 0.001) {
+            hasSignal = true;
+            break;
+          }
+        }
+
+        if (hasSignal) {
+          ctx.strokeStyle = '#3dd68c';
+          ctx.lineWidth = 1.5;
+          ctx.shadowColor = '#3dd68c';
+          ctx.shadowBlur = 4;
+          ctx.beginPath();
+
+          const sliceWidth = w / bufferLength;
+          let x = 0;
+          for (let i = 0; i < bufferLength; i++) {
+            const v = (dataArray[i] ?? 0) * mid * 0.8;
+            const y = mid + v;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+            x += sliceWidth;
+          }
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+        } else {
+          // Flat line when idle
+          ctx.strokeStyle = '#1e3028';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(0, mid);
+          ctx.lineTo(w, mid);
+          ctx.stroke();
+        }
+      } else {
+        // No analyser — flat idle line
+        ctx.strokeStyle = '#1e3028';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, mid);
+        ctx.lineTo(w, mid);
+        ctx.stroke();
+      }
+
+      rafRef.current = requestAnimationFrame(draw);
+    };
+
+    rafRef.current = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [trackId]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="rounded border border-daw-border/20"
+      style={{
+        width: 160,
+        height: 64,
+        boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.6)',
+      }}
+    />
+  );
+}
 
 export default function SynthPanel({ trackId }: SynthPanelProps) {
   const config = useInstrumentStore((s) => s.instruments[trackId]);
@@ -42,12 +153,15 @@ export default function SynthPanel({ trackId }: SynthPanelProps) {
               className={`flex-1 text-[8px] py-1 rounded transition-all
                          ${params.oscillator === osc
                   ? 'bg-daw-accent/20 text-daw-accent border border-daw-accent/30'
-                  : 'bg-daw-bg text-daw-text-muted/50 border border-daw-border/20'}`}
+                  : 'bg-daw-bg text-daw-text-muted/50 border border-daw-border/20 hover:border-daw-border/40'}`}
             >
               {osc.slice(0, 3).toUpperCase()}
             </button>
           ))}
         </div>
+
+        {/* Oscilloscope */}
+        <Oscilloscope trackId={trackId} />
       </div>
 
       {/* Filter section */}
@@ -61,7 +175,7 @@ export default function SynthPanel({ trackId }: SynthPanelProps) {
               className={`flex-1 text-[8px] py-1 rounded transition-all
                          ${params.filterType === f
                   ? 'bg-daw-accent/20 text-daw-accent border border-daw-accent/30'
-                  : 'bg-daw-bg text-daw-text-muted/50 border border-daw-border/20'}`}
+                  : 'bg-daw-bg text-daw-text-muted/50 border border-daw-border/20 hover:border-daw-border/40'}`}
             >
               {f === 'lowpass' ? 'LP' : f === 'highpass' ? 'HP' : 'BP'}
             </button>
@@ -77,7 +191,7 @@ export default function SynthPanel({ trackId }: SynthPanelProps) {
               updateSynth(trackId, { filterFrequency: Math.round(freq) });
             }}
             label="Freq"
-            size={24}
+            size={26}
             showValue
           />
           <Knob
@@ -86,7 +200,7 @@ export default function SynthPanel({ trackId }: SynthPanelProps) {
             max={20}
             onChange={(v) => updateSynth(trackId, { filterResonance: v })}
             label="Res"
-            size={24}
+            size={26}
             showValue
           />
         </div>
@@ -102,7 +216,7 @@ export default function SynthPanel({ trackId }: SynthPanelProps) {
             max={2}
             onChange={(v) => updateSynth(trackId, { attack: v })}
             label="A"
-            size={22}
+            size={24}
             showValue
           />
           <Knob
@@ -111,7 +225,7 @@ export default function SynthPanel({ trackId }: SynthPanelProps) {
             max={2}
             onChange={(v) => updateSynth(trackId, { decay: v })}
             label="D"
-            size={22}
+            size={24}
             showValue
           />
           <Knob
@@ -120,7 +234,7 @@ export default function SynthPanel({ trackId }: SynthPanelProps) {
             max={1}
             onChange={(v) => updateSynth(trackId, { sustain: v })}
             label="S"
-            size={22}
+            size={24}
             showValue
           />
           <Knob
@@ -129,7 +243,7 @@ export default function SynthPanel({ trackId }: SynthPanelProps) {
             max={4}
             onChange={(v) => updateSynth(trackId, { release: v })}
             label="R"
-            size={22}
+            size={24}
             showValue
           />
         </div>
@@ -166,10 +280,13 @@ function MiniKeyboard({ trackId }: { trackId: string }) {
             key={note}
             onMouseDown={() => play(note)}
             onTouchStart={() => play(note)}
-            className="flex-1 bg-daw-text/90 rounded-b-sm text-[7px]
-                       text-daw-bg font-medium flex items-end justify-center
-                       pb-0.5 hover:bg-white active:bg-daw-text-dim
-                       transition-colors touch-none"
+            className="flex-1 rounded-b-sm text-[7px]
+                       font-medium flex items-end justify-center
+                       pb-0.5 transition-colors touch-none"
+            style={{
+              background: 'linear-gradient(to bottom, #d0d0d8 0%, #b8b8c0 100%)',
+              color: '#1a1a22',
+            }}
           >
             {note}
           </button>
@@ -181,12 +298,13 @@ function MiniKeyboard({ trackId }: { trackId: string }) {
             key={note}
             onMouseDown={() => play(note)}
             onTouchStart={() => play(note)}
-            className="absolute w-[12%] h-full bg-daw-bg rounded-b-sm
-                       border border-daw-border/40
-                       hover:bg-daw-surface active:bg-daw-panel
+            className="absolute w-[12%] h-full rounded-b-sm
+                       border border-daw-border/20
+                       hover:bg-daw-surface-alt active:bg-daw-panel
                        transition-colors z-10 touch-none"
             style={{
               left: `${(offset / 7) * 100 + 100 / 14 - 6}%`,
+              background: 'linear-gradient(to bottom, #2a2a35 0%, #18181e 100%)',
             }}
           />
         ))}

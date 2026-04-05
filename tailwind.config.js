@@ -5,62 +5,74 @@ export default {
     extend: {
       colors: {
         daw: {
-          // Core surfaces — inspired by Ableton/Logic dark themes
-          bg: '#0d0d0d',
-          'bg-alt': '#141414',
-          surface: '#1a1a1a',
-          'surface-alt': '#1f1f1f',
-          panel: '#242424',
-          'panel-hover': '#2a2a2a',
-          border: '#333333',
-          'border-light': '#3a3a3a',
+          // Core surfaces — Z-space depth hierarchy (darkest = deepest)
+          bg: '#0a0a0b',
+          'bg-alt': '#101012',
+          surface: '#141417',
+          'surface-alt': '#1a1a1e',
+          panel: '#1e1e23',
+          'panel-hover': '#262630',
+          border: '#2a2a35',
+          'border-light': '#35354a',
 
-          // Text
-          text: '#e0e0e0',
-          'text-dim': '#777777',
-          'text-muted': '#555555',
+          // Text hierarchy
+          text: '#e2e2ea',
+          'text-dim': '#8888a0',
+          'text-muted': '#555568',
 
-          // Accent — warm orange like Ableton
+          // Accent — warm amber-orange
           accent: '#ff6b35',
           'accent-dim': '#cc5529',
           'accent-glow': 'rgba(255, 107, 53, 0.15)',
 
-          // Track colors
-          track: '#1a1a1a',
-          'track-alt': '#161616',
-          'track-selected': '#1e1e1e',
+          // Track type colors
+          'type-audio': '#3dd68c',
+          'type-midi': '#4ba0ff',
+          'type-ai': '#a78bfa',
+
+          // Track surfaces
+          track: '#111114',
+          'track-alt': '#0e0e11',
+          'track-selected': '#18182a',
 
           // Timeline
-          grid: '#2a2a2a',
-          'grid-bar': '#383838',
+          grid: '#1e1e28',
+          'grid-bar': '#2a2a3a',
           playhead: '#ff6b35',
           waveform: '#5ec4e6',
-          'waveform-fill': 'rgba(94, 196, 230, 0.15)',
-          midi: '#7ee87e',
+          'waveform-fill': 'rgba(94, 196, 230, 0.12)',
+          midi: '#4ba0ff',
 
           // Meters
           meter: {
-            green: '#4ade80',
+            green: '#3dd68c',
             yellow: '#f5c542',
             red: '#ef4444',
-            bg: '#111111',
+            bg: '#0a0a0d',
           },
 
           // AI Co-Producer
           ai: {
-            bg: '#141418',
+            bg: '#0e0e14',
             accent: '#a78bfa',
             'accent-dim': '#8b6fe0',
             suggestion: '#7c3aed',
-            'suggestion-glow': 'rgba(124, 58, 237, 0.12)',
+            'suggestion-glow': 'rgba(124, 58, 237, 0.10)',
           },
 
           // Transport
           transport: {
-            bg: '#111111',
-            play: '#4ade80',
-            stop: '#888888',
+            bg: '#0c0c0e',
+            play: '#3dd68c',
+            stop: '#8888a0',
             record: '#ef4444',
+          },
+
+          // LCD display
+          lcd: {
+            bg: '#060810',
+            text: '#b8e0ff',
+            dim: '#2a3a50',
           },
         },
       },
@@ -78,10 +90,28 @@ export default {
         'xxs': ['10px', '14px'],
       },
       boxShadow: {
-        'inner-glow': 'inset 0 1px 0 rgba(255,255,255,0.04)',
-        'panel': '0 1px 3px rgba(0,0,0,0.4)',
-        'control': '0 1px 2px rgba(0,0,0,0.5)',
-        'fader': '0 2px 4px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)',
+        'inner-glow': 'inset 0 1px 0 rgba(255,255,255,0.03)',
+        'panel': '0 2px 8px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.3)',
+        'control': '0 1px 3px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04)',
+        'fader': '0 2px 6px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08)',
+        'lcd': 'inset 0 2px 8px rgba(0,0,0,0.8), inset 0 0 1px rgba(0,0,0,0.5)',
+        'knob': '0 2px 4px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)',
+        'glow-accent': '0 0 12px rgba(255, 107, 53, 0.2)',
+        'glow-ai': '0 0 12px rgba(167, 139, 250, 0.15)',
+      },
+      animation: {
+        'pulse-soft': 'pulse-soft 2s ease-in-out infinite',
+        'analyzing': 'analyzing 1.5s ease-in-out infinite',
+      },
+      keyframes: {
+        'pulse-soft': {
+          '0%, 100%': { opacity: '0.6' },
+          '50%': { opacity: '1' },
+        },
+        'analyzing': {
+          '0%, 100%': { opacity: '0.4', transform: 'scale(1)' },
+          '50%': { opacity: '1', transform: 'scale(1.15)' },
+        },
       },
     },
   },

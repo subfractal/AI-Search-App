@@ -21,40 +21,40 @@ interface TransportBarProps {
 
 function IconStop() {
   return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-      <rect x="1" y="1" width="10" height="10" rx="1" />
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+      <rect x="1" y="1" width="8" height="8" rx="1" />
     </svg>
   );
 }
 
 function IconPlay() {
   return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-      <path d="M2 1.5v9l8.5-4.5L2 1.5z" />
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+      <path d="M2 0.5v9l7.5-4.5L2 0.5z" />
     </svg>
   );
 }
 
 function IconPause() {
   return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-      <rect x="1.5" y="1" width="3" height="10" rx="0.5" />
-      <rect x="7.5" y="1" width="3" height="10" rx="0.5" />
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+      <rect x="1" y="0.5" width="2.5" height="9" rx="0.5" />
+      <rect x="6.5" y="0.5" width="2.5" height="9" rx="0.5" />
     </svg>
   );
 }
 
 function IconRecord() {
   return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
-      <circle cx="6" cy="6" r="5" />
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+      <circle cx="5" cy="5" r="4.5" />
     </svg>
   );
 }
 
 function IconLoop() {
   return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"
+    <svg width="12" height="12" viewBox="0 0 14 14" fill="none"
       stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
       <path d="M10.5 3.5H5a2.5 2.5 0 000 5h4a2.5 2.5 0 010 5H3.5" />
       <path d="M8.5 1.5l2 2-2 2" />
@@ -128,27 +128,28 @@ export default function TransportBar({
   const PanelBtn = ({ panel, label }: { panel: BottomPanel; label: string }) => (
     <button
       onClick={() => panel ? onTogglePanel(panel) : undefined}
-      className={`daw-button text-xxs px-1.5 py-0.5
-                 ${activePanel === panel ? 'daw-button-active' : ''}`}
+      className={`text-[10px] font-medium px-2 py-0.5 rounded transition-all duration-75
+                 ${activePanel === panel
+                   ? 'bg-daw-accent/15 text-daw-accent border border-daw-accent/30'
+                   : 'text-daw-text-muted hover:text-daw-text-dim bg-daw-panel/50 border border-transparent hover:border-daw-border/30'}`}
     >
       {label}
     </button>
   );
 
   return (
-    <div className="bg-daw-transport-bg border-b border-daw-border/60
-                    select-none shrink-0">
-      {/* Row 1: Transport controls + position */}
-      <div className="flex items-center h-10 px-2 gap-1.5">
-        {/* Transport controls */}
-        <div className="flex items-center gap-0.5">
+    <div className="bg-daw-transport-bg border-b border-daw-border/40 select-none shrink-0">
+      {/* Row 1: Transport controls + LCD displays */}
+      <div className="flex items-center h-11 px-2 gap-2">
+        {/* Transport buttons */}
+        <div className="flex items-center gap-0.5 bg-daw-bg/50 rounded-md p-0.5">
           <button
             onClick={stop}
             className={`w-8 h-7 flex items-center justify-center rounded
                        transition-all duration-75
                        ${state === 'stopped'
-                ? 'text-daw-text bg-daw-panel'
-                : 'text-daw-text-muted hover:text-daw-text-dim'}`}
+              ? 'text-daw-text bg-daw-surface'
+              : 'text-daw-text-muted/50 hover:text-daw-text-dim'}`}
             title="Stop"
           >
             <IconStop />
@@ -158,8 +159,9 @@ export default function TransportBar({
             className={`w-8 h-7 flex items-center justify-center rounded
                        transition-all duration-75
                        ${isPlaying
-                ? 'text-daw-transport-play bg-daw-transport-play/10'
-                : 'text-daw-text-muted hover:text-daw-text-dim'}`}
+              ? 'text-daw-transport-play bg-daw-transport-play/10'
+              : 'text-daw-text-muted/50 hover:text-daw-text-dim'}`}
+            style={isPlaying ? { boxShadow: '0 0 8px rgba(61,214,140,0.15)' } : undefined}
             title={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying ? <IconPause /> : <IconPlay />}
@@ -169,8 +171,8 @@ export default function TransportBar({
             className={`w-8 h-7 flex items-center justify-center rounded
                        transition-all duration-75
                        ${isRecording
-                ? 'text-daw-transport-record bg-daw-transport-record/10 animate-pulse'
-                : 'text-daw-text-muted hover:text-daw-transport-record/60'}`}
+              ? 'text-daw-transport-record bg-daw-transport-record/10 animate-pulse'
+              : 'text-daw-text-muted/50 hover:text-daw-transport-record/60'}`}
             title="Record"
           >
             <IconRecord />
@@ -178,16 +180,16 @@ export default function TransportBar({
         </div>
 
         {/* Undo / Redo */}
-        <div className="flex items-center gap-0.5 ml-1">
+        <div className="flex items-center gap-0.5">
           <button
             onClick={undo}
             disabled={undoCount === 0}
             className="w-6 h-7 flex items-center justify-center rounded
-                       text-daw-text-muted hover:text-daw-text-dim transition-all
-                       disabled:opacity-20"
+                       text-daw-text-muted/50 hover:text-daw-text-dim transition-all
+                       disabled:opacity-15"
             title="Undo"
           >
-            <svg width="11" height="11" viewBox="0 0 12 12" fill="none"
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none"
               stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               <path d="M3 4l-2 2 2 2" />
               <path d="M1 6h7a3 3 0 010 6H6" />
@@ -197,11 +199,11 @@ export default function TransportBar({
             onClick={redo}
             disabled={redoCount === 0}
             className="w-6 h-7 flex items-center justify-center rounded
-                       text-daw-text-muted hover:text-daw-text-dim transition-all
-                       disabled:opacity-20"
+                       text-daw-text-muted/50 hover:text-daw-text-dim transition-all
+                       disabled:opacity-15"
             title="Redo"
           >
-            <svg width="11" height="11" viewBox="0 0 12 12" fill="none"
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none"
               stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               <path d="M9 4l2 2-2 2" />
               <path d="M11 6H4a3 3 0 000 6h2" />
@@ -209,29 +211,29 @@ export default function TransportBar({
           </button>
         </div>
 
-        {/* Position displays */}
-        <div className="flex items-center gap-2 ml-1">
-          <div className="flex flex-col items-center">
-            <span className="text-xxs text-daw-text-muted leading-none mb-0.5">
-              TIME
+        {/* LCD Position Displays */}
+        <div className="flex items-center gap-1.5">
+          <div className="daw-lcd px-2 py-1 flex flex-col items-center min-w-[72px]">
+            <span className="text-[7px] text-daw-lcd-dim uppercase tracking-widest leading-none mb-0.5">
+              Time
             </span>
-            <span className="text-xs font-mono tabular-nums text-daw-text leading-none">
+            <span className="text-sm font-mono leading-none text-daw-lcd-text">
               {formatSeconds(position)}
             </span>
           </div>
-          <div className="flex flex-col items-center">
-            <span className="text-xxs text-daw-text-muted leading-none mb-0.5">
-              BARS
+          <div className="daw-lcd px-2 py-1 flex flex-col items-center min-w-[52px]">
+            <span className="text-[7px] text-daw-lcd-dim uppercase tracking-widest leading-none mb-0.5">
+              Bar
             </span>
-            <span className="text-xs font-mono tabular-nums text-daw-text leading-none">
+            <span className="text-sm font-mono leading-none text-daw-lcd-text">
               {formatBarsBeats(position, bpm, 4)}
             </span>
           </div>
         </div>
 
-        {/* BPM */}
-        <div className="flex flex-col items-center ml-1">
-          <span className="text-xxs text-daw-text-muted leading-none mb-0.5">
+        {/* BPM LCD */}
+        <div className="daw-lcd px-2 py-1 flex flex-col items-center min-w-[52px]">
+          <span className="text-[7px] text-daw-lcd-dim uppercase tracking-widest leading-none mb-0.5">
             BPM
           </span>
           <input
@@ -242,64 +244,65 @@ export default function TransportBar({
             onKeyDown={(e) => {
               if (e.key === 'Enter') e.currentTarget.blur();
             }}
-            className="w-10 text-center text-xs font-mono bg-daw-bg
-                       border border-daw-border/60 rounded px-0.5 py-0
-                       text-daw-accent focus:outline-none focus:border-daw-accent/50
-                       leading-tight"
+            className="w-10 text-center text-sm font-mono bg-transparent
+                       border-none text-daw-accent focus:outline-none
+                       leading-none tabular-nums"
             min={20}
             max={999}
           />
         </div>
 
-        {/* Loop */}
-        <button
-          onClick={toggleLoop}
-          className={`w-7 h-7 flex items-center justify-center rounded
-                     transition-all duration-75
-                     ${loopEnabled
+        {/* Loop / Metronome / Time Sig */}
+        <div className="flex items-center gap-0.5">
+          <button
+            onClick={toggleLoop}
+            className={`w-7 h-7 flex items-center justify-center rounded
+                       transition-all duration-75
+                       ${loopEnabled
               ? 'text-daw-accent bg-daw-accent/10'
-              : 'text-daw-text-muted hover:text-daw-text-dim'}`}
-          title="Toggle Loop"
-        >
-          <IconLoop />
-        </button>
+              : 'text-daw-text-muted/40 hover:text-daw-text-dim'}`}
+            title="Toggle Loop"
+          >
+            <IconLoop />
+          </button>
 
-        {/* Metronome */}
-        <button
-          onClick={toggleMetronome}
-          className={`w-7 h-7 flex items-center justify-center rounded
-                     transition-all duration-75
-                     ${metronomeEnabled
+          <button
+            onClick={toggleMetronome}
+            className={`w-7 h-7 flex items-center justify-center rounded
+                       transition-all duration-75
+                       ${metronomeEnabled
               ? 'text-daw-accent bg-daw-accent/10'
-              : 'text-daw-text-muted hover:text-daw-text-dim'}`}
-          title="Toggle Metronome"
-        >
-          <svg width="12" height="14" viewBox="0 0 12 14" fill="none"
-            stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
-            <path d="M3 13L5 1h2l2 12H3z" />
-            <line x1="6" y1="4" x2="9" y2="2" />
-          </svg>
-        </button>
+              : 'text-daw-text-muted/40 hover:text-daw-text-dim'}`}
+            title="Toggle Metronome"
+          >
+            <svg width="10" height="12" viewBox="0 0 12 14" fill="none"
+              stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
+              <path d="M3 13L5 1h2l2 12H3z" />
+              <line x1="6" y1="4" x2="9" y2="2" />
+            </svg>
+          </button>
 
-        {/* Time Signature */}
-        <button
-          onClick={cycleTimeSig}
-          className="h-7 px-1.5 flex items-center justify-center rounded
-                     text-xxs font-mono text-daw-text-muted hover:text-daw-text-dim
-                     transition-all duration-75 bg-daw-bg border border-daw-border/40"
-          title="Cycle Time Signature"
-        >
-          {timeSignature.numerator}/{timeSignature.denominator}
-        </button>
+          <button
+            onClick={cycleTimeSig}
+            className="h-7 px-1.5 flex items-center justify-center rounded
+                       text-[10px] font-mono text-daw-text-muted/50 hover:text-daw-text-dim
+                       transition-all duration-75 bg-daw-bg/40 border border-daw-border/20"
+            title="Cycle Time Signature"
+          >
+            {timeSignature.numerator}/{timeSignature.denominator}
+          </button>
+        </div>
       </div>
 
-      {/* Row 2: Panel toggles — always visible, scrollable */}
-      <div className="flex items-center h-7 px-2 gap-1 border-t border-daw-border/20
+      {/* Row 2: Panel toggles */}
+      <div className="flex items-center h-7 px-2 gap-1 border-t border-daw-border/15
                       overflow-x-auto scrollbar-none">
         <button
           onClick={onToggleTracks}
-          className={`daw-button text-xxs px-1.5 py-0.5 shrink-0
-                     ${showTracks ? 'daw-button-active' : ''}`}
+          className={`text-[10px] font-medium px-2 py-0.5 rounded transition-all duration-75 shrink-0
+                     ${showTracks
+                       ? 'bg-daw-accent/15 text-daw-accent border border-daw-accent/30'
+                       : 'text-daw-text-muted hover:text-daw-text-dim bg-daw-panel/50 border border-transparent hover:border-daw-border/30'}`}
         >
           Trk
         </button>
@@ -310,8 +313,10 @@ export default function TransportBar({
         <PanelBtn panel="warp" label="Wrp" />
         <button
           onClick={onPianoRoll}
-          className={`daw-button text-xxs px-1.5 py-0.5 shrink-0
-                     ${activePanel === 'piano-roll' ? 'daw-button-active' : ''}`}
+          className={`text-[10px] font-medium px-2 py-0.5 rounded transition-all duration-75 shrink-0
+                     ${activePanel === 'piano-roll'
+                       ? 'bg-daw-accent/15 text-daw-accent border border-daw-accent/30'
+                       : 'text-daw-text-muted hover:text-daw-text-dim bg-daw-panel/50 border border-transparent hover:border-daw-border/30'}`}
         >
           Roll
         </button>
@@ -320,13 +325,17 @@ export default function TransportBar({
 
         <button
           onClick={onExport}
-          className="daw-button text-xxs px-1.5 py-0.5 shrink-0"
+          className="text-[10px] font-medium px-2 py-0.5 rounded text-daw-text-muted
+                     hover:text-daw-text-dim bg-daw-panel/50 border border-transparent
+                     hover:border-daw-border/30 transition-all duration-75 shrink-0"
         >
           Exp
         </button>
         <button
           onClick={onHistory}
-          className="daw-button text-xxs px-1.5 py-0.5 shrink-0"
+          className="text-[10px] font-medium px-2 py-0.5 rounded text-daw-text-muted
+                     hover:text-daw-text-dim bg-daw-panel/50 border border-transparent
+                     hover:border-daw-border/30 transition-all duration-75 shrink-0"
         >
           Hist
         </button>
@@ -335,10 +344,11 @@ export default function TransportBar({
 
         <button
           onClick={onToggleAI}
-          className={`daw-button text-xxs px-1.5 py-0.5 shrink-0
+          className={`text-[10px] font-medium px-2.5 py-0.5 rounded transition-all duration-75 shrink-0
                      ${showAI
-              ? 'bg-daw-ai-suggestion text-white border-daw-ai-suggestion'
-              : ''}`}
+              ? 'bg-daw-ai-accent/15 text-daw-ai-accent border border-daw-ai-accent/30'
+              : 'text-daw-text-muted hover:text-daw-ai-accent/60 bg-daw-panel/50 border border-transparent'}`}
+          style={showAI ? { boxShadow: '0 0 8px rgba(167,139,250,0.12)' } : undefined}
         >
           AI
         </button>

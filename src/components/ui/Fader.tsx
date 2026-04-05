@@ -45,7 +45,6 @@ export default function Fader({
         const pct = 1 - (clientY - rect.top) / rect.height;
         const range = maxRef.current - minRef.current;
         let val = minRef.current + pct * range;
-        // Shift+drag: snap to 0.1dB increments (finer)
         const precision = shiftKey ? 100 : 10;
         val = Math.round(val * precision) / precision;
         onChangeRef.current(
@@ -81,7 +80,6 @@ export default function Fader({
     (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      // Reset to 0dB (unity gain)
       onChangeRef.current(0);
     },
     [],
@@ -92,13 +90,12 @@ export default function Fader({
   const trackW = width;
   const slotW = Math.max(4, trackW - 12);
 
-  // Tick marks at -48, -36, -24, -12, 0, +6
   const ticks = [-48, -36, -24, -12, 0, 6].filter((t) => t >= min && t <= max);
 
   return (
     <div className="flex flex-col items-center gap-0.5">
       {label && (
-        <span className="text-[8px] text-daw-text-muted/60 uppercase tracking-wide leading-none">
+        <span className="text-[8px] text-daw-text-muted/50 uppercase tracking-wide leading-none">
           {label}
         </span>
       )}
@@ -118,8 +115,9 @@ export default function Fader({
             left: (trackW - slotW) / 2,
             top: 4,
             bottom: 4,
-            background: 'linear-gradient(to top, #0a0a0a 0%, #151515 100%)',
-            border: '1px solid #222',
+            background: 'linear-gradient(to top, #08080c 0%, #12121a 100%)',
+            border: '1px solid #1a1a28',
+            boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)',
           }}
         />
 
@@ -131,64 +129,76 @@ export default function Fader({
             left: (trackW - slotW) / 2 + 1,
             bottom: 5,
             height: `${Math.max(0, pct - 2)}%`,
-            background: 'linear-gradient(to top, #ff6b3530 0%, #ff6b3508 100%)',
+            background: 'linear-gradient(to top, rgba(255,107,53,0.25) 0%, rgba(255,107,53,0.04) 100%)',
           }}
         />
 
         {/* Tick marks */}
         {ticks.map((tick) => {
           const y = (1 - valueToPercent(tick) / 100) * (height - 8) + 4;
+          const isUnity = tick === 0;
           return (
             <div key={tick} className="absolute flex items-center" style={{ top: y, left: 0, right: 0 }}>
-              <div className="w-1 h-px bg-daw-text-muted/20" />
+              <div
+                className={isUnity ? 'w-1.5 h-px bg-daw-text-muted/30' : 'w-1 h-px bg-daw-text-muted/15'}
+              />
               <div className="flex-1" />
-              <div className="w-1 h-px bg-daw-text-muted/20" />
+              <div
+                className={isUnity ? 'w-1.5 h-px bg-daw-text-muted/30' : 'w-1 h-px bg-daw-text-muted/15'}
+              />
             </div>
           );
         })}
 
-        {/* Unity (0dB) mark — stronger */}
+        {/* Unity (0dB) mark */}
         <div
-          className="absolute h-px bg-daw-text-muted/40"
+          className="absolute h-px bg-daw-text-muted/25"
           style={{
             bottom: `${unityPct}%`,
-            left: 0,
-            right: 0,
+            left: 2,
+            right: 2,
           }}
         />
 
         {/* Ghost suggestion */}
         {ghost !== null && (
           <div
-            className="absolute left-0 right-0 h-0.5 bg-daw-ai-accent/50"
-            style={{ bottom: `${valueToPercent(ghost)}%` }}
+            className="absolute left-1 right-1 h-[3px] rounded-full"
+            style={{
+              bottom: `${valueToPercent(ghost)}%`,
+              background: 'rgba(167, 139, 250, 0.5)',
+              boxShadow: '0 0 6px rgba(167, 139, 250, 0.3)',
+            }}
           />
         )}
 
         {/* Fader cap / thumb */}
         <div
-          className="absolute rounded-sm cursor-grab active:cursor-grabbing"
+          className="absolute rounded cursor-grab active:cursor-grabbing"
           style={{
             left: 1,
             right: 1,
-            height: 16,
-            bottom: `calc(${pct}% - 8px)`,
-            background: 'linear-gradient(to bottom, #777 0%, #555 30%, #444 70%, #333 100%)',
-            border: '1px solid #666',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.15)',
+            height: 18,
+            bottom: `calc(${pct}% - 9px)`,
+            background: 'linear-gradient(to bottom, #6a6a78 0%, #4a4a58 20%, #3a3a48 50%, #2a2a38 80%, #222230 100%)',
+            border: '1px solid #555568',
+            borderBottom: '1px solid #1a1a22',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.12)',
+            borderRadius: 3,
           }}
         >
           {/* Grip lines on the cap */}
-          <div className="absolute inset-x-1 top-[5px] h-px bg-white/10" />
-          <div className="absolute inset-x-1 top-[7px] h-px bg-black/20" />
-          <div className="absolute inset-x-1 top-[9px] h-px bg-white/10" />
-          <div className="absolute inset-x-1 top-[11px] h-px bg-black/20" />
+          <div className="absolute inset-x-[3px] top-[5px] h-px bg-white/8" />
+          <div className="absolute inset-x-[3px] top-[7px] h-px bg-black/25" />
+          <div className="absolute inset-x-[3px] top-[9px] h-px bg-white/8" />
+          <div className="absolute inset-x-[3px] top-[11px] h-px bg-black/25" />
+          <div className="absolute inset-x-[3px] top-[13px] h-px bg-white/8" />
         </div>
       </div>
 
       {/* Value readout */}
       {showValue && (
-        <span className="text-[8px] font-mono text-daw-text-muted/60 tabular-nums leading-none">
+        <span className="text-[8px] font-mono text-daw-text-muted/50 tabular-nums leading-none">
           {value > 0 ? `+${value.toFixed(1)}` : value.toFixed(1)}
         </span>
       )}

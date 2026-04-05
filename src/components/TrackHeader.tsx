@@ -111,13 +111,13 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
           />
         </div>
         <div className="flex items-center gap-1 mt-1 flex-wrap ml-5">
-          {/* Type badge */}
+          {/* Type badge — color coded by track type */}
           <span
-            className="text-xxs uppercase tracking-wide px-1 py-px rounded
-                       bg-daw-bg/60 leading-none"
-            style={{ color: track.color + 'bb' }}
+            className={`text-[9px] uppercase tracking-wide px-1.5 py-px rounded border leading-none font-medium
+                       ${track.type === 'audio' ? 'daw-type-audio' : 'daw-type-midi'}
+                       ${track.name.startsWith('AI ') ? 'daw-type-ai' : ''}`}
           >
-            {track.type}
+            {track.type === 'audio' ? 'AUD' : 'MID'}
           </span>
 
           {/* Instrument badge for MIDI */}
