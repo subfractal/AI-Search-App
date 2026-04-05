@@ -303,11 +303,11 @@ export default function TransportBar({
         >
           Trk
         </button>
-        <PanelBtn panel="mixer" label="Mixer" />
+        <PanelBtn panel="mixer" label="Mix" />
         <PanelBtn panel="instrument" label="Inst" />
         <PanelBtn panel="effects" label="FX" />
-        <PanelBtn panel="routing" label="Route" />
-        <PanelBtn panel="warp" label="Warp" />
+        <PanelBtn panel="routing" label="Rte" />
+        <PanelBtn panel="warp" label="Wrp" />
         <button
           onClick={onPianoRoll}
           className={`daw-button text-xxs px-1.5 py-0.5 shrink-0
@@ -322,7 +322,7 @@ export default function TransportBar({
           onClick={onExport}
           className="daw-button text-xxs px-1.5 py-0.5 shrink-0"
         >
-          Export
+          Exp
         </button>
         <button
           onClick={onHistory}
