@@ -4,6 +4,13 @@ import * as transport from '@/services/transport-service';
 import { setMetronomeEnabled } from '@/services/metronome-service';
 import { scheduleMidiClips, clearAllScheduledMidi } from '@/services/midi-playback';
 import { useSessionStore } from '@/stores/session-store';
+import {
+  requestMicrophoneAccess,
+  startRecording,
+  stopRecording,
+  isRecording as isRecordingActive,
+  createClipFromRecording,
+} from '@/services/recording-service';
 
 interface TransportStore {
   state: TransportState;
@@ -60,8 +67,32 @@ export const useTransportStore = create<TransportStore>((set, get) => ({
     if (current === 'recording') {
       transport.stop();
       set({ state: 'stopped' });
+      // Stop recording and create clip from captured audio
+      if (isRecordingActive()) {
+        stopRecording().then(({ buffer }) => {
+          const session = useSessionStore.getState();
+          const trackId = session.selectedTrackId;
+          if (trackId && buffer.duration > 0.1) {
+            const clip = createClipFromRecording(trackId, buffer, 0);
+            session.addClipToTrack(trackId, clip);
+          }
+        }).catch(() => { /* recording stop failed */ });
+      }
     } else {
-      set({ state: 'recording' });
+      const session = useSessionStore.getState();
+      const trackId = session.selectedTrackId;
+      // Request mic and start actual recording
+      requestMicrophoneAccess().then(() => {
+        if (trackId) {
+          try {
+            startRecording(trackId);
+          } catch { /* already recording or no mic */ }
+        }
+        set({ state: 'recording' });
+      }).catch(() => {
+        // Mic denied — still enter record-armed state for MIDI
+        set({ state: 'recording' });
+      });
     }
   },
 

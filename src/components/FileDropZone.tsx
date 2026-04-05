@@ -2,7 +2,9 @@ import { useState, useCallback, type ReactNode } from 'react';
 import { loadAudioFile } from '@/services/audio-engine';
 import { useSessionStore } from '@/stores/session-store';
 import { useMixerStore } from '@/stores/mixer-store';
+import { useAIStore } from '@/stores/ai-store';
 import { generateId } from '@/utils/id';
+import { autoAnalyzeClip } from '@/services/ai/auto-analyze';
 import type { AudioClip } from '@/types/audio';
 
 const ACCEPTED_TYPES = [
@@ -55,6 +57,22 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
           };
 
           addClipToTrack(trackId, clip);
+
+          // Auto-analyze BPM and key in background
+          autoAnalyzeClip(buffer).then((analysis) => {
+            const parts: string[] = [];
+            if (analysis.bpm) parts.push(`BPM: ${Math.round(analysis.bpm.bpm)}`);
+            if (analysis.key) parts.push(`Key: ${analysis.key.key}`);
+            if (parts.length > 0) {
+              useAIStore.getState().logActivity({
+                id: `log-${Date.now()}`,
+                description: `Auto-analyzed "${name}" — ${parts.join(', ')}`,
+                trackId,
+                timestamp: Date.now(),
+                undoable: false,
+              });
+            }
+          }).catch(() => { /* analysis failed silently */ });
         } catch (err) {
           console.error(`[DAW] Failed to load "${file.name}":`, err);
         }

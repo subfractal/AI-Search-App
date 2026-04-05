@@ -5,6 +5,13 @@ import { generateId } from '@/utils/id';
 import { isMidiClip } from '@/types/audio';
 import type { ComposerResult, GeneratorModel, MusicalRole } from '@/types/ai';
 import type { MidiClip, MidiNote } from '@/types/audio';
+import {
+  encodePattern,
+  decodePattern,
+  crossover,
+  mutate,
+  evolvePopulation,
+} from '@/services/ai/genetic-generator';
 
 const MODEL_LABELS: Record<GeneratorModel, string> = {
   markov: 'Markov',
@@ -197,9 +204,49 @@ function generateNotes(
     return sorted;
   }
 
+  // Evolutionary model: run real genetic algorithm when existing clips exist
   if (model === 'evolutionary' && notes.length > 4) {
-    for (let i = 1; i < notes.length; i += 4) {
-      notes[i] = { ...notes[i]!, pitch: notes[i]!.pitch + (rng() > 0.5 ? 2 : -2) };
+    const existingNotes = collectExistingMidiNotes();
+    if (existingNotes.length > 4) {
+      // Use existing clips as parent population alongside the generated notes
+      const generatedClip: MidiClip = {
+        id: 'tmp', trackId: 'tmp', name: 'tmp',
+        notes, startTime: 0, duration: bars * 4,
+      };
+      const parentChrom = encodePattern(generatedClip);
+
+      // Build a small population from existing material + generated
+      const existingChrom = existingNotes.slice(0, notes.length).map(
+        (n) => [n.pitch, n.velocity, n.startTime, n.duration],
+      );
+      const pop = [parentChrom];
+      // Add crossover offspring with existing material
+      for (let i = 0; i < 5; i++) {
+        pop.push(crossover(parentChrom, existingChrom.length > 0 ? existingChrom : parentChrom, rng));
+      }
+      // Mutate each member
+      const mutated = pop.map((ch) => mutate(ch, 0.15 * temperature, rng));
+      // Simple fitness: prefer medium-range pitches, moderate velocity, rhythmic variety
+      const fitness = mutated.map((ch) => {
+        let f = 0;
+        for (const gene of ch) {
+          const pitch = gene[0] ?? 60;
+          const vel = gene[1] ?? 80;
+          f += pitch >= 40 && pitch <= 90 ? 1 : 0;
+          f += vel >= 50 && vel <= 110 ? 0.5 : 0;
+        }
+        return f;
+      });
+      const evolved = evolvePopulation(mutated, fitness, 0.1, 0.15 * temperature, seed);
+      // Pick the best evolved individual
+      const best = evolved[0] ?? parentChrom;
+      const decoded = decodePattern(best, 'tmp', 'Evolved');
+      return decoded.notes.slice(0, notes.length * 2).sort((a, b) => a.startTime - b.startTime);
+    } else {
+      // Fallback: light mutation
+      for (let i = 1; i < notes.length; i += 4) {
+        notes[i] = { ...notes[i]!, pitch: notes[i]!.pitch + (rng() > 0.5 ? 2 : -2) };
+      }
     }
   }
 

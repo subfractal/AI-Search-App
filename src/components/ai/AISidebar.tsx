@@ -9,12 +9,16 @@ import { toggleMonitoring } from '@/services/ai/realtime-monitor';
 import { analyzeGainStaging, applyGainStaging } from '@/services/ai/gain-staging';
 import { STREAMING_TARGETS, GENRE_PROFILES } from '@/services/ai/genre-profiles';
 import { generateComposition, generateVariation } from '@/services/ai/composer-engine';
+import { generateVariation as generateAdvancedVariation } from '@/services/ai/variation-engine';
+import type { VariationType } from '@/services/ai/variation-engine';
+import { interpolateClips } from '@/services/ai/pattern-interpolator';
 import { runMasteringPipeline } from '@/services/ai/mastering-service';
 import MasteringBreakdown from '@/components/ai/MasteringBreakdown';
 import { FACTORY_TEMPLATES, loadTemplate } from '@/services/templates/template-loader';
 import type { AISuggestion, MixGenre, GeneratorModel, SuggestionApplyMode } from '@/types/ai';
 import { COPRODUCER_MODES, MUSICAL_ROLES } from '@/types/ai';
 import { isMidiClip } from '@/types/audio';
+import type { MidiClip } from '@/types/audio';
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -57,6 +61,8 @@ export default function AISidebar() {
   const toggleTrackLock = useAIStore((s) => s.toggleTrackLock);
   const composer = useAIStore((s) => s.composer);
   const setComposer = useAIStore((s) => s.setComposer);
+  const preferredVariationIntensity = useAIStore((s) => s.preferredVariationIntensity);
+  const setPreferredVariationIntensity = useAIStore((s) => s.setPreferredVariationIntensity);
   const savedComposerPresets = useAIStore((s) => s.savedComposerPresets);
   const saveComposerPreset = useAIStore((s) => s.saveComposerPreset);
   const loadComposerPreset = useAIStore((s) => s.loadComposerPreset);
@@ -312,25 +318,120 @@ export default function AISidebar() {
             </button>
             {(() => {
               const selTrack = tracks.find((t) => t.id === selectedTrackId);
-              const midiClip = selTrack?.clips.find(isMidiClip);
+              const midiClips = selTrack?.clips.filter(isMidiClip) ?? [];
+              const midiClip = midiClips[0] as MidiClip | undefined;
               if (!midiClip) return null;
+
+              const VARIATION_TYPES: { id: VariationType; label: string }[] = [
+                { id: 'regenerate', label: 'Regenerate' },
+                { id: 'mutate-rhythm', label: 'Rhythm' },
+                { id: 'mutate-melody', label: 'Melody' },
+                { id: 'mutate-velocity', label: 'Velocity' },
+                { id: 'mutate-density', label: 'Density' },
+                { id: 'mutate-fill', label: 'Fill' },
+                { id: 'simplify', label: 'Simplify' },
+                { id: 'embellish', label: 'Embellish' },
+                { id: 'register-shift', label: 'Octave Shift' },
+                { id: 'contour-invert', label: 'Invert' },
+              ];
+
+              const handleVariation = (varType: VariationType) => {
+                const intensity = preferredVariationIntensity ?? composer.temperature;
+                const result = generateAdvancedVariation(
+                  {
+                    sourceClipId: midiClip.id,
+                    variationType: varType,
+                    intensity,
+                    preserveRhythm: varType === 'mutate-melody',
+                    preservePitchContour: varType === 'mutate-rhythm',
+                    preserveKit: true,
+                    seed: composer.seed,
+                  },
+                  midiClip,
+                );
+                useSessionStore.getState().addClipToTrack(selTrack!.id, result);
+                useAIStore.getState().logActivity({
+                  id: `log-${Date.now()}`,
+                  description: `Created ${varType} variation of "${midiClip.name}" (${result.notes.length} notes)`,
+                  trackId: selTrack!.id,
+                  timestamp: Date.now(),
+                  undoable: false,
+                });
+              };
+
+              const handleMarkovVariation = () => {
+                const variation = generateVariation(midiClip, composer.temperature, composer.seed);
+                useSessionStore.getState().addClipToTrack(selTrack!.id, variation);
+                useAIStore.getState().logActivity({
+                  id: `log-${Date.now()}`,
+                  description: `Generated Markov variation of "${midiClip.name}" (${variation.notes.length} notes)`,
+                  trackId: selTrack!.id,
+                  timestamp: Date.now(),
+                  undoable: false,
+                });
+              };
+
+              const handleInterpolate = () => {
+                if (midiClips.length < 2) return;
+                const clipA = midiClips[0]!;
+                const clipB = midiClips[1]!;
+                const morphs = interpolateClips(clipA, clipB, 3, selTrack!.id);
+                for (const m of morphs) {
+                  useSessionStore.getState().addClipToTrack(selTrack!.id, m);
+                }
+                useAIStore.getState().logActivity({
+                  id: `log-${Date.now()}`,
+                  description: `Interpolated ${morphs.length} morph steps between "${clipA.name}" and "${clipB.name}"`,
+                  trackId: selTrack!.id,
+                  timestamp: Date.now(),
+                  undoable: false,
+                });
+              };
+
               return (
-                <button
-                  onClick={() => {
-                    const variation = generateVariation(midiClip, composer.temperature, composer.seed);
-                    useSessionStore.getState().addClipToTrack(selTrack!.id, variation);
-                    useAIStore.getState().logActivity({
-                      id: `log-${Date.now()}`,
-                      description: `Generated Markov variation of "${midiClip.name}" (${variation.notes.length} notes)`,
-                      trackId: selTrack!.id,
-                      timestamp: Date.now(),
-                      undoable: false,
-                    });
-                  }}
-                  className="w-full mt-1 text-xxs py-1 font-medium bg-daw-ai-accent/10 text-daw-ai-accent/70 hover:bg-daw-ai-accent/20"
-                >
-                  Variation of Selected Clip
-                </button>
+                <div className="mt-1.5 space-y-1">
+                  <span className="text-[7px] text-daw-text-muted/40 uppercase tracking-wide">Variation Engine</span>
+                  <div className="flex items-center gap-1 mb-1">
+                    <span className="text-[7px] text-daw-text-muted/40">Intensity</span>
+                    <input
+                      type="range"
+                      min="0.05"
+                      max="1"
+                      step="0.05"
+                      value={preferredVariationIntensity}
+                      onChange={(e) => setPreferredVariationIntensity(parseFloat(e.target.value))}
+                      className="flex-1 h-1 accent-[#E63946]"
+                    />
+                    <span className="text-[7px] text-daw-text-muted/60 w-6 text-right font-mono">{Math.round(preferredVariationIntensity * 100)}%</span>
+                  </div>
+                  <div className="flex flex-wrap gap-0.5">
+                    {VARIATION_TYPES.map((v) => (
+                      <button
+                        key={v.id}
+                        onClick={() => handleVariation(v.id)}
+                        className="text-[7px] px-1.5 py-0.5 bg-daw-bg/30 text-daw-text-muted hover:text-daw-ai-accent hover:bg-daw-ai-accent/10 border border-transparent hover:border-daw-ai-accent/20 transition-all"
+                        title={`Create ${v.label} variation of selected clip`}
+                      >
+                        {v.label}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={handleMarkovVariation}
+                    className="w-full text-xxs py-1 font-medium bg-daw-ai-accent/10 text-daw-ai-accent/70 hover:bg-daw-ai-accent/20"
+                  >
+                    Markov Variation
+                  </button>
+                  {midiClips.length >= 2 && (
+                    <button
+                      onClick={handleInterpolate}
+                      className="w-full text-xxs py-1 font-medium bg-purple-500/10 text-purple-400/70 hover:bg-purple-500/20"
+                      title={`Morph between "${midiClips[0]!.name}" and "${midiClips[1]!.name}"`}
+                    >
+                      Interpolate Clips ({midiClips[0]!.name} → {midiClips[1]!.name})
+                    </button>
+                  )}
+                </div>
               );
             })()}
 
