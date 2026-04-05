@@ -5,7 +5,7 @@ import type {
   DrumSynthParams,
 } from '@/types/instruments';
 import { DEFAULT_SYNTH_PARAMS } from '@/types/instruments';
-import { getTrackNodes } from './track-manager';
+import { ensureTrackNodes } from './track-manager';
 
 interface TrackInstrument {
   type: InstrumentType;
@@ -23,8 +23,7 @@ export function createInstrument(
 ): void {
   disposeInstrument(trackId);
 
-  const node = getTrackNodes(trackId);
-  if (!node) return;
+  const node = ensureTrackNodes(trackId);
 
   const synthParams = params ?? DEFAULT_SYNTH_PARAMS;
 
@@ -105,8 +104,7 @@ export function updateSynthParams(
   Object.assign(instrument.params, params);
 
   // Recreate synth with new params
-  const node = getTrackNodes(trackId);
-  if (!node) return;
+  const node = ensureTrackNodes(trackId);
 
   instrument.synth.dispose();
   const newSynth = createSynthNode(instrument.type, instrument.params);
@@ -142,8 +140,7 @@ export function triggerDrumSound(
   const instrument = trackInstruments.get(trackId);
   if (!instrument) return;
 
-  const node = getTrackNodes(trackId);
-  if (!node) return;
+  const node = ensureTrackNodes(trackId);
 
   // Create drum synth on-demand and cache it
   let drumEntry = instrument.drumSynths.get(soundId);
@@ -223,8 +220,7 @@ export function getAnalyserNode(trackId: string): AnalyserNode | null {
   const existing = trackAnalysers.get(trackId);
   if (existing) return existing;
 
-  const node = getTrackNodes(trackId);
-  if (!node) return null;
+  const node = ensureTrackNodes(trackId);
 
   // Access the raw Web Audio context and create an AnalyserNode
   const ctx = Tone.getContext().rawContext;

@@ -1,5 +1,5 @@
 import * as Tone from 'tone';
-import { getTrackNodes } from './track-manager';
+import { ensureTrackNodes } from './track-manager';
 import type {
   EffectConfig,
   EffectType,
@@ -184,11 +184,7 @@ function createEffectNode(
 }
 
 function reconnectChain(trackId: string): void {
-  const trackNode = getTrackNodes(trackId);
-  if (!trackNode) {
-    console.warn(`[effects] No track nodes for ${trackId} — effects not connected`);
-    return;
-  }
+  const trackNode = ensureTrackNodes(trackId);
 
   const entries = trackEffectChains.get(trackId) ?? [];
 

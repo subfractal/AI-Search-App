@@ -82,18 +82,22 @@ export default function App() {
   const { isMobile, height: screenH } = useScreenSize();
 
   // iOS WebKit requires AudioContext to be started during a direct user gesture.
-  // Eagerly init on first tap/click so file loading works reliably.
+  // Eagerly init on first tap/click so file loading and track creation work reliably.
+  // Listen on click, pointerdown, AND touchstart — iOS Chrome can be inconsistent.
   useEffect(() => {
     const startAudio = () => {
       initAudioContext();
       window.removeEventListener('pointerdown', startAudio);
       window.removeEventListener('touchstart', startAudio);
+      window.removeEventListener('click', startAudio);
     };
     window.addEventListener('pointerdown', startAudio, { once: true });
     window.addEventListener('touchstart', startAudio, { once: true });
+    window.addEventListener('click', startAudio, { once: true });
     return () => {
       window.removeEventListener('pointerdown', startAudio);
       window.removeEventListener('touchstart', startAudio);
+      window.removeEventListener('click', startAudio);
     };
   }, []);
 

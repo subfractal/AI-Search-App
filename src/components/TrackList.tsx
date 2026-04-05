@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { useSessionStore } from '@/stores/session-store';
 import { useMixerStore } from '@/stores/mixer-store';
-import { loadAudioFile } from '@/services/audio-engine';
+import { loadAudioFile, initAudioContext } from '@/services/audio-engine';
 import { generateId } from '@/utils/id';
 import type { AudioClip } from '@/types/audio';
 import TrackHeader from './TrackHeader';
@@ -59,6 +59,7 @@ export default function TrackList() {
   };
 
   const handleAddMidi = () => {
+    initAudioContext(); // ensure audio context is started on this gesture
     const id = addMidiTrack();
     initStrip(id);
   };

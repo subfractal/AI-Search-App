@@ -105,8 +105,10 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       armed: false,
       clips: [],
     };
-    createTrackNodes(id);
+    // Update state FIRST so the track appears in the UI immediately,
+    // then create audio nodes (may be slow if AudioContext is resuming on iOS)
     set((state) => ({ tracks: [...state.tracks, track] }));
+    try { createTrackNodes(id); } catch { /* audio nodes created lazily */ }
     return id;
   },
 
@@ -126,8 +128,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       armed: false,
       clips: [],
     };
-    createTrackNodes(id);
     set((state) => ({ tracks: [...state.tracks, track] }));
+    try { createTrackNodes(id); } catch { /* audio nodes created lazily */ }
     return id;
   },
 
@@ -320,8 +322,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       clips: [],
       groupConfig: { childTrackIds: [], busId: '' },
     };
-    createTrackNodes(id);
     set((state) => ({ tracks: [...state.tracks, track] }));
+    try { createTrackNodes(id); } catch { /* audio nodes created lazily */ }
     return id;
   },
 
@@ -362,8 +364,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       armed: false,
       clips: [],
     };
-    createTrackNodes(id);
     set((state) => ({ tracks: [...state.tracks, track] }));
+    try { createTrackNodes(id); } catch { /* audio nodes created lazily */ }
     return id;
   },
 

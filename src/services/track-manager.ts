@@ -25,6 +25,13 @@ export function getTrackNodes(trackId: string): TrackAudioNode | undefined {
   return trackNodes.get(trackId);
 }
 
+/** Ensure track audio nodes exist — creates them lazily if missing */
+export function ensureTrackNodes(trackId: string): TrackAudioNode {
+  const existing = trackNodes.get(trackId);
+  if (existing) return existing;
+  return createTrackNodes(trackId);
+}
+
 export function getTrackLevel(trackId: string): number {
   const node = trackNodes.get(trackId);
   if (!node) return -Infinity;
