@@ -9,6 +9,7 @@ import {
   addClipPlayer,
   removeClipPlayer,
 } from '@/services/track-manager';
+import { useHistoryStore } from '@/stores/history-store';
 
 export type BottomPanel = 'mixer' | 'instrument' | 'effects' | 'piano-roll' | 'routing' | 'warp' | 'browser' | 'clip-view' | 'automation' | null;
 
@@ -200,12 +201,46 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       tracks: state.tracks.map((t) =>
         t.id === tid ? { ...t, clips: [...t.clips, newClip] } : t,
       ),
+      // BUG-03 FIX: Update selectedClips to the newly pasted clip
+      selectedClips: [{ trackId: tid, clipId: newClip.id }],
     }));
+
+    useHistoryStore.getState().pushAction(
+      'Paste clip',
+      () => {
+        set((state) => ({
+          tracks: state.tracks.map((t) =>
+            t.id === tid ? { ...t, clips: t.clips.filter((c) => c.id !== newClip.id) } : t,
+          ),
+          selectedClips: [],
+        }));
+      },
+      () => {
+        set((state) => ({
+          tracks: state.tracks.map((t) =>
+            t.id === tid ? { ...t, clips: [...t.clips, newClip] } : t,
+          ),
+          selectedClips: [{ trackId: tid, clipId: newClip.id }],
+        }));
+      }
+    );
   },
 
   deleteSelectedClips: () => {
-    const { selectedClips } = get();
+    const { selectedClips, tracks } = get();
     if (selectedClips.length === 0) return;
+
+    // Capture state before deletion for undo
+    const removedClipsByTrack: Record<string, Clip[]> = {};
+    for (const sel of selectedClips) {
+      const track = tracks.find((t) => t.id === sel.trackId);
+      const clip = track?.clips.find((c) => c.id === sel.clipId);
+      if (clip) {
+        if (!removedClipsByTrack[sel.trackId]) removedClipsByTrack[sel.trackId] = [];
+        removedClipsByTrack[sel.trackId]!.push(clip);
+      }
+    }
+
     set((state) => ({
       tracks: state.tracks.map((t) => {
         const clipIdsToRemove = selectedClips
@@ -216,9 +251,40 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       }),
       selectedClips: [],
     }));
+
+    useHistoryStore.getState().pushAction(
+      'Delete clips',
+      () => {
+        set((state) => ({
+          tracks: state.tracks.map((t) => {
+            const clipsToRestore = removedClipsByTrack[t.id];
+            if (!clipsToRestore) return t;
+            return { ...t, clips: [...t.clips, ...clipsToRestore] };
+          }),
+          selectedClips,
+        }));
+      },
+      () => {
+        set((state) => ({
+          tracks: state.tracks.map((t) => {
+            const clipIdsToRemove = selectedClips
+              .filter((s) => s.trackId === t.id)
+              .map((s) => s.clipId);
+            if (clipIdsToRemove.length === 0) return t;
+            return { ...t, clips: t.clips.filter((c) => !clipIdsToRemove.includes(c.id)) };
+          }),
+          selectedClips: [],
+        }));
+      }
+    );
   },
 
-  moveClipTime: (trackId, clipId, newStartTime) =>
+  moveClipTime: (trackId, clipId, newStartTime) => {
+    const { tracks } = get();
+    const track = tracks.find((t) => t.id === trackId);
+    const clip = track?.clips.find((c) => c.id === clipId);
+    const oldStartTime = clip?.startTime ?? 0;
+
     set((state) => ({
       tracks: state.tracks.map((t) =>
         t.id === trackId
@@ -227,9 +293,44 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
           ) }
           : t,
       ),
-    })),
+    }));
 
-  resizeClipDuration: (trackId, clipId, newDuration) =>
+    // Only push to history if actually moved
+    if (oldStartTime !== newStartTime) {
+      useHistoryStore.getState().pushAction(
+        'Move clip',
+        () => {
+          set((state) => ({
+            tracks: state.tracks.map((t) =>
+              t.id === trackId
+                ? { ...t, clips: t.clips.map((c) =>
+                  c.id === clipId ? { ...c, startTime: oldStartTime } : c,
+                ) }
+                : t,
+            ),
+          }));
+        },
+        () => {
+          set((state) => ({
+            tracks: state.tracks.map((t) =>
+              t.id === trackId
+                ? { ...t, clips: t.clips.map((c) =>
+                  c.id === clipId ? { ...c, startTime: Math.max(0, newStartTime) } : c,
+                ) }
+                : t,
+            ),
+          }));
+        }
+      );
+    }
+  },
+
+  resizeClipDuration: (trackId, clipId, newDuration) => {
+    const { tracks } = get();
+    const track = tracks.find((t) => t.id === trackId);
+    const clip = track?.clips.find((c) => c.id === clipId);
+    const oldDuration = clip?.duration ?? 0;
+
     set((state) => ({
       tracks: state.tracks.map((t) =>
         t.id === trackId
@@ -238,7 +339,37 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
           ) }
           : t,
       ),
-    })),
+    }));
+
+    // Only push to history if actually resized
+    if (oldDuration !== newDuration) {
+      useHistoryStore.getState().pushAction(
+        'Resize clip',
+        () => {
+          set((state) => ({
+            tracks: state.tracks.map((t) =>
+              t.id === trackId
+                ? { ...t, clips: t.clips.map((c) =>
+                  c.id === clipId ? { ...c, duration: oldDuration } : c,
+                ) }
+                : t,
+            ),
+          }));
+        },
+        () => {
+          set((state) => ({
+            tracks: state.tracks.map((t) =>
+              t.id === trackId
+                ? { ...t, clips: t.clips.map((c) =>
+                  c.id === clipId ? { ...c, duration: Math.max(0.1, newDuration) } : c,
+                ) }
+                : t,
+            ),
+          }));
+        }
+      );
+    }
+  },
 
   splitClipAtTime: (trackId, clipId, splitTime) => {
     const track = get().tracks.find((t) => t.id === trackId);
@@ -273,6 +404,36 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
           : t,
       ),
     }));
+
+    useHistoryStore.getState().pushAction(
+      'Split clip',
+      () => {
+        set((state) => ({
+          tracks: state.tracks.map((t) =>
+            t.id === trackId
+              ? { ...t, clips: t.clips.filter((c) => c.id !== leftClip.id && c.id !== rightClip.id && c.id === clipId ? true : c.id !== clipId) }
+              : t,
+          ),
+        }));
+        // Restore original clip
+        set((state) => ({
+          tracks: state.tracks.map((t) =>
+            t.id === trackId
+              ? { ...t, clips: [...t.clips.filter((c) => c.id !== leftClip.id && c.id !== rightClip.id), clip] }
+              : t,
+          ),
+        }));
+      },
+      () => {
+        set((state) => ({
+          tracks: state.tracks.map((t) =>
+            t.id === trackId
+              ? { ...t, clips: [...t.clips.filter((c) => c.id !== clipId), leftClip, rightClip] }
+              : t,
+          ),
+        }));
+      }
+    );
   },
 
   setViewMode: (mode) => set({ viewMode: mode }),
@@ -286,9 +447,35 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     if ('buffer' in clip) {
       addClipPlayer(clip as AudioClip);
     }
+
+    useHistoryStore.getState().pushAction(
+      'Add clip',
+      () => {
+        set((state) => ({
+          tracks: state.tracks.map((t) =>
+            t.id === trackId ? { ...t, clips: t.clips.filter((c) => c.id !== clip.id) } : t,
+          ),
+        }));
+        removeClipPlayer(trackId, clip.id);
+      },
+      () => {
+        set((state) => ({
+          tracks: state.tracks.map((t) =>
+            t.id === trackId ? { ...t, clips: [...t.clips, clip] } : t,
+          ),
+        }));
+        if ('buffer' in clip) {
+          addClipPlayer(clip as AudioClip);
+        }
+      }
+    );
   },
 
   removeClip: (trackId, clipId) => {
+    const { tracks } = get();
+    const track = tracks.find((t) => t.id === trackId);
+    const clip = track?.clips.find((c) => c.id === clipId);
+
     removeClipPlayer(trackId, clipId);
     set((state) => ({
       tracks: state.tracks.map((t) =>
@@ -297,6 +484,32 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
           : t,
       ),
     }));
+
+    if (clip) {
+      useHistoryStore.getState().pushAction(
+        'Remove clip',
+        () => {
+          set((state) => ({
+            tracks: state.tracks.map((t) =>
+              t.id === trackId ? { ...t, clips: [...t.clips, clip] } : t,
+            ),
+          }));
+          if ('buffer' in clip) {
+            addClipPlayer(clip as AudioClip);
+          }
+        },
+        () => {
+          set((state) => ({
+            tracks: state.tracks.map((t) =>
+              t.id === trackId
+                ? { ...t, clips: t.clips.filter((c) => c.id !== clipId) }
+                : t,
+            ),
+          }));
+          removeClipPlayer(trackId, clipId);
+        }
+      );
+    }
   },
 
   reorderTracks: (fromIndex, toIndex) =>
