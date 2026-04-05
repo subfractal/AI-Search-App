@@ -103,7 +103,7 @@ export default function ExportDialog({ open, onClose }: ExportDialogProps) {
         <div className="flex items-center justify-between px-4 py-3
                         border-b border-daw-border/40">
           <div className="flex items-center gap-2">
-            <span className="text-[7px] font-mono uppercase tracking-[3px] text-[#E63946]/60">DKT-EXPORT</span>
+            <span className="text-[9px] font-mono font-bold uppercase tracking-[3px] text-[#E63946]/90">DKT-EXPORT</span>
             <h2 className="text-sm font-semibold text-daw-text">Bounce</h2>
           </div>
           <button

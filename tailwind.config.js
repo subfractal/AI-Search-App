@@ -13,6 +13,7 @@ export default {
           panel: '#0F0F11',
           'panel-hover': '#1a1a1c',
           border: '#222224',
+          'border-heavy': '#333336',
           'border-light': '#2a2a2c',
 
           // Text — Concrete Gray
@@ -88,11 +89,16 @@ export default {
         'xxs': ['10px', '14px'],
       },
       boxShadow: {
-        'panel': '0 1px 2px rgba(0,0,0,0.8)',
-        'control': '0 1px 2px rgba(0,0,0,0.8)',
-        'fader': '0 1px 3px rgba(0,0,0,0.8)',
-        'lcd': 'inset 0 1px 4px rgba(0,0,0,0.9)',
-        'knob': '0 1px 2px rgba(0,0,0,0.6)',
+        'panel': '0 2px 6px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.02)',
+        'panel-inset': 'inset 0 2px 8px rgba(0,0,0,0.9), inset 0 0 1px rgba(0,0,0,0.5)',
+        'control': '0 1px 3px rgba(0,0,0,0.9), 0 0 0 1px rgba(0,0,0,0.4)',
+        'fader': '0 2px 4px rgba(0,0,0,0.9)',
+        'lcd': 'inset 0 2px 8px rgba(0,0,0,0.95), inset 0 0 2px rgba(0,0,0,0.8)',
+        'knob': '0 2px 4px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.03)',
+        'bezel': 'inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 0 rgba(0,0,0,0.6)',
+        'zone': '2px 0 8px rgba(0,0,0,0.5)',
+        'btn-raised': '0 1px 2px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04)',
+        'btn-pressed': 'inset 0 1px 3px rgba(0,0,0,0.8)',
       },
       animation: {
         'blink-signal': 'blink-signal 1s step-end infinite',

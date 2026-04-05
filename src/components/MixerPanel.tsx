@@ -22,7 +22,7 @@ export default function MixerPanel() {
         ))}
         {tracks.length === 0 && (
           <div className="flex items-center justify-center w-full
-                          text-daw-text-muted text-xxs py-8">
+                          text-daw-text-muted text-xxs py-8 font-mono uppercase tracking-wider">
             Add tracks to see the mixer
           </div>
         )}
@@ -30,31 +30,33 @@ export default function MixerPanel() {
 
       {/* Master channel — always visible */}
       {tracks.length > 0 && (
-        <div className="flex flex-col items-center gap-0.5 px-2 py-1.5
-                        border-l border-daw-accent/20 shrink-0
-                        min-w-[72px] w-[76px]"
-             style={{ background: 'linear-gradient(to bottom, rgba(255,107,53,0.03), transparent)' }}>
-          <span className="text-[8px] text-daw-accent font-bold tracking-widest">
+        <div className="flex flex-col items-center gap-1 px-3 py-2
+                        shrink-0 min-w-[80px] w-[84px]"
+             style={{
+               borderLeft: '3px solid #1a1a1c',
+               background: 'linear-gradient(to bottom, rgba(230,57,70,0.04), rgba(230,57,70,0.01), transparent)',
+             }}>
+          <span className="text-[8px] text-[#E63946] font-bold tracking-[3px] font-mono uppercase">
             MASTER
           </span>
 
-          <div className="flex gap-px items-stretch flex-1 min-h-0">
+          <div className="flex gap-0.5 items-stretch flex-1 min-h-0 daw-inset p-0.5">
             {tracks[0] && (
-              <PeakMeter trackId={tracks[0].id} height={80} width={5} />
+              <PeakMeter trackId={tracks[0].id} height={90} width={7} />
             )}
             <Fader
               value={masterVolume}
               onChange={setMasterVolume}
-              height={80}
-              width={24}
+              height={90}
+              width={28}
               showValue={false}
             />
             {tracks[0] && (
-              <PeakMeter trackId={tracks[0].id} height={80} width={5} />
+              <PeakMeter trackId={tracks[0].id} height={90} width={7} />
             )}
           </div>
 
-          <span className="text-[7px] font-mono text-daw-text-muted/50 tabular-nums">
+          <span className="text-[8px] font-mono text-daw-text-muted/60 tabular-nums font-medium">
             {masterVolume > 0 ? '+' : ''}{masterVolume.toFixed(1)}
           </span>
 

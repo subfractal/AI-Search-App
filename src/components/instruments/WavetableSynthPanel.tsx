@@ -24,7 +24,7 @@ export default function WavetableSynthPanel({ trackId }: WavetableSynthPanelProp
 
   return (
     <div className="flex flex-col gap-2 p-3">
-      <span className="text-[7px] font-mono uppercase tracking-[3px] text-[#E63946]/60">DKT-WAVE-SYNTH-01</span>
+      <span className="text-[9px] font-mono font-bold uppercase tracking-[3px] text-[#E63946]/90">DKT-WAVE-SYNTH-01</span>
       <div className="flex gap-4 overflow-x-auto">
       {/* Wavetable Morph Section */}
       <div className="flex flex-col gap-2 min-w-[160px]">

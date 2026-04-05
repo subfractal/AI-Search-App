@@ -76,17 +76,23 @@ export default function AISidebar() {
   return (
     <div className="h-full flex flex-col bg-daw-ai-bg">
       {/* Header — AI KONSTRUKT ENGINE */}
-      <div className="shrink-0 border-b border-daw-border/20">
-        <div className="flex items-center justify-between px-2.5 h-8">
-          <div className="flex items-center gap-1.5">
-            <div className={`w-2 h-2 bg-[#E63946]
+      <div className="shrink-0" style={{ borderBottom: '2px solid #1a1a1c' }}>
+        <div className="flex items-center justify-between px-3 h-10"
+             style={{ background: 'linear-gradient(to bottom, rgba(230,57,70,0.04), transparent)' }}>
+          <div className="flex items-center gap-2">
+            <div className={`w-2.5 h-2.5 bg-[#E63946]
                             ${analyzing ? 'daw-analyzing' : ''}
-                            ${enabled ? '' : 'opacity-40'}`} />
-            <span className="text-[10px] font-semibold tracking-wider uppercase text-[#E63946]">AI Konstrukt Engine</span>
+                            ${enabled ? '' : 'opacity-40'}`}
+                 style={{ boxShadow: enabled ? '0 0 8px rgba(230,57,70,0.4)' : 'none' }} />
+            <span className="text-[10px] font-bold tracking-[3px] uppercase text-[#E63946] font-mono">
+              AI KONSTRUKT
+            </span>
           </div>
           <button
             onClick={() => setEnabled(!enabled)}
-            className={`text-xxs px-1.5 py-px transition-all ${enabled ? 'bg-[#E63946]/20 text-[#E63946]' : 'bg-daw-bg text-daw-text-muted'}`}
+            className={`text-xxs px-2 py-0.5 font-mono font-bold transition-all ${enabled
+              ? 'bg-[#E63946]/25 text-[#E63946] border border-[#E63946]/30'
+              : 'daw-hw-btn text-daw-text-muted'}`}
           >
             {enabled ? 'ON' : 'OFF'}
           </button>
@@ -94,16 +100,16 @@ export default function AISidebar() {
 
         {/* Coproducer Mode Selector */}
         {enabled && (
-          <div className="flex px-1 pb-1.5 gap-0.5">
+          <div className="flex px-1.5 pb-2 gap-0.5">
             {COPRODUCER_MODES.map((mode) => (
               <button
                 key={mode.id}
                 onClick={() => setComposer({ coproducerMode: mode.id })}
                 title={mode.description}
-                className={`flex-1 text-[8px] py-1 font-medium uppercase tracking-wide transition-all
+                className={`flex-1 text-[8px] py-1.5 font-bold font-mono uppercase tracking-wide transition-all
                            ${composer.coproducerMode === mode.id
-                             ? 'bg-[#E63946]/20 text-[#E63946] border border-[#E63946]/30'
-                             : 'bg-daw-bg/40 text-daw-text-muted hover:text-daw-text-dim border border-transparent'}`}
+                             ? 'bg-[#E63946]/25 text-[#E63946] border border-[#E63946]/40'
+                             : 'daw-hw-btn text-daw-text-muted hover:text-daw-text-dim'}`}
               >
                 {mode.label}
               </button>
@@ -114,15 +120,16 @@ export default function AISidebar() {
 
       {enabled ? (
         <div className="flex-1 overflow-y-auto">
-          <div className="px-2.5 py-2">
+          <div className="px-3 py-2.5">
             <button
               onClick={() => runAnalysis()}
               disabled={analyzing || tracks.length === 0}
-              className={`w-full text-xxs py-1.5 font-medium text-white
+              className={`w-full text-xxs py-2 font-bold font-mono uppercase tracking-wider text-white
                          disabled:opacity-30 disabled:cursor-not-allowed transition-all
                          ${analyzing
                            ? 'bg-daw-ai-suggestion/50 animate-blink-signal'
-                           : 'bg-daw-ai-suggestion/70 hover:bg-daw-ai-suggestion'}`}
+                           : 'bg-daw-ai-suggestion/80 hover:bg-daw-ai-suggestion'}`}
+              style={{ border: '1px solid rgba(230,57,70,0.3)' }}
             >
               {analyzing ? (
                 <span className="flex items-center justify-center gap-1.5">

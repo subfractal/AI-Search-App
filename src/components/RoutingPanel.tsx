@@ -755,7 +755,7 @@ export default function RoutingPanel({ selectedTrackId }: RoutingPanelProps) {
     <div className="flex flex-col h-full bg-daw-surface border-t border-daw-border">
       {/* Tab bar */}
       <div className="flex items-center border-b border-daw-border">
-        <span className="text-[7px] font-mono uppercase tracking-[3px] text-[#E63946]/60 px-3 shrink-0">
+        <span className="text-[9px] font-mono font-bold uppercase tracking-[3px] text-[#E63946]/90 px-3 shrink-0">
           DKT-ROUTE
         </span>
         {tabs.map((tab) => (

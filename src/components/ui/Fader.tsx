@@ -108,16 +108,19 @@ export default function Fader({
         onTouchStart={handleMouseDown}
         onDoubleClick={handleDoubleClick}
       >
-        {/* Fader slot (groove) — sharp edges */}
+        {/* Fader slot (groove) — recessed industrial channel */}
         <div
           className="absolute"
           style={{
             width: slotW,
             left: (trackW - slotW) / 2,
-            top: 4,
-            bottom: 4,
-            background: 'linear-gradient(to top, #050505 0%, #0F0F11 100%)',
-            border: '1px solid #222224',
+            top: 3,
+            bottom: 3,
+            background: 'linear-gradient(to right, #030303, #080808, #030303)',
+            border: '2px solid #111113',
+            borderTopColor: '#0a0a0a',
+            borderBottomColor: '#1a1a1c',
+            boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.9)',
           }}
         />
 
@@ -163,25 +166,31 @@ export default function Fader({
           />
         )}
 
-        {/* Fader cap — flat industrial */}
+        {/* Fader cap — industrial raised knob */}
         <div
           className="absolute cursor-grab active:cursor-grabbing"
           style={{
-            left: 1,
-            right: 1,
-            height: 18,
-            bottom: `calc(${pct}% - 9px)`,
-            background: '#222224',
-            border: '1px solid #333',
-            borderBottom: '1px solid #1a1a1a',
+            left: 0,
+            right: 0,
+            height: 22,
+            bottom: `calc(${pct}% - 11px)`,
+            background: 'linear-gradient(to bottom, #2a2a2c, #1e1e20, #181818)',
+            border: '2px solid #333336',
+            borderBottom: '2px solid #141416',
+            borderTop: '2px solid #3a3a3c',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.06)',
           }}
         >
-          {/* Grip lines */}
-          <div className="absolute inset-x-[3px] top-[5px] h-px bg-white/8" />
-          <div className="absolute inset-x-[3px] top-[7px] h-px bg-black/30" />
-          <div className="absolute inset-x-[3px] top-[9px] h-px bg-white/8" />
-          <div className="absolute inset-x-[3px] top-[11px] h-px bg-black/30" />
-          <div className="absolute inset-x-[3px] top-[13px] h-px bg-white/8" />
+          {/* Grip lines — industrial knurling */}
+          <div className="absolute inset-x-[3px] top-[4px] h-px bg-white/10" />
+          <div className="absolute inset-x-[3px] top-[6px] h-px bg-black/40" />
+          <div className="absolute inset-x-[3px] top-[8px] h-px bg-white/10" />
+          <div className="absolute inset-x-[3px] top-[10px] h-px bg-black/40" />
+          <div className="absolute inset-x-[3px] top-[12px] h-px bg-white/10" />
+          <div className="absolute inset-x-[3px] top-[14px] h-px bg-black/40" />
+          <div className="absolute inset-x-[3px] top-[16px] h-px bg-white/10" />
+          {/* Center indicator line — Signal Red */}
+          <div className="absolute left-1/2 -translate-x-1/2 top-[9px] w-2 h-0.5 bg-[#E63946]/60" />
         </div>
       </div>
 

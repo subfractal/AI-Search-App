@@ -220,17 +220,18 @@ export default function App() {
 
     return (
       <div
-        className="bg-daw-surface border-t border-daw-border/40 shrink-0 flex flex-col"
-        style={{ height: panelH }}
+        className="bg-daw-surface shrink-0 flex flex-col"
+        style={{ height: panelH, borderTop: '3px solid #1a1a1c' }}
       >
         {/* Drag handle to resize */}
         <div
-          className="h-1.5 cursor-ns-resize flex items-center justify-center
+          className="h-2 cursor-ns-resize flex items-center justify-center
                      shrink-0 hover:bg-daw-accent/10 transition-colors group"
+          style={{ background: 'linear-gradient(to bottom, #141416, #0F0F11)' }}
           onMouseDown={onDragStart}
           onTouchStart={onDragStart}
         >
-          <div className="w-8 h-0.5 bg-daw-border/40 group-hover:bg-daw-accent/40
+          <div className="w-12 h-0.5 bg-daw-border/50 group-hover:bg-daw-accent/50
                           transition-colors" />
         </div>
         {/* Panel content — scrollable */}
@@ -259,16 +260,20 @@ export default function App() {
         <div className="flex flex-1 min-h-0 overflow-hidden">
           {/* ── Left Zone: Track List + Inspector ── */}
           {showTracks && (
-            <div className="flex flex-col shrink-0 w-40 md:w-52 border-r border-daw-border/30 bg-daw-surface">
-              <div className="flex-1 min-h-0 overflow-y-auto">
-                <TrackList />
-              </div>
-              {!isMobile && (
-                <div className="border-t border-daw-border/20 h-44 shrink-0 overflow-y-auto bg-daw-surface">
-                  <InspectorPanel />
+            <>
+              <div className="flex flex-col shrink-0 w-40 md:w-52 bg-daw-surface">
+                <div className="flex-1 min-h-0 overflow-y-auto">
+                  <TrackList />
                 </div>
-              )}
-            </div>
+                {!isMobile && (
+                  <div className="h-44 shrink-0 overflow-y-auto bg-daw-surface"
+                       style={{ borderTop: '2px solid #1a1a1c' }}>
+                    <InspectorPanel />
+                  </div>
+                )}
+              </div>
+              <div className="daw-zone-border shrink-0" />
+            </>
           )}
 
           {/* ── Center Zone: Timeline ── */}
@@ -278,15 +283,18 @@ export default function App() {
 
           {/* ── Right Zone: AI Coproducer + Inspector/Media Bay ── */}
           {showAI && (
-            <div className={`border-l border-daw-border/30 shrink-0 flex flex-col
-                            ${isMobile
-                ? 'absolute right-0 top-[84px] bottom-0 w-72 z-30 bg-daw-ai-bg shadow-xl'
-                : 'w-64'}`}
-            >
-              <div className="flex-1 min-h-0 overflow-y-auto">
-                <AISidebar />
+            <>
+              <div className="daw-zone-border shrink-0" />
+              <div className={`shrink-0 flex flex-col
+                              ${isMobile
+                  ? 'absolute right-0 top-[84px] bottom-0 w-72 z-30 bg-daw-ai-bg shadow-xl'
+                  : 'w-64 bg-daw-ai-bg'}`}
+              >
+                <div className="flex-1 min-h-0 overflow-y-auto">
+                  <AISidebar />
+                </div>
               </div>
-            </div>
+            </>
           )}
         </div>
 

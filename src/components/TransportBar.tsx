@@ -220,45 +220,46 @@ export default function TransportBar({
   );
 
   return (
-    <div className="bg-daw-transport-bg border-b border-daw-border/40 select-none shrink-0">
+    <div className="bg-daw-transport-bg select-none shrink-0"
+         style={{ borderBottom: '2px solid #1a1a1c' }}>
       {/* Row 1: Branding + Transport + LCD + Meter */}
-      <div className="flex items-center h-14 px-3 gap-3">
+      <div className="flex items-center h-16 px-3 gap-3">
 
         {/* ── DKT Branding + Logo ── */}
-        <div className="shrink-0 flex items-center gap-2 mr-1">
+        <div className="shrink-0 flex items-center gap-2.5 mr-2">
           {/* Logo mark — DKT block icon */}
-          <div className="w-8 h-8 shrink-0 flex items-center justify-center bg-daw-bg border border-daw-border/40">
-            <svg width="20" height="20" viewBox="0 0 32 32">
+          <div className="w-10 h-10 shrink-0 flex items-center justify-center daw-bezel bg-daw-bg">
+            <svg width="24" height="24" viewBox="0 0 32 32">
               <rect x="4" y="4" width="10" height="24" fill="#E63946" />
               <rect x="18" y="4" width="10" height="10" fill="#E63946" />
               <rect x="18" y="18" width="10" height="10" fill="#F77F00" />
             </svg>
           </div>
           <div className="flex flex-col leading-none">
-            <span className="text-[7px] font-mono uppercase tracking-[4px] text-[#E63946]/80">
+            <span className="text-[8px] font-mono uppercase tracking-[4px] text-[#E63946]/90">
               DKT WORKSTATION PRO
             </span>
-            <span className="text-[15px] font-bold tracking-tight text-daw-text leading-none">
+            <span className="text-[16px] font-bold tracking-tight text-daw-text leading-none mt-0.5">
               de-konstrukt
             </span>
           </div>
         </div>
 
         {/* ── Transport Buttons ── */}
-        <div className="flex items-center gap-px bg-daw-bg/60 p-0.5 shrink-0">
+        <div className="flex items-center gap-0.5 daw-inset p-1 shrink-0">
           {/* Rewind */}
           <button
             onClick={stop}
-            className="w-8 h-8 flex items-center justify-center
-                       text-daw-text-muted/60 hover:text-daw-text-dim transition-all"
+            className="daw-hw-btn w-9 h-9 flex items-center justify-center
+                       text-daw-text-muted/60 hover:text-daw-text-dim"
             title="Rewind"
           >
             <IconRewind />
           </button>
           {/* Forward */}
           <button
-            className="w-8 h-8 flex items-center justify-center
-                       text-daw-text-muted/60 hover:text-daw-text-dim transition-all"
+            className="daw-hw-btn w-9 h-9 flex items-center justify-center
+                       text-daw-text-muted/60 hover:text-daw-text-dim"
             title="Forward"
           >
             <IconForward />
@@ -266,9 +267,9 @@ export default function TransportBar({
           {/* Play */}
           <button
             onClick={isPlaying ? pause : play}
-            className={`w-9 h-8 flex items-center justify-center transition-all
+            className={`daw-hw-btn w-10 h-9 flex items-center justify-center
                        ${isPlaying
-              ? 'text-daw-transport-play bg-daw-transport-play/10'
+              ? 'text-daw-transport-play !bg-daw-transport-play/15 !border-daw-transport-play/30'
               : 'text-daw-text-muted/60 hover:text-daw-text'}`}
             title={isPlaying ? 'Pause' : 'Play'}
           >
@@ -277,9 +278,9 @@ export default function TransportBar({
           {/* Stop */}
           <button
             onClick={stop}
-            className={`w-8 h-8 flex items-center justify-center transition-all
+            className={`daw-hw-btn w-9 h-9 flex items-center justify-center
                        ${state === 'stopped'
-              ? 'text-daw-text bg-daw-surface'
+              ? 'text-daw-text !bg-daw-surface'
               : 'text-daw-text-muted/60 hover:text-daw-text-dim'}`}
             title="Stop"
           >
@@ -288,9 +289,9 @@ export default function TransportBar({
           {/* Pause */}
           <button
             onClick={pause}
-            className={`w-8 h-8 flex items-center justify-center transition-all
+            className={`daw-hw-btn w-9 h-9 flex items-center justify-center
                        ${state === 'paused'
-              ? 'text-daw-text bg-daw-surface'
+              ? 'text-daw-text !bg-daw-surface'
               : 'text-daw-text-muted/60 hover:text-daw-text-dim'}`}
             title="Pause"
           >
@@ -299,9 +300,9 @@ export default function TransportBar({
           {/* Record */}
           <button
             onClick={toggleRecord}
-            className={`w-9 h-8 flex items-center justify-center transition-all
+            className={`daw-hw-btn w-10 h-9 flex items-center justify-center
                        ${isRecording
-              ? 'text-daw-transport-record bg-daw-transport-record/15 animate-blink-signal'
+              ? 'text-daw-transport-record !bg-daw-transport-record/20 !border-daw-transport-record/40 animate-blink-signal'
               : 'text-daw-text-muted/40 hover:text-daw-transport-record/70'}`}
             title="Record"
           >
@@ -310,15 +311,16 @@ export default function TransportBar({
         </div>
 
         {/* ── Large LCD Timecode Display ── */}
-        <div className="daw-lcd px-3 py-1.5 flex flex-col items-start min-w-[200px] shadow-lcd shrink-0">
-          <span className="text-[22px] font-mono leading-none text-daw-lcd-text tracking-wider">
+        <div className="daw-lcd px-4 py-2 flex flex-col items-start min-w-[230px] shrink-0">
+          <span className="text-[26px] font-mono leading-none text-daw-lcd-text tracking-wider font-medium"
+                style={{ textShadow: '0 0 12px rgba(230,57,70,0.3)' }}>
             DKT-{timecode}
           </span>
-          <div className="flex items-center gap-3 mt-0.5">
+          <div className="flex items-center gap-3 mt-1">
             <span className="text-[9px] font-mono text-daw-lcd-dim">
               DKT-{formatBarsBeats(position, bpm, beatsPerBar)}:000
             </span>
-            <span className="text-[9px] font-mono text-daw-lcd-text">
+            <span className="text-[9px] font-mono text-daw-lcd-text/80">
               {bpm}.00 BPM
             </span>
             <span className="text-[9px] font-mono text-daw-lcd-dim">
@@ -328,7 +330,7 @@ export default function TransportBar({
         </div>
 
         {/* ── BPM Input ── */}
-        <div className="daw-lcd px-2 py-1 flex flex-col items-center min-w-[56px] shrink-0">
+        <div className="daw-lcd px-3 py-1.5 flex flex-col items-center min-w-[64px] shrink-0">
           <span className="text-[7px] text-daw-lcd-dim uppercase tracking-widest leading-none mb-0.5">
             BPM
           </span>
@@ -340,9 +342,10 @@ export default function TransportBar({
             onKeyDown={(e) => {
               if (e.key === 'Enter') e.currentTarget.blur();
             }}
-            className="w-12 text-center text-sm font-mono bg-transparent
+            className="w-14 text-center text-base font-mono bg-transparent
                        border-none text-daw-lcd-text focus:outline-none
-                       leading-none tabular-nums"
+                       leading-none tabular-nums font-medium"
+            style={{ textShadow: '0 0 8px rgba(230,57,70,0.25)' }}
             min={20}
             max={999}
           />
@@ -352,9 +355,9 @@ export default function TransportBar({
         <div className="flex items-center gap-0.5 shrink-0">
           <button
             onClick={toggleLoop}
-            className={`w-8 h-8 flex items-center justify-center transition-all
+            className={`daw-hw-btn w-9 h-9 flex items-center justify-center
                        ${loopEnabled
-              ? 'text-daw-accent bg-daw-accent/10'
+              ? 'text-daw-accent !bg-daw-accent/15 !border-daw-accent/30'
               : 'text-daw-text-muted/40 hover:text-daw-text-dim'}`}
             title="Toggle Loop"
           >
@@ -362,9 +365,9 @@ export default function TransportBar({
           </button>
           <button
             onClick={toggleMetronome}
-            className={`w-8 h-8 flex items-center justify-center transition-all
+            className={`daw-hw-btn w-9 h-9 flex items-center justify-center
                        ${metronomeEnabled
-              ? 'text-daw-accent bg-daw-accent/10'
+              ? 'text-daw-accent !bg-daw-accent/15 !border-daw-accent/30'
               : 'text-daw-text-muted/40 hover:text-daw-text-dim'}`}
             title="Toggle Metronome"
           >
@@ -372,9 +375,8 @@ export default function TransportBar({
           </button>
           <button
             onClick={cycleTimeSig}
-            className="h-8 px-2 flex items-center justify-center
-                       text-[10px] font-mono text-daw-text-muted/50 hover:text-daw-text-dim
-                       transition-all bg-daw-bg/40 border border-daw-border/20"
+            className="daw-hw-btn h-9 px-2.5 flex items-center justify-center
+                       text-[10px] font-mono text-daw-text-muted/50 hover:text-daw-text-dim"
             title="Cycle Time Signature"
           >
             {timeSignature.numerator}/{timeSignature.denominator}
@@ -416,14 +418,15 @@ export default function TransportBar({
         <div className="flex-1" />
 
         {/* ── Master Meter ── */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 daw-inset px-1.5 py-1">
+          <span className="text-[7px] font-mono text-daw-text-muted/40 uppercase tracking-wider">OUT</span>
           <MasterMeter />
         </div>
       </div>
 
       {/* Row 2: Panel toggles */}
-      <div className="flex items-center h-7 px-3 gap-1 border-t border-daw-border/15
-                      overflow-x-auto scrollbar-none">
+      <div className="flex items-center h-7 px-3 gap-1 overflow-x-auto scrollbar-none"
+           style={{ borderTop: '1px solid #1a1a1c', background: '#080808' }}>
         <button
           onClick={onToggleTracks}
           className={`text-[10px] font-medium px-2 py-0.5 transition-all duration-75 shrink-0

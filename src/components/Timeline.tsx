@@ -585,17 +585,18 @@ export default function Timeline() {
   return (
     <div className="w-full h-full flex flex-col">
       {/* ── Clip Editing Toolbar ── */}
-      <div className="flex items-center h-7 px-2 gap-1 bg-daw-surface border-b border-daw-border/20 shrink-0">
-        <span className="text-[7px] font-mono uppercase tracking-[2px] text-[#E63946]/60 shrink-0 mr-0.5">
+      <div className="flex items-center h-8 px-2.5 gap-1 shrink-0"
+           style={{ background: '#0a0a0c', borderBottom: '2px solid #1a1a1c' }}>
+        <span className="text-[8px] font-mono font-bold uppercase tracking-[3px] text-[#E63946]/80 shrink-0 mr-1">
           DKT-TL
         </span>
         {/* View mode toggle */}
         <button
           onClick={() => setViewMode(viewMode === 'arrangement' ? 'session' : 'arrangement')}
-          className={`text-[9px] font-mono uppercase px-2 py-0.5 transition-all
+          className={`text-[9px] font-mono uppercase px-2 py-0.5 transition-all font-bold
                      ${viewMode === 'session'
-            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-            : 'bg-daw-bg/40 text-daw-text-muted border border-daw-border/20 hover:text-daw-text-dim'}`}
+            ? 'bg-[#E63946]/15 text-[#E63946] border border-[#E63946]/30'
+            : 'daw-hw-btn text-daw-text-muted hover:text-daw-text-dim'}`}
           title={viewMode === 'arrangement' ? 'Switch to Session View' : 'Switch to Arrangement View'}
         >
           {viewMode === 'arrangement' ? 'ARR' : 'SESSION'}
@@ -608,7 +609,7 @@ export default function Timeline() {
           onClick={() => { if (selectedClips.length > 0) { const pos = getPositionSeconds(); for (const sel of selectedClips) { const tr = tracks.find((t) => t.id === sel.trackId); const cl = tr?.clips.find((c) => c.id === sel.clipId); if (cl && pos > cl.startTime && pos < cl.startTime + cl.duration) splitClipAtTime(sel.trackId, sel.clipId, pos - cl.startTime); } } }}
           disabled={selectedClips.length === 0}
           className="text-[9px] px-1.5 py-0.5 text-daw-text-muted hover:text-daw-text-dim
-                     disabled:opacity-20 transition-all bg-daw-bg/40 border border-daw-border/20"
+                     disabled:opacity-20 transition-all daw-hw-btn font-mono"
           title="Split at Playhead (S)"
         >
           Split
@@ -617,7 +618,7 @@ export default function Timeline() {
           onClick={copySelectedClips}
           disabled={selectedClips.length === 0}
           className="text-[9px] px-1.5 py-0.5 text-daw-text-muted hover:text-daw-text-dim
-                     disabled:opacity-20 transition-all bg-daw-bg/40 border border-daw-border/20"
+                     disabled:opacity-20 transition-all daw-hw-btn font-mono"
           title="Copy (Ctrl+C)"
         >
           Copy
@@ -625,7 +626,7 @@ export default function Timeline() {
         <button
           onClick={() => pasteClips()}
           className="text-[9px] px-1.5 py-0.5 text-daw-text-muted hover:text-daw-text-dim
-                     disabled:opacity-20 transition-all bg-daw-bg/40 border border-daw-border/20"
+                     disabled:opacity-20 transition-all daw-hw-btn font-mono"
           title="Paste (Ctrl+V)"
         >
           Paste

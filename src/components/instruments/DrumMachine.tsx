@@ -58,42 +58,42 @@ export default function DrumMachine({ trackId }: DrumMachineProps) {
   };
 
   return (
-    <div className="flex flex-col gap-2 p-3">
+    <div className="flex flex-col gap-2.5 p-3">
       {/* Header — industrial naming */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-[8px] font-mono uppercase tracking-[3px] text-[#E63946]/80">
+      <div className="flex items-center justify-between pb-2" style={{ borderBottom: '1px solid #1a1a1c' }}>
+        <div className="flex items-center gap-3">
+          <span className="text-[9px] font-mono uppercase tracking-[3px] text-[#E63946]/90 font-bold">
             DKT-DRUM-SEQ-01
           </span>
           <span className="text-xs font-medium text-daw-text">Drum Machine</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xxs text-daw-text-muted tabular-nums font-mono">
+        <div className="flex items-center gap-3">
+          <span className="daw-lcd px-2 py-0.5 text-[9px] font-mono">
             {bpm} BPM
           </span>
-          <span className="text-[8px] font-mono text-daw-text-muted/40">
+          <span className="text-[8px] font-mono text-daw-text-muted/50 uppercase tracking-wider">
             {pattern.stepCount} STEPS
           </span>
         </div>
       </div>
 
       {/* Step grid — red dot aesthetic */}
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-1 daw-inset p-2">
         {pattern.sounds.map((sound, soundIdx) => (
-          <div key={sound.id} className="flex items-center gap-1.5">
+          <div key={sound.id} className="flex items-center gap-2">
             {/* Sound name — industrial label */}
             <button
               onClick={() => previewSound(soundIdx)}
-              className="w-16 text-[9px] font-mono text-daw-text-dim text-left truncate
+              className="w-20 text-[9px] font-mono text-daw-text-dim text-left truncate
                          hover:text-[#E63946] transition-colors shrink-0 py-0.5
-                         uppercase tracking-wide"
+                         uppercase tracking-wide font-medium"
               title={`Preview ${sound.name}`}
             >
               {sound.name}
             </button>
 
             {/* Steps — red dot grid */}
-            <div className="flex gap-0.5 flex-1">
+            <div className="flex gap-1 flex-1">
               {Array.from({ length: pattern.stepCount }, (_, stepIdx) => {
                 const isOn = pattern.steps[soundIdx]?.[stepIdx] ?? false;
                 const isActive = stepIdx === activeStep;
@@ -103,21 +103,25 @@ export default function DrumMachine({ trackId }: DrumMachineProps) {
                   <button
                     key={stepIdx}
                     onClick={() => toggleStep(trackId, soundIdx, stepIdx)}
-                    className={`h-5 flex-1 flex items-center justify-center transition-all duration-75
-                               ${isBarStart && !isOn ? 'bg-daw-surface-alt' : 'bg-daw-bg'}
-                               ${isActive ? 'ring-1 ring-[#E63946]/40' : ''}
-                               border border-daw-border/15 hover:border-daw-border/40`}
+                    className={`h-6 flex-1 flex items-center justify-center transition-all duration-75
+                               ${isActive ? 'ring-1 ring-[#E63946]/50' : ''}`}
+                    style={{
+                      background: isBarStart && !isOn ? '#111113' : '#080808',
+                      border: '1px solid #1a1a1c',
+                      borderRadius: 0,
+                      boxShadow: isOn ? 'inset 0 0 6px rgba(230,57,70,0.15)' : 'inset 0 1px 3px rgba(0,0,0,0.5)',
+                    }}
                   >
                     {/* Red dot indicator */}
                     <div
                       className={`rounded-full transition-all duration-75
                                  ${isOn
                           ? isActive
-                            ? 'w-3 h-3 bg-[#E63946] shadow-[0_0_8px_rgba(230,57,70,0.6)]'
-                            : 'w-2.5 h-2.5 bg-[#E63946]/85 hover:bg-[#E63946]'
+                            ? 'w-3.5 h-3.5 bg-[#E63946] shadow-[0_0_12px_rgba(230,57,70,0.7)]'
+                            : 'w-3 h-3 bg-[#E63946]/90 hover:bg-[#E63946]'
                           : isActive
-                            ? 'w-1.5 h-1.5 bg-daw-text-muted/20'
-                            : 'w-1 h-1 bg-daw-border/40 group-hover:bg-daw-border'
+                            ? 'w-2 h-2 bg-daw-text-muted/25'
+                            : 'w-1.5 h-1.5 bg-daw-border/30'
                         }`}
                     />
                   </button>
@@ -129,14 +133,14 @@ export default function DrumMachine({ trackId }: DrumMachineProps) {
       </div>
 
       {/* Step numbers — beat markers */}
-      <div className="flex items-center gap-1.5">
-        <div className="w-16" />
-        <div className="flex gap-0.5 flex-1">
+      <div className="flex items-center gap-2">
+        <div className="w-20" />
+        <div className="flex gap-1 flex-1">
           {Array.from({ length: pattern.stepCount }, (_, i) => (
             <span
               key={i}
-              className={`flex-1 text-center text-[7px] font-mono leading-none
-                         ${i % 4 === 0 ? 'text-daw-text-muted' : 'text-daw-text-muted/30'}`}
+              className={`flex-1 text-center text-[8px] font-mono leading-none font-medium
+                         ${i % 4 === 0 ? 'text-daw-text-muted' : 'text-daw-text-muted/25'}`}
             >
               {i % 4 === 0 ? i / 4 + 1 : '\u00B7'}
             </span>

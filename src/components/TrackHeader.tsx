@@ -53,11 +53,11 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
 
   return (
     <div
-      className={`group flex items-center gap-1.5 px-2 py-1.5 border-b
-                  border-daw-border/20 cursor-pointer transition-colors min-h-[72px]
+      className={`group flex items-center gap-1.5 px-2 py-1.5 cursor-pointer transition-colors min-h-[72px]
                   ${isSelected
           ? 'bg-daw-track-selected'
           : 'bg-daw-track hover:bg-daw-surface-alt'}`}
+      style={{ borderBottom: '2px solid #111113' }}
       onClick={() => selectTrack(trackId)}
     >
       {/* Color bar — click to pick color */}
@@ -188,11 +188,11 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
       <div className="flex flex-col items-center gap-0.5 shrink-0">
         <div className="flex items-center gap-0.5">
           <button
-            className={`w-6 h-5 text-[9px] font-bold transition-all
+            className={`w-7 h-5 text-[9px] font-bold font-mono transition-all
                        flex items-center justify-center
                        ${track.mute
-                ? 'bg-amber-500/90 text-black'
-                : 'bg-daw-bg/60 text-daw-text-muted/60 hover:text-daw-text-dim'}`}
+                ? 'bg-[#F77F00]/90 text-black'
+                : 'daw-hw-btn text-daw-text-muted/60 hover:text-daw-text-dim'}`}
             onClick={(e) => {
               e.stopPropagation();
               toggleMute(trackId);
@@ -202,11 +202,11 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
             M
           </button>
           <button
-            className={`w-6 h-5 text-[9px] font-bold transition-all
+            className={`w-7 h-5 text-[9px] font-bold font-mono transition-all
                        flex items-center justify-center
                        ${track.solo
-                ? 'bg-sky-500/90 text-black'
-                : 'bg-daw-bg/60 text-daw-text-muted/60 hover:text-daw-text-dim'}`}
+                ? 'bg-[#E63946]/90 text-white'
+                : 'daw-hw-btn text-daw-text-muted/60 hover:text-daw-text-dim'}`}
             onClick={(e) => {
               e.stopPropagation();
               toggleSolo(trackId);

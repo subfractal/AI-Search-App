@@ -25,7 +25,7 @@ export default function SubtractiveSynthPanel({ trackId }: SubtractiveSynthPanel
 
   return (
     <div className="flex flex-col gap-2 p-3">
-      <span className="text-[7px] font-mono uppercase tracking-[3px] text-[#E63946]/60">DKT-SUB-SYNTH-01</span>
+      <span className="text-[9px] font-mono font-bold uppercase tracking-[3px] text-[#E63946]/90">DKT-SUB-SYNTH-01</span>
       <div className="flex gap-4 overflow-x-auto">
       {/* OSC Section */}
       <div className="flex flex-col gap-2 min-w-[100px]">

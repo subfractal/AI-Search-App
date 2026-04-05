@@ -111,12 +111,18 @@ export default function Knob({
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
       >
-        {/* Knob body — flat black */}
+        {/* Knob body — industrial brushed metal */}
+        <defs>
+          <radialGradient id={`knob-grad-${size}`} cx="40%" cy="35%" r="60%">
+            <stop offset="0%" stopColor="#2a2a2c" />
+            <stop offset="100%" stopColor="#111113" />
+          </radialGradient>
+        </defs>
         <circle
           cx={cx} cy={cy} r={r}
-          fill="#111111"
-          stroke="#222224"
-          strokeWidth="1"
+          fill={`url(#knob-grad-${size})`}
+          stroke="#333336"
+          strokeWidth="1.5"
         />
 
         {/* Knurling texture — fine radial marks */}
@@ -125,19 +131,20 @@ export default function Knob({
             key={i}
             x1={tick.x1} y1={tick.y1}
             x2={tick.x2} y2={tick.y2}
-            stroke="#222224"
-            strokeWidth="0.5"
+            stroke="#333336"
+            strokeWidth="0.6"
           />
         ))}
 
-        {/* Single white pointer tick — the only indicator */}
+        {/* Single pointer tick — Signal Red indicator */}
         <line
           x1={cx + pointerInner * Math.cos(pointerAngle)}
           y1={cy + pointerInner * Math.sin(pointerAngle)}
           x2={cx + pointerOuter * Math.cos(pointerAngle)}
           y2={cy + pointerOuter * Math.sin(pointerAngle)}
-          stroke="#FFFFFF"
-          strokeWidth="1.5"
+          stroke="#E63946"
+          strokeWidth="2"
+          strokeLinecap="round"
         />
       </svg>
       {showValue && (
