@@ -10,6 +10,7 @@ import { analyzeGainStaging, applyGainStaging } from '@/services/ai/gain-staging
 import { STREAMING_TARGETS, GENRE_PROFILES } from '@/services/ai/genre-profiles';
 import { generateComposition, generateVariation } from '@/services/ai/composer-engine';
 import { runMasteringPipeline } from '@/services/ai/mastering-service';
+import { FACTORY_TEMPLATES, loadTemplate } from '@/services/templates/template-loader';
 import type { AISuggestion, MixGenre, GeneratorModel, SuggestionApplyMode } from '@/types/ai';
 import { isMidiClip } from '@/types/audio';
 
@@ -54,6 +55,9 @@ export default function AISidebar() {
   const toggleTrackLock = useAIStore((s) => s.toggleTrackLock);
   const composer = useAIStore((s) => s.composer);
   const setComposer = useAIStore((s) => s.setComposer);
+  const savedComposerPresets = useAIStore((s) => s.savedComposerPresets);
+  const saveComposerPreset = useAIStore((s) => s.saveComposerPreset);
+  const loadComposerPreset = useAIStore((s) => s.loadComposerPreset);
   const resetAppliedSignatures = useAIStore((s) => s.resetAppliedSignatures);
   const masteringInProgress = useAIStore((s) => s.masteringInProgress);
   const masteringResult = useAIStore((s) => s.masteringResult);
@@ -273,6 +277,55 @@ export default function AISidebar() {
                 </button>
               );
             })()}
+
+            {/* Composer Presets */}
+            <div className="mt-2 pt-1.5 border-t border-daw-border/10">
+              <div className="flex items-center gap-1">
+                <span className="text-[8px] text-daw-text-muted/50 uppercase tracking-wide">Presets</span>
+                <button
+                  onClick={() => {
+                    const name = `Preset ${savedComposerPresets.length + 1}`;
+                    saveComposerPreset(name);
+                  }}
+                  className="text-[8px] px-1.5 py-px bg-daw-bg/40 text-daw-text-muted hover:text-daw-ai-accent"
+                >
+                  Save
+                </button>
+              </div>
+              {savedComposerPresets.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {savedComposerPresets.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => loadComposerPreset(p.id)}
+                      className="text-[8px] px-1.5 py-0.5 bg-daw-bg/30 text-daw-text-muted hover:text-daw-ai-accent"
+                    >
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Template Quick Load */}
+            <div className="mt-1.5">
+              <span className="text-[8px] text-daw-text-muted/50 uppercase tracking-wide">Quick Template</span>
+              <select
+                onChange={(e) => {
+                  if (e.target.value) {
+                    loadTemplate(e.target.value);
+                    e.target.value = '';
+                  }
+                }}
+                className="w-full mt-0.5 text-[9px] bg-daw-bg border border-daw-border/30 px-1 py-0.5 text-daw-text-dim"
+                defaultValue=""
+              >
+                <option value="">Load template...</option>
+                {FACTORY_TEMPLATES.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
           </Section>
 
           {lastAnalysis && (

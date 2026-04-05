@@ -9,6 +9,7 @@ interface HistoryStore {
   undo: () => void;
   redo: () => void;
   pushAction: (description: string, undo: () => void, redo: () => void) => void;
+  batchAction: (description: string, actions: Array<{ undo: () => void; redo: () => void }>) => void;
   clearHistory: () => void;
   refresh: () => void;
 }
@@ -48,6 +49,25 @@ export const useHistoryStore = create<HistoryStore>((set) => ({
 
   pushAction: (description, undo, redo) => {
     historyService.pushAction(description, undo, redo);
+    set({
+      undoCount: historyService.getHistory().length,
+      redoCount: historyService.getRedoStack().length,
+      lastAction: description,
+    });
+  },
+
+  batchAction: (description, actions) => {
+    const batchUndo = () => {
+      for (let i = actions.length - 1; i >= 0; i--) {
+        actions[i]!.undo();
+      }
+    };
+    const batchRedo = () => {
+      for (const action of actions) {
+        action.redo();
+      }
+    };
+    historyService.pushAction(description, batchUndo, batchRedo);
     set({
       undoCount: historyService.getHistory().length,
       redoCount: historyService.getRedoStack().length,

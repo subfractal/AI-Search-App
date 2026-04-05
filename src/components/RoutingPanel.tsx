@@ -606,9 +606,139 @@ function GroupAssignmentsSection() {
   );
 }
 
+// --- Control Room Section ---
+
+function ControlRoomSection() {
+  const controlRoom = useRoutingStore((s) => s.controlRoom);
+  const initControlRoom = useRoutingStore((s) => s.initControlRoom);
+  const addMonitorPath = useRoutingStore((s) => s.addMonitorPath);
+  const removeMonitorPath = useRoutingStore((s) => s.removeMonitorPath);
+  const setActiveMonitor = useRoutingStore((s) => s.setActiveMonitor);
+  const toggleDim = useRoutingStore((s) => s.toggleDim);
+  const toggleMono = useRoutingStore((s) => s.toggleMono);
+  const toggleTalkback = useRoutingStore((s) => s.toggleTalkback);
+
+  if (!controlRoom.enabled) {
+    return (
+      <div className="flex flex-col gap-2">
+        <span className="daw-section-label">Control Room</span>
+        <button
+          className="daw-button text-xxs px-3 py-1"
+          onClick={initControlRoom}
+        >
+          Enable Control Room
+        </button>
+      </div>
+    );
+  }
+
+  const activeMonitor = controlRoom.monitorPaths.find(
+    (p) => p.id === controlRoom.activeMonitorId,
+  );
+
+  return (
+    <div className="flex flex-col gap-3">
+      <span className="daw-section-label">Control Room</span>
+
+      {/* Monitor paths */}
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-xxs text-daw-text-muted">Monitor Paths</span>
+          <button
+            className="daw-button text-xxs px-2 py-0.5"
+            onClick={() => addMonitorPath(`Monitor ${controlRoom.monitorPaths.length + 1}`)}
+          >
+            + Monitor
+          </button>
+        </div>
+        {controlRoom.monitorPaths.map((path) => {
+          const isActive = path.id === controlRoom.activeMonitorId;
+          return (
+            <div
+              key={path.id}
+              className={`flex items-center gap-2 px-2 py-1.5 border transition-colors
+                         ${isActive
+                  ? 'bg-daw-accent/10 border-daw-accent/30'
+                  : 'bg-daw-panel border-daw-border hover:bg-daw-surface-alt'}`}
+            >
+              <button
+                className="text-xxs text-daw-text flex-1 text-left"
+                onClick={() => setActiveMonitor(path.id)}
+              >
+                {path.name}
+              </button>
+              <span className="text-[9px] text-daw-text-muted font-mono">
+                {path.volume.toFixed(0)} dB
+              </span>
+              {path.dimEnabled && (
+                <span className="text-[8px] px-1 py-px bg-amber-500/15 text-amber-400">DIM</span>
+              )}
+              {path.monoEnabled && (
+                <span className="text-[8px] px-1 py-px bg-sky-500/15 text-sky-400">MONO</span>
+              )}
+              {controlRoom.monitorPaths.length > 1 && (
+                <button
+                  className="text-xxs text-red-400/60 hover:text-red-400"
+                  onClick={() => removeMonitorPath(path.id)}
+                >
+                  &times;
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Control buttons */}
+      <div className="flex items-center gap-1.5">
+        <button
+          className={`text-xxs px-3 py-1.5 font-medium transition-all border
+                     ${activeMonitor?.dimEnabled
+              ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+              : 'bg-daw-bg/50 text-daw-text-muted border-daw-border/30 hover:text-daw-text-dim'}`}
+          onClick={toggleDim}
+          title="Dim monitor output"
+        >
+          DIM
+        </button>
+        <button
+          className={`text-xxs px-3 py-1.5 font-medium transition-all border
+                     ${activeMonitor?.monoEnabled
+              ? 'bg-sky-500/20 text-sky-400 border-sky-500/30'
+              : 'bg-daw-bg/50 text-daw-text-muted border-daw-border/30 hover:text-daw-text-dim'}`}
+          onClick={toggleMono}
+          title="Monitor in mono"
+        >
+          MONO
+        </button>
+        <button
+          className={`text-xxs px-3 py-1.5 font-medium transition-all border
+                     ${controlRoom.talkbackEnabled
+              ? 'bg-red-500/20 text-red-400 border-red-500/30'
+              : 'bg-daw-bg/50 text-daw-text-muted border-daw-border/30 hover:text-daw-text-dim'}`}
+          onClick={toggleTalkback}
+          title="Toggle talkback"
+        >
+          TALK
+        </button>
+      </div>
+
+      {/* Active monitor info */}
+      {activeMonitor && (
+        <div className="text-xxs text-daw-text-muted/60 bg-daw-bg/30 px-2 py-1.5">
+          Active: {activeMonitor.name}
+          {' \u00b7 '}{activeMonitor.volume.toFixed(0)} dB
+          {activeMonitor.dimEnabled && ` \u00b7 Dim ${activeMonitor.dimAmount}dB`}
+          {activeMonitor.monoEnabled && ' \u00b7 Mono'}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // --- Main Panel ---
 
-type TabId = 'buses' | 'sends' | 'sidechain' | 'groups';
+type TabId = 'buses' | 'sends' | 'sidechain' | 'groups' | 'monitor';
 
 export default function RoutingPanel({ selectedTrackId }: RoutingPanelProps) {
   const [activeTab, setActiveTab] = useState<TabId>('buses');
@@ -618,6 +748,7 @@ export default function RoutingPanel({ selectedTrackId }: RoutingPanelProps) {
     { id: 'sends', label: 'Sends' },
     { id: 'sidechain', label: 'Sidechain' },
     { id: 'groups', label: 'Groups' },
+    { id: 'monitor', label: 'Monitor' },
   ];
 
   return (
@@ -653,6 +784,7 @@ export default function RoutingPanel({ selectedTrackId }: RoutingPanelProps) {
         )}
         {activeTab === 'sidechain' && <SidechainSection />}
         {activeTab === 'groups' && <GroupAssignmentsSection />}
+        {activeTab === 'monitor' && <ControlRoomSection />}
       </div>
     </div>
   );
