@@ -44,6 +44,7 @@ export interface DrumPattern {
 export interface InstrumentConfig {
   type: InstrumentType;
   name: string;
+  family?: InstrumentFamily;
   synthParams?: SynthParams;
   drumPattern?: DrumPattern;
 }

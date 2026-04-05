@@ -5,6 +5,9 @@ import { INSTRUMENT_PRESETS, PRESET_CATEGORIES } from '@/types/instruments';
 import type { InstrumentType, PresetCategory } from '@/types/instruments';
 import SynthPanel from './SynthPanel';
 import DrumMachine from './DrumMachine';
+import SubtractiveSynthPanel from './SubtractiveSynthPanel';
+import WavetableSynthPanel from './WavetableSynthPanel';
+import SamplerPanel from './SamplerPanel';
 
 export default function InstrumentRack() {
   const selectedTrackId = useSessionStore((s) => s.selectedTrackId);
@@ -116,11 +119,14 @@ export default function InstrumentRack() {
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto">
-        {config.type === 'drum-machine' ? (
-          <DrumMachine trackId={selectedTrackId} />
-        ) : (
-          <SynthPanel trackId={selectedTrackId} />
-        )}
+        {(() => {
+          // Route by family first, then by type for legacy instruments
+          if (config.family === 'subtractive') return <SubtractiveSynthPanel trackId={selectedTrackId} />;
+          if (config.family === 'wavetable') return <WavetableSynthPanel trackId={selectedTrackId} />;
+          if (config.family === 'sampler') return <SamplerPanel trackId={selectedTrackId} />;
+          if (config.type === 'drum-machine') return <DrumMachine trackId={selectedTrackId} />;
+          return <SynthPanel trackId={selectedTrackId} />;
+        })()}
       </div>
     </div>
   );
