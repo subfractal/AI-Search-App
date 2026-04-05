@@ -150,6 +150,14 @@ export default function Timeline() {
   const beatsPerBar = config.timeSignature.numerator;
   const pps = PIXELS_PER_SECOND * zoom;
 
+  // BUG-06 FIX: Reset scroll when playhead goes to 0 (on rewind/stop)
+  useEffect(() => {
+    const pos = getPositionSeconds();
+    if (pos === 0 && scrollX > 0) {
+      setScrollX(0);
+    }
+  }, [scrollX]);
+
   const inlineSuggestions = aiSuggestions.filter(
     (s) => s.priority === 'inline' && s.status === 'pending' && s.targetTrackId,
   );
@@ -349,6 +357,17 @@ export default function Timeline() {
   // Mouse handlers
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button === 2) return; // right-click handled separately
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const clickY = e.clientY - rect.top;
+
+    // BUG-05 FIX: Don't clear selection when clicking the ruler
+    if (clickY < RULER_HEIGHT) {
+      // Ruler click — only seek, don't deselect
+      return;
+    }
+
     const hit = hitTest(e.clientX, e.clientY);
     if (hit) {
       e.stopPropagation();
