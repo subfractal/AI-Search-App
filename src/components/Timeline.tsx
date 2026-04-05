@@ -5,8 +5,10 @@ import { useAutomationStore } from '@/stores/automation-store';
 import { useAIStore } from '@/stores/ai-store';
 import { getPositionSeconds, seekTo } from '@/services/transport-service';
 import { isAudioClip } from '@/types/audio';
+import type { Clip } from '@/types/audio';
 import type { AutomationLane } from '@/types/automation';
 import InlineSuggestion from '@/components/ai/InlineSuggestion';
+import ClipContextMenu from '@/components/ClipContextMenu';
 import {
   drawWaveform,
   drawGrid,
@@ -19,6 +21,10 @@ import {
 const TRACK_HEIGHT = 72;
 const AUTOMATION_LANE_HEIGHT = 36;
 const CLIP_HEADER_HEIGHT = 18;
+const RESIZE_HANDLE_WIDTH = 6;
+const PIXELS_PER_SECOND = 100;
+const MIN_ZOOM = 0.1;
+const MAX_ZOOM = 10;
 
 function drawAutomationLane(
   ctx: CanvasRenderingContext2D,
@@ -29,16 +35,11 @@ function drawAutomationLane(
   scrollX: number,
   width: number,
 ) {
-  // Lane background
   ctx.fillStyle = lane.color + '0a';
   ctx.fillRect(0, y, width, h);
-
-  // Lane label
   ctx.fillStyle = lane.color + '99';
-  ctx.font = '9px Inter, system-ui, sans-serif';
+  ctx.font = '9px "IBM Plex Sans", system-ui, sans-serif';
   ctx.fillText(lane.target.toUpperCase(), 4, y + 12);
-
-  // Separator
   ctx.strokeStyle = lane.color + '25';
   ctx.lineWidth = 0.5;
   ctx.beginPath();
@@ -48,7 +49,6 @@ function drawAutomationLane(
 
   if (lane.points.length === 0) return;
 
-  // Draw automation curve
   ctx.beginPath();
   ctx.strokeStyle = lane.color + 'dd';
   ctx.lineWidth = 2;
@@ -76,13 +76,11 @@ function drawAutomationLane(
   ctx.lineTo(width, lastPy);
   ctx.stroke();
 
-  // Draw points as dots
   for (const point of lane.points) {
     const px = point.time * pps - scrollX;
     if (px < -5 || px > width + 5) continue;
     const normalized = (point.value - lane.minValue) / (lane.maxValue - lane.minValue);
     const py = y + h - normalized * (h - 6) - 3;
-
     ctx.beginPath();
     ctx.arc(px, py, 4, 0, Math.PI * 2);
     ctx.fillStyle = lane.color;
@@ -93,9 +91,12 @@ function drawAutomationLane(
   }
 }
 
-const PIXELS_PER_SECOND = 100;
-const MIN_ZOOM = 0.1;
-const MAX_ZOOM = 10;
+interface HitResult {
+  trackId: string;
+  trackIndex: number;
+  clip: Clip;
+  edge: 'left' | 'right' | 'body';
+}
 
 export default function Timeline() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -105,9 +106,40 @@ export default function Timeline() {
   const [scrollY, setScrollY] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [followPlayhead, setFollowPlayhead] = useState(true);
+  const [showAutomation, setShowAutomation] = useState(false);
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    clip: Clip;
+    trackId: string;
+    position: { x: number; y: number };
+  } | null>(null);
+
+  // Drag state
+  const dragRef = useRef<{
+    type: 'move' | 'resize-left' | 'resize-right' | 'pan';
+    trackId: string;
+    clipId: string;
+    startX: number;
+    startTime: number;
+    startDuration: number;
+    moved: boolean;
+  } | null>(null);
 
   const tracks = useSessionStore((s) => s.tracks);
   const config = useSessionStore((s) => s.config);
+  const selectedClips = useSessionStore((s) => s.selectedClips);
+  const selectClip = useSessionStore((s) => s.selectClip);
+  const clearClipSelection = useSessionStore((s) => s.clearClipSelection);
+  const moveClipTime = useSessionStore((s) => s.moveClipTime);
+  const resizeClipDuration = useSessionStore((s) => s.resizeClipDuration);
+  const splitClipAtTime = useSessionStore((s) => s.splitClipAtTime);
+  const deleteSelectedClips = useSessionStore((s) => s.deleteSelectedClips);
+  const copySelectedClips = useSessionStore((s) => s.copySelectedClips);
+  const pasteClips = useSessionStore((s) => s.pasteClips);
+  const viewMode = useSessionStore((s) => s.viewMode);
+  const setViewMode = useSessionStore((s) => s.setViewMode);
+
   const bpm = useTransportStore((s) => s.bpm);
   const loopEnabled = useTransportStore((s) => s.loopEnabled);
   const loopStart = useTransportStore((s) => s.loopStart);
@@ -116,20 +148,50 @@ export default function Timeline() {
   const automationLanes = useAutomationStore((s) => s.lanes);
   const aiSuggestions = useAIStore((s) => s.suggestions);
   const beatsPerBar = config.timeSignature.numerator;
+  const pps = PIXELS_PER_SECOND * zoom;
 
-  const [showAutomation, setShowAutomation] = useState(false);
-
-  // Inline suggestions: only pending inline-priority ones with a target track
   const inlineSuggestions = aiSuggestions.filter(
     (s) => s.priority === 'inline' && s.status === 'pending' && s.targetTrackId,
   );
 
-  const pps = PIXELS_PER_SECOND * zoom;
+  // Hit test: find which clip (if any) is at a given pixel position
+  const hitTest = useCallback((clientX: number, clientY: number): HitResult | null => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const x = clientX - rect.left + scrollX;
+    const y = clientY - rect.top + scrollY;
+
+    let yOffset = RULER_HEIGHT;
+    for (let i = 0; i < tracks.length; i++) {
+      const track = tracks[i]!;
+      const trackLanes = showAutomation
+        ? (automationLanes[track.id] ?? []).filter((l) => l.visible)
+        : [];
+      const totalH = TRACK_HEIGHT + trackLanes.length * AUTOMATION_LANE_HEIGHT;
+      const trackY = yOffset;
+      yOffset += totalH;
+
+      if (y < trackY || y > trackY + TRACK_HEIGHT) continue;
+
+      for (const clip of track.clips) {
+        const clipX = clip.startTime * pps;
+        const clipW = clip.duration * pps;
+        if (x >= clipX && x <= clipX + clipW) {
+          const relX = x - clipX;
+          const edge =
+            relX < RESIZE_HANDLE_WIDTH ? 'left' :
+            relX > clipW - RESIZE_HANDLE_WIDTH ? 'right' : 'body';
+          return { trackId: track.id, trackIndex: i, clip, edge };
+        }
+      }
+    }
+    return null;
+  }, [tracks, scrollX, scrollY, pps, showAutomation, automationLanes]);
 
   // Follow playhead during playback
   useEffect(() => {
     if (!followPlayhead || transportState !== 'playing') return;
-
     let active = true;
     const follow = () => {
       if (!active) return;
@@ -138,7 +200,6 @@ export default function Timeline() {
       const { width } = container.getBoundingClientRect();
       const pos = getPositionSeconds();
       const playheadX = pos * pps;
-
       if (playheadX - scrollX > width * 0.75) {
         setScrollX(Math.max(0, playheadX - width * 0.25));
       }
@@ -148,36 +209,30 @@ export default function Timeline() {
       requestAnimationFrame(follow);
     };
     const id = requestAnimationFrame(follow);
-    return () => {
-      active = false;
-      cancelAnimationFrame(id);
-    };
+    return () => { active = false; cancelAnimationFrame(id); };
   }, [followPlayhead, transportState, pps, scrollX]);
 
+  // Draw
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
-
     const { width, height } = container.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
     canvas.width = width * dpr;
     canvas.height = height * dpr;
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
-
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.scale(dpr, dpr);
 
-    // Background — dark like Ableton
     ctx.fillStyle = '#141414';
     ctx.fillRect(0, 0, width, height);
-
-    // Grid
     drawGrid(ctx, bpm, 4, pps, scrollX, width, height);
 
-    // Track lanes
+    const selectedSet = new Set(selectedClips.map((s) => s.clipId));
+
     let yOffset = RULER_HEIGHT;
     tracks.forEach((track, index) => {
       const trackLanes = showAutomation
@@ -187,18 +242,12 @@ export default function Timeline() {
       const totalTrackHeight = TRACK_HEIGHT + autoHeight;
       const y = yOffset - scrollY;
       yOffset += totalTrackHeight;
-
       if (y + totalTrackHeight < 0 || y > height) return;
 
-      // Track lane background — subtle alternation
       ctx.fillStyle = index % 2 === 0 ? '#161616' : '#131313';
       ctx.fillRect(0, y, width, TRACK_HEIGHT);
-
-      // Track color indicator — left edge strip (like Logic Pro)
       ctx.fillStyle = track.color + '60';
       ctx.fillRect(0, y, 3, TRACK_HEIGHT);
-
-      // Lane separator — subtle
       ctx.strokeStyle = '#222';
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -206,37 +255,31 @@ export default function Timeline() {
       ctx.lineTo(width, y + totalTrackHeight);
       ctx.stroke();
 
-      // Clips — bold, saturated colors like Ableton/Logic
       track.clips.forEach((clip) => {
         const clipX = clip.startTime * pps - scrollX;
         const clipW = clip.duration * pps;
         const clipY = y + 2;
         const clipH = TRACK_HEIGHT - 4;
-
         if (clipX + clipW < 0 || clipX > width) return;
 
-        const radius = 3;
+        const isSelected = selectedSet.has(clip.id);
 
-        // Clip body — saturated fill
-        ctx.beginPath();
-        ctx.roundRect(clipX, clipY, clipW, clipH, radius);
+        // Clip body
         ctx.fillStyle = track.color + '35';
-        ctx.fill();
+        ctx.fillRect(clipX, clipY, clipW, clipH);
 
-        // Clip border — visible edge
-        ctx.strokeStyle = track.color + '80';
-        ctx.lineWidth = 1;
-        ctx.stroke();
+        // Clip border — highlight if selected
+        ctx.strokeStyle = isSelected ? '#ffffff' : track.color + '80';
+        ctx.lineWidth = isSelected ? 2 : 1;
+        ctx.strokeRect(clipX, clipY, clipW, clipH);
 
-        // Clip header bar — fully colored like Ableton
-        ctx.beginPath();
-        ctx.roundRect(clipX, clipY, clipW, CLIP_HEADER_HEIGHT, [radius, radius, 0, 0]);
+        // Clip header
         ctx.fillStyle = track.color + 'cc';
-        ctx.fill();
+        ctx.fillRect(clipX, clipY, clipW, CLIP_HEADER_HEIGHT);
 
-        // Clip name — white text on colored header
+        // Clip name
         ctx.fillStyle = '#000000cc';
-        ctx.font = 'bold 10px Inter, system-ui, sans-serif';
+        ctx.font = 'bold 10px "IBM Plex Sans", system-ui, sans-serif';
         ctx.save();
         ctx.beginPath();
         ctx.rect(clipX + 2, clipY, clipW - 4, CLIP_HEADER_HEIGHT);
@@ -244,64 +287,179 @@ export default function Timeline() {
         ctx.fillText(clip.name, clipX + 5, clipY + 13);
         ctx.restore();
 
-        // Content area
+        // Content
         const contentY = clipY + CLIP_HEADER_HEIGHT;
         const contentH = clipH - CLIP_HEADER_HEIGHT;
-
         if (isAudioClip(clip)) {
-          drawWaveform(
-            ctx,
-            clip.buffer,
-            clipX,
-            contentY,
-            clipW,
-            contentH,
-            track.color,
-          );
+          drawWaveform(ctx, clip.buffer, clipX, contentY, clipW, contentH, track.color);
         } else {
-          // MIDI notes — thicker, more visible
           clip.notes.forEach((note) => {
             const noteX = clipX + note.startTime * pps;
             const noteW = Math.max(3, note.duration * pps);
-            const noteY = contentY + contentH -
-              ((note.pitch / 127) * (contentH - 4)) - 2;
+            const noteY = contentY + contentH - ((note.pitch / 127) * (contentH - 4)) - 2;
             const noteH = Math.max(3, contentH / 24);
-
             ctx.fillStyle = track.color + 'dd';
-            ctx.beginPath();
-            ctx.roundRect(noteX, noteY, noteW, noteH, 1);
-            ctx.fill();
+            ctx.fillRect(noteX, noteY, noteW, noteH);
           });
+        }
+
+        // Resize handles (visible on hover/selection)
+        if (isSelected) {
+          ctx.fillStyle = '#ffffff40';
+          ctx.fillRect(clipX, clipY, RESIZE_HANDLE_WIDTH, clipH);
+          ctx.fillRect(clipX + clipW - RESIZE_HANDLE_WIDTH, clipY, RESIZE_HANDLE_WIDTH, clipH);
         }
       });
 
-      // Automation lanes
       trackLanes.forEach((lane, laneIdx) => {
         const laneY = y + TRACK_HEIGHT + laneIdx * AUTOMATION_LANE_HEIGHT;
         drawAutomationLane(ctx, lane, laneY, AUTOMATION_LANE_HEIGHT, pps, scrollX, width);
       });
     });
 
-    // Loop region
     if (loopEnabled) {
       drawLoopRegion(ctx, loopStart, loopEnd, pps, scrollX, height);
     }
-
-    // Ruler (on top)
     drawRuler(ctx, bpm, pps, scrollX, width, beatsPerBar);
-
-    // Playhead (last, on top)
     const position = getPositionSeconds();
     drawPlayhead(ctx, position, pps, scrollX, height);
 
     rafRef.current = requestAnimationFrame(draw);
-  }, [tracks, bpm, pps, scrollX, scrollY, loopEnabled, loopStart, loopEnd, beatsPerBar, showAutomation, automationLanes]);
+  }, [tracks, bpm, pps, scrollX, scrollY, loopEnabled, loopStart, loopEnd, beatsPerBar, showAutomation, automationLanes, selectedClips]);
 
   useEffect(() => {
     rafRef.current = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(rafRef.current);
   }, [draw]);
 
+  // Mouse handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button === 2) return; // right-click handled separately
+    const hit = hitTest(e.clientX, e.clientY);
+    if (hit) {
+      e.stopPropagation();
+      selectClip(hit.trackId, hit.clip.id, e.shiftKey || e.metaKey);
+      const dragType = hit.edge === 'left' ? 'resize-left' as const
+        : hit.edge === 'right' ? 'resize-right' as const
+        : 'move' as const;
+      dragRef.current = {
+        type: dragType,
+        trackId: hit.trackId,
+        clipId: hit.clip.id,
+        startX: e.clientX,
+        startTime: hit.clip.startTime,
+        startDuration: hit.clip.duration,
+        moved: false,
+      };
+
+      const onMove = (ev: MouseEvent) => {
+        if (!dragRef.current) return;
+        const dx = ev.clientX - dragRef.current.startX;
+        const dtSecs = dx / pps;
+        if (Math.abs(dx) > 3) dragRef.current.moved = true;
+        if (dragRef.current.type === 'move') {
+          moveClipTime(dragRef.current.trackId, dragRef.current.clipId,
+            Math.max(0, dragRef.current.startTime + dtSecs));
+        } else if (dragRef.current.type === 'resize-right') {
+          resizeClipDuration(dragRef.current.trackId, dragRef.current.clipId,
+            Math.max(0.1, dragRef.current.startDuration + dtSecs));
+        } else if (dragRef.current.type === 'resize-left') {
+          const newStart = Math.max(0, dragRef.current.startTime + dtSecs);
+          const shrink = newStart - dragRef.current.startTime;
+          moveClipTime(dragRef.current.trackId, dragRef.current.clipId, newStart);
+          resizeClipDuration(dragRef.current.trackId, dragRef.current.clipId,
+            Math.max(0.1, dragRef.current.startDuration - shrink));
+        }
+      };
+      const onUp = () => {
+        dragRef.current = null;
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    } else {
+      clearClipSelection();
+    }
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    // Only seek if we didn't just drag
+    if (dragRef.current?.moved) return;
+    const hit = hitTest(e.clientX, e.clientY);
+    if (!hit) {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left + scrollX;
+      seekTo(Math.max(0, x / pps));
+    }
+  };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const hit = hitTest(e.clientX, e.clientY);
+    if (hit) {
+      selectClip(hit.trackId, hit.clip.id);
+      setContextMenu({
+        clip: hit.clip,
+        trackId: hit.trackId,
+        position: { x: e.clientX, y: e.clientY },
+      });
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    const hit = hitTest(e.clientX, e.clientY);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    if (hit) {
+      canvas.style.cursor = hit.edge === 'left' || hit.edge === 'right'
+        ? 'col-resize' : 'grab';
+    } else {
+      canvas.style.cursor = 'crosshair';
+    }
+  };
+
+  // Keyboard shortcuts for clip editing
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedClips.length > 0) {
+          e.preventDefault();
+          deleteSelectedClips();
+        }
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        if (selectedClips.length > 0) {
+          e.preventDefault();
+          copySelectedClips();
+        }
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+        e.preventDefault();
+        pasteClips();
+      }
+      if (e.key === 's' && !e.ctrlKey && !e.metaKey) {
+        // Split at playhead
+        if (selectedClips.length > 0) {
+          const pos = getPositionSeconds();
+          for (const sel of selectedClips) {
+            const track = tracks.find((t) => t.id === sel.trackId);
+            const clip = track?.clips.find((c) => c.id === sel.clipId);
+            if (clip && pos > clip.startTime && pos < clip.startTime + clip.duration) {
+              splitClipAtTime(sel.trackId, sel.clipId, pos - clip.startTime);
+            }
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [selectedClips, deleteSelectedClips, copySelectedClips, pasteClips, splitClipAtTime, tracks]);
+
+  // Wheel
   const handleWheel = (e: React.WheelEvent) => {
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
@@ -318,7 +476,7 @@ export default function Timeline() {
     }
   };
 
-  // Touch scrolling — drag to pan, pinch to zoom
+  // Touch — improved responsiveness
   const touchRef = useRef<{
     startX: number;
     startY: number;
@@ -327,6 +485,7 @@ export default function Timeline() {
     pinchDist: number | null;
     zoomStart: number;
     moved: boolean;
+    timestamp: number;
   } | null>(null);
 
   const getTouchDist = (touches: React.TouchList | TouchList) => {
@@ -347,62 +506,64 @@ export default function Timeline() {
       pinchDist,
       zoomStart: zoom,
       moved: false,
+      timestamp: Date.now(),
     };
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!touchRef.current) return;
     e.preventDefault();
-
     const ref = touchRef.current;
 
-    // Pinch to zoom
     if (e.touches.length >= 2) {
       const dist = getTouchDist(e.touches);
       if (dist && ref.pinchDist) {
         const scale = dist / ref.pinchDist;
-        const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, ref.zoomStart * scale));
-        setZoom(newZoom);
+        setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, ref.zoomStart * scale)));
       }
       return;
     }
 
-    // Single finger pan
     const touch = e.touches[0]!;
     const dx = ref.startX - touch.clientX;
     const dy = ref.startY - touch.clientY;
-
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-      ref.moved = true;
-    }
-
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) ref.moved = true;
     setScrollX(Math.max(0, ref.scrollXStart + dx));
     setScrollY(Math.max(0, ref.scrollYStart + dy));
     setFollowPlayhead(false);
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    // If didn't move, treat as tap to seek
     if (touchRef.current && !touchRef.current.moved && e.changedTouches.length > 0) {
       const touch = e.changedTouches[0]!;
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const rect = canvas.getBoundingClientRect();
-        const x = touch.clientX - rect.left + scrollX;
-        const time = x / pps;
-        seekTo(Math.max(0, time));
+      const elapsed = Date.now() - touchRef.current.timestamp;
+      // Quick tap = seek, long tap = context menu
+      if (elapsed < 300) {
+        const hit = hitTest(touch.clientX, touch.clientY);
+        if (hit) {
+          selectClip(hit.trackId, hit.clip.id);
+        } else {
+          const canvas = canvasRef.current;
+          if (canvas) {
+            const rect = canvas.getBoundingClientRect();
+            const x = touch.clientX - rect.left + scrollX;
+            seekTo(Math.max(0, x / pps));
+          }
+        }
+      } else if (elapsed >= 500) {
+        // Long press = context menu
+        const hit = hitTest(touch.clientX, touch.clientY);
+        if (hit) {
+          selectClip(hit.trackId, hit.clip.id);
+          setContextMenu({
+            clip: hit.clip,
+            trackId: hit.trackId,
+            position: { x: touch.clientX, y: touch.clientY },
+          });
+        }
       }
     }
     touchRef.current = null;
-  };
-
-  const handleClick = (e: React.MouseEvent) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left + scrollX;
-    const time = x / pps;
-    seekTo(Math.max(0, time));
   };
 
   const zoomIn = () => setZoom((z) => Math.min(MAX_ZOOM, z * 1.3));
@@ -421,120 +582,156 @@ export default function Timeline() {
     setScrollX(0);
   };
 
-  const toggleFollow = () => setFollowPlayhead((v) => !v);
-
   return (
-    <div
-      ref={containerRef}
-      className="w-full h-full relative overflow-hidden cursor-crosshair
-                 bg-[#141414] touch-none"
-      onWheel={handleWheel}
-      onClick={handleClick}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
-      <canvas ref={canvasRef} className="absolute inset-0" />
+    <div className="w-full h-full flex flex-col">
+      {/* ── Clip Editing Toolbar ── */}
+      <div className="flex items-center h-7 px-2 gap-1 bg-daw-surface border-b border-daw-border/20 shrink-0">
+        {/* View mode toggle */}
+        <button
+          onClick={() => setViewMode(viewMode === 'arrangement' ? 'session' : 'arrangement')}
+          className={`text-[9px] font-mono uppercase px-2 py-0.5 transition-all
+                     ${viewMode === 'session'
+            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+            : 'bg-daw-bg/40 text-daw-text-muted border border-daw-border/20 hover:text-daw-text-dim'}`}
+          title={viewMode === 'arrangement' ? 'Switch to Session View' : 'Switch to Arrangement View'}
+        >
+          {viewMode === 'arrangement' ? 'ARR' : 'SESSION'}
+        </button>
 
-      {/* Inline AI suggestions overlaid on tracks */}
-      {inlineSuggestions.map((suggestion) => {
-        const trackIndex = tracks.findIndex(
-          (t) => t.id === suggestion.targetTrackId,
-        );
-        if (trackIndex < 0) return null;
-        const topPx = RULER_HEIGHT + trackIndex * TRACK_HEIGHT - scrollY + 4;
-        return (
-          <InlineSuggestion
-            key={suggestion.id}
-            suggestion={suggestion}
-            style={{
-              top: topPx,
-              right: 140,
-            }}
-          />
-        );
-      })}
+        <div className="daw-divider mx-1 shrink-0" />
 
-      {/* Controls overlay */}
-      <div className="absolute top-[24px] right-1 flex items-center gap-0.5 z-10
-                      pointer-events-auto">
+        {/* Clip operations */}
+        <button
+          onClick={() => { if (selectedClips.length > 0) { const pos = getPositionSeconds(); for (const sel of selectedClips) { const tr = tracks.find((t) => t.id === sel.trackId); const cl = tr?.clips.find((c) => c.id === sel.clipId); if (cl && pos > cl.startTime && pos < cl.startTime + cl.duration) splitClipAtTime(sel.trackId, sel.clipId, pos - cl.startTime); } } }}
+          disabled={selectedClips.length === 0}
+          className="text-[9px] px-1.5 py-0.5 text-daw-text-muted hover:text-daw-text-dim
+                     disabled:opacity-20 transition-all bg-daw-bg/40 border border-daw-border/20"
+          title="Split at Playhead (S)"
+        >
+          Split
+        </button>
+        <button
+          onClick={copySelectedClips}
+          disabled={selectedClips.length === 0}
+          className="text-[9px] px-1.5 py-0.5 text-daw-text-muted hover:text-daw-text-dim
+                     disabled:opacity-20 transition-all bg-daw-bg/40 border border-daw-border/20"
+          title="Copy (Ctrl+C)"
+        >
+          Copy
+        </button>
+        <button
+          onClick={() => pasteClips()}
+          className="text-[9px] px-1.5 py-0.5 text-daw-text-muted hover:text-daw-text-dim
+                     disabled:opacity-20 transition-all bg-daw-bg/40 border border-daw-border/20"
+          title="Paste (Ctrl+V)"
+        >
+          Paste
+        </button>
+        <button
+          onClick={deleteSelectedClips}
+          disabled={selectedClips.length === 0}
+          className="text-[9px] px-1.5 py-0.5 text-daw-text-muted hover:text-red-400
+                     disabled:opacity-20 transition-all bg-daw-bg/40 border border-daw-border/20"
+          title="Delete (Del)"
+        >
+          Delete
+        </button>
+
+        <div className="flex-1" />
+
+        {/* Selection info */}
+        {selectedClips.length > 0 && (
+          <span className="text-[9px] text-daw-accent font-mono">
+            {selectedClips.length} clip{selectedClips.length > 1 ? 's' : ''} selected
+          </span>
+        )}
+
+        <div className="daw-divider mx-1 shrink-0" />
+
+        {/* Zoom controls */}
         <button
           onClick={(e) => { e.stopPropagation(); setShowAutomation((v) => !v); }}
-          className={`w-6 h-5 text-xxs flex items-center justify-center
-                     transition-all font-bold
+          className={`w-5 h-5 text-[9px] flex items-center justify-center font-bold transition-all
                      ${showAutomation
-              ? 'bg-red-500/25 text-red-400 border border-red-500/50'
-              : 'bg-black/60 text-daw-text-muted border border-daw-border/40 hover:text-daw-text-dim'}`}
-          title={showAutomation ? 'Hide Automation' : 'Show Automation'}
+            ? 'bg-red-500/25 text-red-400 border border-red-500/50'
+            : 'bg-daw-bg/40 text-daw-text-muted border border-daw-border/20 hover:text-daw-text-dim'}`}
+          title="Automation"
         >
           A
         </button>
         <button
-          onClick={(e) => { e.stopPropagation(); toggleFollow(); }}
-          className={`w-6 h-5 text-xxs flex items-center justify-center
-                     transition-all
+          onClick={(e) => { e.stopPropagation(); setFollowPlayhead((v) => !v); }}
+          className={`w-5 h-5 text-[9px] flex items-center justify-center transition-all
                      ${followPlayhead
-              ? 'bg-daw-accent/25 text-daw-accent border border-daw-accent/50'
-              : 'bg-black/60 text-daw-text-muted border border-daw-border/40 hover:text-daw-text-dim'}`}
-          title={followPlayhead ? 'Follow ON' : 'Follow OFF'}
+            ? 'bg-daw-accent/25 text-daw-accent border border-daw-accent/50'
+            : 'bg-daw-bg/40 text-daw-text-muted border border-daw-border/20 hover:text-daw-text-dim'}`}
+          title="Follow Playhead"
         >
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"
-            stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
-            <path d="M1 5h2l1.5-3 2 6L8 5h1" />
-          </svg>
+          F
         </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); zoomOut(); }}
-          className="w-6 h-5 text-xxs bg-black/60 text-daw-text-muted
-                     border border-daw-border/40 flex items-center justify-center
-                     hover:text-daw-text-dim transition-all"
-          title="Zoom Out"
-        >
-          −
-        </button>
-        <span className="text-xxs text-daw-text-muted font-mono w-8 text-center
-                         bg-black/50 border border-daw-border/30 leading-5">
-          {Math.round(zoom * 100)}%
-        </span>
-        <button
-          onClick={(e) => { e.stopPropagation(); zoomIn(); }}
-          className="w-6 h-5 text-xxs bg-black/60 text-daw-text-muted
-                     border border-daw-border/40 flex items-center justify-center
-                     hover:text-daw-text-dim transition-all"
-          title="Zoom In"
-        >
-          +
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); zoomFit(); }}
-          className="w-6 h-5 text-xxs bg-black/60 text-daw-text-muted
-                     border border-daw-border/40 flex items-center justify-center
-                     hover:text-daw-text-dim transition-all"
-          title="Zoom to Fit"
-        >
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"
-            stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
-            <rect x="1" y="1" width="8" height="8" rx="1" />
-            <line x1="3" y1="5" x2="7" y2="5" />
+        <button onClick={zoomOut} className="w-5 h-5 text-[9px] bg-daw-bg/40 text-daw-text-muted border border-daw-border/20 flex items-center justify-center hover:text-daw-text-dim">−</button>
+        <span className="text-[9px] text-daw-text-muted font-mono w-7 text-center bg-daw-bg/30 border border-daw-border/20 leading-5">{Math.round(zoom * 100)}%</span>
+        <button onClick={zoomIn} className="w-5 h-5 text-[9px] bg-daw-bg/40 text-daw-text-muted border border-daw-border/20 flex items-center justify-center hover:text-daw-text-dim">+</button>
+        <button onClick={zoomFit} className="w-5 h-5 text-[9px] bg-daw-bg/40 text-daw-text-muted border border-daw-border/20 flex items-center justify-center hover:text-daw-text-dim" title="Fit">
+          <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round">
+            <rect x="1" y="1" width="6" height="6" />
+            <line x1="2" y1="4" x2="6" y2="4" />
           </svg>
         </button>
       </div>
 
-      {tracks.length === 0 && (
-        <div className="absolute inset-0 flex flex-col items-center
-                        justify-center text-daw-text-muted pointer-events-none
-                        gap-3">
-          <svg width="48" height="48" viewBox="0 0 48 48" fill="none"
-            stroke="currentColor" strokeWidth="1" className="opacity-20">
-            <rect x="8" y="10" width="32" height="6" rx="2" />
-            <rect x="8" y="20" width="32" height="6" rx="2" />
-            <rect x="8" y="30" width="32" height="6" rx="2" />
-            <line x1="24" y1="4" x2="24" y2="44" strokeDasharray="2 2" />
-          </svg>
-          <span className="text-xs">
-            Drop audio files or add tracks to begin
-          </span>
-        </div>
+      {/* ── Canvas ── */}
+      <div
+        ref={containerRef}
+        className="flex-1 relative overflow-hidden bg-[#141414] touch-none"
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onClick={handleClick}
+        onMouseMove={handleMouseMove}
+        onContextMenu={handleContextMenu}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <canvas ref={canvasRef} className="absolute inset-0" />
+
+        {/* Inline AI suggestions */}
+        {inlineSuggestions.map((suggestion) => {
+          const trackIndex = tracks.findIndex((t) => t.id === suggestion.targetTrackId);
+          if (trackIndex < 0) return null;
+          const topPx = RULER_HEIGHT + trackIndex * TRACK_HEIGHT - scrollY + 4;
+          return (
+            <InlineSuggestion
+              key={suggestion.id}
+              suggestion={suggestion}
+              style={{ top: topPx, right: 8 }}
+            />
+          );
+        })}
+
+        {/* Empty state */}
+        {tracks.length === 0 && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-daw-text-muted pointer-events-none gap-3">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none"
+              stroke="currentColor" strokeWidth="1" className="opacity-20">
+              <rect x="8" y="10" width="32" height="6" />
+              <rect x="8" y="20" width="32" height="6" />
+              <rect x="8" y="30" width="32" height="6" />
+              <line x1="24" y1="4" x2="24" y2="44" strokeDasharray="2 2" />
+            </svg>
+            <span className="text-xs">Drop audio files or add tracks to begin</span>
+          </div>
+        )}
+      </div>
+
+      {/* Context menu */}
+      {contextMenu && (
+        <ClipContextMenu
+          clip={contextMenu.clip}
+          trackId={contextMenu.trackId}
+          position={contextMenu.position}
+          onClose={() => setContextMenu(null)}
+        />
       )}
     </div>
   );

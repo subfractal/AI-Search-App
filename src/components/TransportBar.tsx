@@ -3,7 +3,7 @@ import { useTransportStore } from '@/stores/transport-store';
 import { useSessionStore } from '@/stores/session-store';
 import { useHistoryStore } from '@/stores/history-store';
 import { getPositionSeconds } from '@/services/transport-service';
-import { formatSeconds, formatBarsBeats } from '@/utils/format-time';
+import { formatBarsBeats } from '@/utils/format-time';
 
 import type { BottomPanel } from '@/App';
 
@@ -19,48 +19,121 @@ interface TransportBarProps {
   onPianoRoll?: () => void;
 }
 
+/* ── SVG Icons ── */
+
+function IconRewind() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+      <path d="M7 3v8L1 7l6-4z" />
+      <path d="M13 3v8L7 7l6-4z" />
+    </svg>
+  );
+}
+
+function IconForward() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+      <path d="M1 3v8l6-4-6-4z" />
+      <path d="M7 3v8l6-4-6-4z" />
+    </svg>
+  );
+}
+
 function IconStop() {
   return (
-    <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
-      <rect x="1" y="1" width="8" height="8" rx="1" />
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+      <rect x="2" y="2" width="8" height="8" />
     </svg>
   );
 }
 
 function IconPlay() {
   return (
-    <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
-      <path d="M2 0.5v9l7.5-4.5L2 0.5z" />
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+      <path d="M3 1v12l10-6L3 1z" />
     </svg>
   );
 }
 
 function IconPause() {
   return (
-    <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
-      <rect x="1" y="0.5" width="2.5" height="9" rx="0.5" />
-      <rect x="6.5" y="0.5" width="2.5" height="9" rx="0.5" />
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+      <rect x="1" y="1" width="3" height="10" />
+      <rect x="8" y="1" width="3" height="10" />
     </svg>
   );
 }
 
 function IconRecord() {
   return (
-    <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
-      <circle cx="5" cy="5" r="4.5" />
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+      <circle cx="7" cy="7" r="5" />
     </svg>
   );
 }
 
 function IconLoop() {
   return (
-    <svg width="12" height="12" viewBox="0 0 14 14" fill="none"
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"
       stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
       <path d="M10.5 3.5H5a2.5 2.5 0 000 5h4a2.5 2.5 0 010 5H3.5" />
       <path d="M8.5 1.5l2 2-2 2" />
       <path d="M5.5 12.5l-2-2 2-2" />
     </svg>
   );
+}
+
+function IconMetronome() {
+  return (
+    <svg width="12" height="14" viewBox="0 0 12 14" fill="none"
+      stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
+      <path d="M3 13L5 1h2l2 12H3z" />
+      <line x1="6" y1="4" x2="9" y2="2" />
+    </svg>
+  );
+}
+
+/* ── Master Meter (simple canvas-based) ── */
+function MasterMeter() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    let raf: number;
+    const draw = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      // Simulated meter levels (would connect to real audio analysis)
+      const levelL = 0.3 + Math.random() * 0.15;
+      const levelR = 0.3 + Math.random() * 0.12;
+      const barH = (h - 2) / 2;
+
+      // Left channel
+      const lW = levelL * w;
+      ctx.fillStyle = lW > w * 0.85 ? '#E63946' : lW > w * 0.7 ? '#F77F00' : '#D1D1D1';
+      ctx.fillRect(0, 0, lW, barH);
+      ctx.fillStyle = '#222224';
+      ctx.fillRect(lW, 0, w - lW, barH);
+
+      // Right channel
+      const rW = levelR * w;
+      ctx.fillStyle = rW > w * 0.85 ? '#E63946' : rW > w * 0.7 ? '#F77F00' : '#D1D1D1';
+      ctx.fillRect(0, barH + 2, rW, barH);
+      ctx.fillStyle = '#222224';
+      ctx.fillRect(rW, barH + 2, w - rW, barH);
+
+      raf = requestAnimationFrame(draw);
+    };
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  return <canvas ref={canvasRef} width={80} height={14} className="shrink-0" />;
 }
 
 export default function TransportBar({
@@ -124,6 +197,15 @@ export default function TransportBar({
 
   const isPlaying = state === 'playing';
   const isRecording = state === 'recording';
+  const beatsPerBar = timeSignature.numerator;
+
+  // Format timecode like DKT-00:03:15:20
+  const totalMs = Math.floor(position * 1000);
+  const hours = Math.floor(totalMs / 3600000);
+  const mins = Math.floor((totalMs % 3600000) / 60000);
+  const secs = Math.floor((totalMs % 60000) / 1000);
+  const frames = Math.floor((totalMs % 1000) / (1000 / 30)); // 30fps frames
+  const timecode = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}:${String(frames).padStart(2, '0')}`;
 
   const PanelBtn = ({ panel, label }: { panel: BottomPanel; label: string }) => (
     <button
@@ -139,99 +221,104 @@ export default function TransportBar({
 
   return (
     <div className="bg-daw-transport-bg border-b border-daw-border/40 select-none shrink-0">
-      {/* Row 1: Transport controls + LCD displays */}
-      <div className="flex items-center h-11 px-2 gap-2">
-        {/* Transport buttons */}
-        <div className="flex items-center gap-0.5 bg-daw-bg/50 p-0.5">
+      {/* Row 1: Branding + Transport + LCD + Meter */}
+      <div className="flex items-center h-14 px-3 gap-3">
+
+        {/* ── DKT Branding ── */}
+        <div className="shrink-0 flex flex-col leading-none mr-1">
+          <span className="text-[8px] font-mono uppercase tracking-[3px] text-daw-text-muted/60">
+            DKT Workstation
+          </span>
+          <span className="text-[16px] font-bold tracking-tight text-daw-text leading-none">
+            de-konstrukt
+          </span>
+        </div>
+
+        {/* ── Transport Buttons ── */}
+        <div className="flex items-center gap-px bg-daw-bg/60 p-0.5 shrink-0">
+          {/* Rewind */}
           <button
             onClick={stop}
-            className={`w-8 h-7 flex items-center justify-center
-                       transition-all duration-75
-                       ${state === 'stopped'
-              ? 'text-daw-text bg-daw-surface'
-              : 'text-daw-text-muted/50 hover:text-daw-text-dim'}`}
-            title="Stop"
+            className="w-8 h-8 flex items-center justify-center
+                       text-daw-text-muted/60 hover:text-daw-text-dim transition-all"
+            title="Rewind"
           >
-            <IconStop />
+            <IconRewind />
           </button>
+          {/* Forward */}
+          <button
+            className="w-8 h-8 flex items-center justify-center
+                       text-daw-text-muted/60 hover:text-daw-text-dim transition-all"
+            title="Forward"
+          >
+            <IconForward />
+          </button>
+          {/* Play */}
           <button
             onClick={isPlaying ? pause : play}
-            className={`w-8 h-7 flex items-center justify-center
-                       transition-all duration-75
+            className={`w-9 h-8 flex items-center justify-center transition-all
                        ${isPlaying
               ? 'text-daw-transport-play bg-daw-transport-play/10'
-              : 'text-daw-text-muted/50 hover:text-daw-text-dim'}`}
+              : 'text-daw-text-muted/60 hover:text-daw-text'}`}
             title={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying ? <IconPause /> : <IconPlay />}
           </button>
+          {/* Stop */}
+          <button
+            onClick={stop}
+            className={`w-8 h-8 flex items-center justify-center transition-all
+                       ${state === 'stopped'
+              ? 'text-daw-text bg-daw-surface'
+              : 'text-daw-text-muted/60 hover:text-daw-text-dim'}`}
+            title="Stop"
+          >
+            <IconStop />
+          </button>
+          {/* Pause */}
+          <button
+            onClick={pause}
+            className={`w-8 h-8 flex items-center justify-center transition-all
+                       ${state === 'paused'
+              ? 'text-daw-text bg-daw-surface'
+              : 'text-daw-text-muted/60 hover:text-daw-text-dim'}`}
+            title="Pause"
+          >
+            <IconPause />
+          </button>
+          {/* Record */}
           <button
             onClick={toggleRecord}
-            className={`w-8 h-7 flex items-center justify-center
-                       transition-all duration-75
+            className={`w-9 h-8 flex items-center justify-center transition-all
                        ${isRecording
-              ? 'text-daw-transport-record bg-daw-transport-record/10 animate-blink-signal'
-              : 'text-daw-text-muted/50 hover:text-daw-transport-record/60'}`}
+              ? 'text-daw-transport-record bg-daw-transport-record/15 animate-blink-signal'
+              : 'text-daw-text-muted/40 hover:text-daw-transport-record/70'}`}
             title="Record"
           >
             <IconRecord />
           </button>
         </div>
 
-        {/* Undo / Redo */}
-        <div className="flex items-center gap-0.5">
-          <button
-            onClick={undo}
-            disabled={undoCount === 0}
-            className="w-6 h-7 flex items-center justify-center
-                       text-daw-text-muted/50 hover:text-daw-text-dim transition-all
-                       disabled:opacity-15"
-            title="Undo"
-          >
-            <svg width="10" height="10" viewBox="0 0 12 12" fill="none"
-              stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <path d="M3 4l-2 2 2 2" />
-              <path d="M1 6h7a3 3 0 010 6H6" />
-            </svg>
-          </button>
-          <button
-            onClick={redo}
-            disabled={redoCount === 0}
-            className="w-6 h-7 flex items-center justify-center
-                       text-daw-text-muted/50 hover:text-daw-text-dim transition-all
-                       disabled:opacity-15"
-            title="Redo"
-          >
-            <svg width="10" height="10" viewBox="0 0 12 12" fill="none"
-              stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <path d="M9 4l2 2-2 2" />
-              <path d="M11 6H4a3 3 0 000 6h2" />
-            </svg>
-          </button>
-        </div>
-
-        {/* LCD Position Displays */}
-        <div className="flex items-center gap-1.5">
-          <div className="daw-lcd px-2 py-1 flex flex-col items-center min-w-[72px]">
-            <span className="text-[7px] text-daw-lcd-dim uppercase tracking-widest leading-none mb-0.5">
-              Time
+        {/* ── Large LCD Timecode Display ── */}
+        <div className="daw-lcd px-3 py-1.5 flex flex-col items-start min-w-[200px] shadow-lcd shrink-0">
+          <span className="text-[22px] font-mono leading-none text-daw-lcd-text tracking-wider">
+            DKT-{timecode}
+          </span>
+          <div className="flex items-center gap-3 mt-0.5">
+            <span className="text-[9px] font-mono text-daw-lcd-dim">
+              DKT-{formatBarsBeats(position, bpm, beatsPerBar)}:000
             </span>
-            <span className="text-sm font-mono leading-none text-daw-lcd-text">
-              {formatSeconds(position)}
+            <span className="text-[9px] font-mono text-daw-lcd-text">
+              {bpm}.00 BPM
             </span>
-          </div>
-          <div className="daw-lcd px-2 py-1 flex flex-col items-center min-w-[52px]">
-            <span className="text-[7px] text-daw-lcd-dim uppercase tracking-widest leading-none mb-0.5">
-              Bar
-            </span>
-            <span className="text-sm font-mono leading-none text-daw-lcd-text">
-              {formatBarsBeats(position, bpm, 4)}
+            <span className="text-[9px] font-mono text-daw-lcd-dim">
+              {timeSignature.numerator}/{timeSignature.denominator}
             </span>
           </div>
         </div>
 
-        {/* BPM LCD */}
-        <div className="daw-lcd px-2 py-1 flex flex-col items-center min-w-[52px]">
+        {/* ── BPM Input ── */}
+        <div className="daw-lcd px-2 py-1 flex flex-col items-center min-w-[56px] shrink-0">
           <span className="text-[7px] text-daw-lcd-dim uppercase tracking-widest leading-none mb-0.5">
             BPM
           </span>
@@ -243,20 +330,19 @@ export default function TransportBar({
             onKeyDown={(e) => {
               if (e.key === 'Enter') e.currentTarget.blur();
             }}
-            className="w-10 text-center text-sm font-mono bg-transparent
-                       border-none text-daw-accent focus:outline-none
+            className="w-12 text-center text-sm font-mono bg-transparent
+                       border-none text-daw-lcd-text focus:outline-none
                        leading-none tabular-nums"
             min={20}
             max={999}
           />
         </div>
 
-        {/* Loop / Metronome / Time Sig */}
-        <div className="flex items-center gap-0.5">
+        {/* ── Loop / Metronome / Time Sig ── */}
+        <div className="flex items-center gap-0.5 shrink-0">
           <button
             onClick={toggleLoop}
-            className={`w-7 h-7 flex items-center justify-center
-                       transition-all duration-75
+            className={`w-8 h-8 flex items-center justify-center transition-all
                        ${loopEnabled
               ? 'text-daw-accent bg-daw-accent/10'
               : 'text-daw-text-muted/40 hover:text-daw-text-dim'}`}
@@ -264,37 +350,69 @@ export default function TransportBar({
           >
             <IconLoop />
           </button>
-
           <button
             onClick={toggleMetronome}
-            className={`w-7 h-7 flex items-center justify-center
-                       transition-all duration-75
+            className={`w-8 h-8 flex items-center justify-center transition-all
                        ${metronomeEnabled
               ? 'text-daw-accent bg-daw-accent/10'
               : 'text-daw-text-muted/40 hover:text-daw-text-dim'}`}
             title="Toggle Metronome"
           >
-            <svg width="10" height="12" viewBox="0 0 12 14" fill="none"
-              stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
-              <path d="M3 13L5 1h2l2 12H3z" />
-              <line x1="6" y1="4" x2="9" y2="2" />
-            </svg>
+            <IconMetronome />
           </button>
-
           <button
             onClick={cycleTimeSig}
-            className="h-7 px-1.5 flex items-center justify-center
+            className="h-8 px-2 flex items-center justify-center
                        text-[10px] font-mono text-daw-text-muted/50 hover:text-daw-text-dim
-                       transition-all duration-75 bg-daw-bg/40 border border-daw-border/20"
+                       transition-all bg-daw-bg/40 border border-daw-border/20"
             title="Cycle Time Signature"
           >
             {timeSignature.numerator}/{timeSignature.denominator}
           </button>
         </div>
+
+        {/* ── Undo / Redo ── */}
+        <div className="flex items-center gap-0.5 shrink-0">
+          <button
+            onClick={undo}
+            disabled={undoCount === 0}
+            className="w-7 h-8 flex items-center justify-center
+                       text-daw-text-muted/50 hover:text-daw-text-dim transition-all
+                       disabled:opacity-15"
+            title="Undo"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+              stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <path d="M3 4l-2 2 2 2" />
+              <path d="M1 6h7a3 3 0 010 6H6" />
+            </svg>
+          </button>
+          <button
+            onClick={redo}
+            disabled={redoCount === 0}
+            className="w-7 h-8 flex items-center justify-center
+                       text-daw-text-muted/50 hover:text-daw-text-dim transition-all
+                       disabled:opacity-15"
+            title="Redo"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+              stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <path d="M9 4l2 2-2 2" />
+              <path d="M11 6H4a3 3 0 000 6h2" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex-1" />
+
+        {/* ── Master Meter ── */}
+        <div className="flex items-center gap-2 shrink-0">
+          <MasterMeter />
+        </div>
       </div>
 
       {/* Row 2: Panel toggles */}
-      <div className="flex items-center h-7 px-2 gap-1 border-t border-daw-border/15
+      <div className="flex items-center h-7 px-3 gap-1 border-t border-daw-border/15
                       overflow-x-auto scrollbar-none">
         <button
           onClick={onToggleTracks}
@@ -341,6 +459,9 @@ export default function TransportBar({
         </button>
 
         <div className="flex-1" />
+
+        {/* de-konstrukt sparkle logo */}
+        <span className="text-[10px] text-daw-text-muted/30 font-mono mr-1 shrink-0">DKT</span>
 
         <button
           onClick={onToggleAI}

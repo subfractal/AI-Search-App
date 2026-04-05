@@ -19,10 +19,23 @@ export interface ZoneVisibility {
   lowerZonePanel: BottomPanel;
 }
 
+export interface SelectedClip {
+  trackId: string;
+  clipId: string;
+}
+
+interface ClipboardClip {
+  clip: Clip;
+  sourceTrackId: string;
+}
+
 interface SessionStore {
   config: SessionConfig;
   tracks: Track[];
   selectedTrackId: string | null;
+  selectedClips: SelectedClip[];
+  clipboard: ClipboardClip | null;
+  viewMode: 'arrangement' | 'session';
   zones: ZoneVisibility;
 
   setConfig: (config: Partial<SessionConfig>) => void;
@@ -31,6 +44,15 @@ interface SessionStore {
   removeTrack: (id: string) => void;
   updateTrack: (id: string, updates: Partial<Track>) => void;
   selectTrack: (id: string | null) => void;
+  selectClip: (trackId: string, clipId: string, multi?: boolean) => void;
+  clearClipSelection: () => void;
+  copySelectedClips: () => void;
+  pasteClips: (targetTrackId?: string, atTime?: number) => void;
+  deleteSelectedClips: () => void;
+  moveClipTime: (trackId: string, clipId: string, newStartTime: number) => void;
+  resizeClipDuration: (trackId: string, clipId: string, newDuration: number) => void;
+  splitClipAtTime: (trackId: string, clipId: string, splitTime: number) => void;
+  setViewMode: (mode: 'arrangement' | 'session') => void;
   addClipToTrack: (trackId: string, clip: Clip) => void;
   removeClip: (trackId: string, clipId: string) => void;
   reorderTracks: (fromIndex: number, toIndex: number) => void;
@@ -54,6 +76,9 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   config: DEFAULT_SESSION_CONFIG,
   tracks: [],
   selectedTrackId: null,
+  selectedClips: [],
+  clipboard: null,
+  viewMode: 'arrangement',
   zones: {
     leftZone: true,
     lowerZone: true,
@@ -123,6 +148,130 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     })),
 
   selectTrack: (id) => set({ selectedTrackId: id }),
+
+  selectClip: (trackId, clipId, multi) => {
+    set((state) => {
+      if (multi) {
+        const exists = state.selectedClips.some((s) => s.clipId === clipId);
+        return {
+          selectedClips: exists
+            ? state.selectedClips.filter((s) => s.clipId !== clipId)
+            : [...state.selectedClips, { trackId, clipId }],
+          selectedTrackId: trackId,
+        };
+      }
+      return { selectedClips: [{ trackId, clipId }], selectedTrackId: trackId };
+    });
+  },
+
+  clearClipSelection: () => set({ selectedClips: [] }),
+
+  copySelectedClips: () => {
+    const { selectedClips, tracks } = get();
+    if (selectedClips.length === 0) return;
+    const sel = selectedClips[0]!;
+    const track = tracks.find((t) => t.id === sel.trackId);
+    const clip = track?.clips.find((c) => c.id === sel.clipId);
+    if (clip) {
+      set({ clipboard: { clip, sourceTrackId: sel.trackId } });
+    }
+  },
+
+  pasteClips: (targetTrackId, atTime) => {
+    const { clipboard, selectedTrackId, tracks } = get();
+    if (!clipboard) return;
+    const tid = targetTrackId ?? selectedTrackId;
+    if (!tid) return;
+    const track = tracks.find((t) => t.id === tid);
+    if (!track) return;
+    const newClip = {
+      ...clipboard.clip,
+      id: generateId('clip'),
+      trackId: tid,
+      startTime: atTime ?? (track.clips.length > 0
+        ? Math.max(...track.clips.map((c) => c.startTime + c.duration))
+        : 0),
+    };
+    set((state) => ({
+      tracks: state.tracks.map((t) =>
+        t.id === tid ? { ...t, clips: [...t.clips, newClip] } : t,
+      ),
+    }));
+  },
+
+  deleteSelectedClips: () => {
+    const { selectedClips } = get();
+    if (selectedClips.length === 0) return;
+    set((state) => ({
+      tracks: state.tracks.map((t) => {
+        const clipIdsToRemove = selectedClips
+          .filter((s) => s.trackId === t.id)
+          .map((s) => s.clipId);
+        if (clipIdsToRemove.length === 0) return t;
+        return { ...t, clips: t.clips.filter((c) => !clipIdsToRemove.includes(c.id)) };
+      }),
+      selectedClips: [],
+    }));
+  },
+
+  moveClipTime: (trackId, clipId, newStartTime) =>
+    set((state) => ({
+      tracks: state.tracks.map((t) =>
+        t.id === trackId
+          ? { ...t, clips: t.clips.map((c) =>
+              c.id === clipId ? { ...c, startTime: Math.max(0, newStartTime) } : c,
+            ) }
+          : t,
+      ),
+    })),
+
+  resizeClipDuration: (trackId, clipId, newDuration) =>
+    set((state) => ({
+      tracks: state.tracks.map((t) =>
+        t.id === trackId
+          ? { ...t, clips: t.clips.map((c) =>
+              c.id === clipId ? { ...c, duration: Math.max(0.1, newDuration) } : c,
+            ) }
+          : t,
+      ),
+    })),
+
+  splitClipAtTime: (trackId, clipId, splitTime) => {
+    const track = get().tracks.find((t) => t.id === trackId);
+    const clip = track?.clips.find((c) => c.id === clipId);
+    if (!clip || splitTime <= 0 || splitTime >= clip.duration) return;
+
+    const leftClip = { ...clip, id: generateId('clip'), duration: splitTime };
+    const rightClip = {
+      ...clip,
+      id: generateId('clip'),
+      startTime: clip.startTime + splitTime,
+      duration: clip.duration - splitTime,
+    };
+
+    // For MIDI clips, filter notes into left/right
+    if ('notes' in clip) {
+      (leftClip as any).notes = clip.notes.filter((n: any) => n.startTime < splitTime);
+      (rightClip as any).notes = clip.notes
+        .filter((n: any) => n.startTime >= splitTime)
+        .map((n: any) => ({ ...n, startTime: n.startTime - splitTime }));
+    }
+
+    // For audio clips, adjust offset
+    if ('buffer' in clip && 'offset' in clip) {
+      (rightClip as any).offset = ((clip as any).offset ?? 0) + splitTime;
+    }
+
+    set((state) => ({
+      tracks: state.tracks.map((t) =>
+        t.id === trackId
+          ? { ...t, clips: [...t.clips.filter((c) => c.id !== clipId), leftClip, rightClip] }
+          : t,
+      ),
+    }));
+  },
+
+  setViewMode: (mode) => set({ viewMode: mode }),
 
   addClipToTrack: (trackId, clip) => {
     set((state) => ({

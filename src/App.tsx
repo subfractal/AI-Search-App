@@ -257,28 +257,35 @@ export default function App() {
         />
 
         <div className="flex flex-1 min-h-0 overflow-hidden">
+          {/* ── Left Zone: Track List + Inspector ── */}
           {showTracks && (
-            <div className="flex flex-col shrink-0 w-36 md:w-48 border-r border-daw-border/30">
-              <div className="flex-1 min-h-0">
+            <div className="flex flex-col shrink-0 w-40 md:w-52 border-r border-daw-border/30 bg-daw-surface">
+              <div className="flex-1 min-h-0 overflow-y-auto">
                 <TrackList />
               </div>
-              <div className="border-t border-daw-border/20 h-40 shrink-0 overflow-hidden bg-daw-surface">
-                <InspectorPanel />
-              </div>
+              {!isMobile && (
+                <div className="border-t border-daw-border/20 h-44 shrink-0 overflow-y-auto bg-daw-surface">
+                  <InspectorPanel />
+                </div>
+              )}
             </div>
           )}
 
+          {/* ── Center Zone: Timeline ── */}
           <div className="flex-1 min-w-0">
             <Timeline />
           </div>
 
+          {/* ── Right Zone: AI Coproducer + Inspector/Media Bay ── */}
           {showAI && (
-            <div className={`border-l border-daw-border/30 shrink-0 overflow-y-auto
+            <div className={`border-l border-daw-border/30 shrink-0 flex flex-col
                             ${isMobile
-                ? 'absolute right-0 top-[68px] bottom-0 w-64 z-30 bg-daw-ai-bg shadow-xl'
-                : 'w-60'}`}
+                ? 'absolute right-0 top-[84px] bottom-0 w-72 z-30 bg-daw-ai-bg shadow-xl'
+                : 'w-64'}`}
             >
-              <AISidebar />
+              <div className="flex-1 min-h-0 overflow-y-auto">
+                <AISidebar />
+              </div>
             </div>
           )}
         </div>
