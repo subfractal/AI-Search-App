@@ -439,6 +439,7 @@ export default function TransportBar({
         <PanelBtn panel="mixer" label="Mix" />
         <PanelBtn panel="instrument" label="Inst" />
         <PanelBtn panel="effects" label="FX" />
+        <PanelBtn panel="clip-view" label="Clip" />
         <PanelBtn panel="routing" label="Rte" />
         <PanelBtn panel="warp" label="Wrp" />
         <PanelBtn panel="browser" label="Lib" />
