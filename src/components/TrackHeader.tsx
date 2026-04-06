@@ -252,6 +252,7 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
           <button
             aria-label={`Mute ${track.name}`}
             aria-pressed={track.mute}
+            title={`Mute ${track.name} (M)`}
             className={`w-7 h-6 text-[9px] font-bold font-mono transition-all
                        flex items-center justify-center
                        ${track.mute
@@ -268,6 +269,7 @@ export default function TrackHeader({ trackId }: TrackHeaderProps) {
           <button
             aria-label={`Solo ${track.name}`}
             aria-pressed={track.solo}
+            title={`Solo ${track.name} (Alt+O)`}
             className={`w-7 h-6 text-[9px] font-bold font-mono transition-all
                        flex items-center justify-center
                        ${track.solo

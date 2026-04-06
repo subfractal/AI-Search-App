@@ -235,9 +235,11 @@ export default function TransportBar({
   const isPlaying = state === 'playing';
   const isRecording = state === 'recording';
 
-  const PanelBtn = ({ panel, label }: { panel: BottomPanel; label: string }) => (
+  const PanelBtn = ({ panel, label, title }: { panel: BottomPanel; label: string; title?: string }) => (
     <button
       onClick={() => panel ? onTogglePanel(panel) : undefined}
+      title={title}
+      aria-label={title}
       className={`text-[10px] font-medium px-2 py-0.5 transition-all duration-75
                  ${activePanel === panel
       ? 'bg-daw-accent/15 text-daw-accent border border-daw-accent/30'
@@ -486,6 +488,8 @@ export default function TransportBar({
         style={{ borderTop: '1px solid #1a1a1c', background: '#080808' }}>
         <button
           onClick={onToggleTracks}
+          title="Toggle track list (Shift+Trk)"
+          aria-label="Toggle track list"
           className={`text-[10px] font-medium px-2 py-0.5 transition-all duration-75 shrink-0
                      ${showTracks
       ? 'bg-daw-accent/15 text-daw-accent border border-daw-accent/30'
@@ -493,16 +497,18 @@ export default function TransportBar({
         >
           Trk
         </button>
-        <PanelBtn panel="mixer" label="Mix" />
-        <PanelBtn panel="instrument" label="Inst" />
-        <PanelBtn panel="effects" label="FX" />
-        <PanelBtn panel="clip-view" label="Clip" />
-        <PanelBtn panel="automation" label="Auto" />
-        <PanelBtn panel="routing" label="Rte" />
-        <PanelBtn panel="warp" label="Wrp" />
-        <PanelBtn panel="browser" label="Lib" />
+        <PanelBtn panel="mixer" label="Mix" title="Mixer - View master and track levels" />
+        <PanelBtn panel="instrument" label="Inst" title="Instrument Rack - Manage instruments" />
+        <PanelBtn panel="effects" label="FX" title="Effects Rack - Apply audio effects" />
+        <PanelBtn panel="clip-view" label="Clip" title="Clip Editor - Edit audio clips" />
+        <PanelBtn panel="automation" label="Auto" title="Automation - Create parameter curves" />
+        <PanelBtn panel="routing" label="Rte" title="Routing - Connect tracks and buses" />
+        <PanelBtn panel="warp" label="Wrp" title="Warp - Time-stretch audio" />
+        <PanelBtn panel="browser" label="Lib" title="Browser - Browse samples and presets" />
         <button
           onClick={onPianoRoll}
+          title="Piano Roll - Edit MIDI notes"
+          aria-label="Piano Roll"
           className={`text-[10px] font-medium px-2 py-0.5 transition-all duration-75 shrink-0
                      ${activePanel === 'piano-roll'
       ? 'bg-daw-accent/15 text-daw-accent border border-daw-accent/30'
@@ -515,6 +521,8 @@ export default function TransportBar({
 
         <button
           onClick={onExport}
+          title="Export session to audio file (Ctrl+E)"
+          aria-label="Export"
           className="text-[10px] font-medium px-2 py-0.5 text-daw-text-muted
                      hover:text-daw-text-dim bg-daw-panel/50 border border-transparent
                      hover:border-daw-border/30 transition-all duration-75 shrink-0"
@@ -523,6 +531,8 @@ export default function TransportBar({
         </button>
         <button
           onClick={onHistory}
+          title="Show undo/redo history"
+          aria-label="History"
           className="text-[10px] font-medium px-2 py-0.5 text-daw-text-muted
                      hover:text-daw-text-dim bg-daw-panel/50 border border-transparent
                      hover:border-daw-border/30 transition-all duration-75 shrink-0"
@@ -533,10 +543,12 @@ export default function TransportBar({
         <div className="flex-1" />
 
         {/* de-konstrukt sparkle logo */}
-        <span className="text-[10px] text-daw-text-muted/30 font-mono mr-1 shrink-0">dkst</span>
+        <span className="text-[10px] text-daw-text-muted/30 font-mono mr-1 shrink-0 cursor-help" title="de-konstrukt v0.1">dkst</span>
 
         <button
           onClick={onToggleAI}
+          title="Toggle AI coproducer panel"
+          aria-label="AI Assistant"
           className={`text-[10px] font-medium px-2.5 py-0.5 transition-all duration-75 shrink-0
                      ${showAI
       ? 'bg-daw-ai-accent/15 text-daw-ai-accent border border-daw-ai-accent/30'
