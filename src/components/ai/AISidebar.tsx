@@ -103,6 +103,7 @@ export default function AISidebar() {
   const appliedSuggestions = useMemo(() => suggestions.filter((s) => s.status === 'applied'), [suggestions]);
   const selectedTrack = useMemo(() => tracks.find((t) => t.id === selectedTrackId) ?? null, [tracks, selectedTrackId]);
   const selectedLocked = !!selectedTrackId && lockedTrackIds.includes(selectedTrackId);
+  const hasAudioTracks = useMemo(() => tracks.some((t) => t.type === 'audio'), [tracks]);
 
   return (
     <div className="h-full flex flex-col bg-daw-ai-bg">
@@ -155,13 +156,14 @@ export default function AISidebar() {
           <div className="px-3 py-2.5">
             <button
               onClick={() => runAnalysis()}
-              disabled={analyzing || tracks.length === 0}
+              disabled={analyzing || tracks.length === 0 || !hasAudioTracks}
               className={`w-full text-xxs py-2 font-bold font-mono uppercase tracking-wider text-white
                          disabled:opacity-30 disabled:cursor-not-allowed transition-all
                          ${analyzing
           ? 'bg-daw-ai-suggestion/50 animate-blink-signal'
           : 'bg-daw-ai-suggestion/80 hover:bg-daw-ai-suggestion'}`}
               style={{ border: '1px solid rgba(230,57,70,0.3)' }}
+              title={!hasAudioTracks && tracks.length > 0 ? 'Analyze Mix requires at least one audio track' : ''}
             >
               {analyzing ? (
                 <span className="flex items-center justify-center gap-1.5">
@@ -172,6 +174,11 @@ export default function AISidebar() {
                 </span>
               ) : 'Analyze Mix'}
             </button>
+            {!hasAudioTracks && tracks.length > 0 && (
+              <div className="mt-2 p-2 bg-daw-bg/60 border border-daw-border/30 rounded text-[9px] text-daw-text-muted">
+                Analyze Mix requires at least one audio track.
+              </div>
+            )}
             <button
               onClick={() => resetAppliedSignatures()}
               className="w-full mt-1 text-xxs py-1 font-medium bg-daw-bg/60 text-daw-text-muted hover:text-daw-text-dim"
