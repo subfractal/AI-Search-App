@@ -31,72 +31,54 @@ export async function loadAudioFile(file: File): Promise<AudioBuffer> {
     console.warn(`[DAW] Warning: File "${file.name}" is ${(file.size / 1024 / 1024).toFixed(1)}MB — very large files may take time to decode`);
   }
 
-  // Ensure audio context is started before decoding
-  await initAudioContext();
-
-  // Ensure we have a usable AudioContext
-  let ctx = getAudioContext();
-
-  // If context is closed (mobile Safari/Chrome after inactivity), create a new one
-  if (ctx.state === 'closed') {
-    console.warn('[DAW] AudioContext was closed — creating a new one');
-    const newCtx = new AudioContext();
-    Tone.setContext(new Tone.Context(newCtx));
-    audioContextStarted = true;
-    ctx = newCtx;
-  }
-
-  // Resume if suspended (mobile browsers, backgrounded tabs)
-  if (ctx.state === 'suspended') {
-    try {
-      ctx.resume(); // fire-and-forget; decodeAudioData works on suspended context
-    } catch (err) {
-      console.warn('[DAW] Failed to resume audio context:', err);
-    }
-  }
-
   const arrayBuffer = await file.arrayBuffer();
   if (arrayBuffer.byteLength === 0) {
     throw new Error(`File "${file.name}" is empty`);
   }
 
-  // Hard timeout wrapper — never let decodeAudioData hang forever
-  const DECODE_TIMEOUT_MS = 15000;
-  function decodeWithTimeout(buf: ArrayBuffer): Promise<AudioBuffer> {
-    return new Promise<AudioBuffer>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        reject(new Error(
-          `Decoding "${file.name}" timed out after ${DECODE_TIMEOUT_MS / 1000}s — please try again`
-        ));
-      }, DECODE_TIMEOUT_MS);
+  // ── KEY FIX: Decode on a FRESH AudioContext ──
+  // The main Tone.js context may be suspended/closed on mobile and
+  // ctx.resume() can hang when called outside a trusted user gesture.
+  // A brand-new AudioContext starts in "running" state on desktop and
+  // "suspended" on mobile, but decodeAudioData is purely CPU-side and
+  // does NOT require the context to be running. This completely
+  // sidesteps the resume() hang.
+  const DECODE_TIMEOUT_MS = 10000;
 
-      ctx.decodeAudioData(buf).then(
-        (decoded) => { clearTimeout(timer); resolve(decoded); },
-        (err) => { clearTimeout(timer); reject(err); },
-      );
-    });
+  async function decodeOnFreshContext(buf: ArrayBuffer): Promise<AudioBuffer> {
+    const tempCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    try {
+      const decoded = await Promise.race<AudioBuffer>([
+        tempCtx.decodeAudioData(buf),
+        new Promise<AudioBuffer>((_, reject) =>
+          setTimeout(() => reject(new Error(
+            `Could not load audio file — decoding timed out after ${DECODE_TIMEOUT_MS / 1000}s. Please try a different format or try again.`
+          )), DECODE_TIMEOUT_MS)
+        ),
+      ]);
+      return decoded;
+    } finally {
+      // Discard the temporary context to free resources
+      try { tempCtx.close(); } catch { /* ignore */ }
+    }
   }
 
-  // decodeAudioData can throw or return null on some browsers — wrap defensively
+  // First attempt
   try {
-    return await decodeWithTimeout(arrayBuffer.slice(0));
+    return await decodeOnFreshContext(arrayBuffer.slice(0));
   } catch (err) {
-    // Retry once with a fresh copy (some browsers corrupt the buffer on first decode failure)
-    console.warn(`[DAW] Retrying decode for "${file.name}":`, err);
+    console.warn(`[DAW] First decode attempt failed for "${file.name}":`, err);
+  }
 
-    // On retry, also try resuming context again (user gesture may now be available)
-    if (ctx.state === 'suspended') {
-      try { await ctx.resume(); } catch { /* ignore */ }
-    }
-
+  // Retry once with a fresh ArrayBuffer copy
+  try {
     const copy = await file.arrayBuffer();
-    try {
-      return await decodeWithTimeout(copy);
-    } catch (retryErr) {
-      throw new Error(
-        `Failed to decode "${file.name}" — ${retryErr instanceof Error ? retryErr.message : String(retryErr)}`
-      );
-    }
+    return await decodeOnFreshContext(copy);
+  } catch (retryErr) {
+    throw new Error(
+      `Could not load "${file.name}" — please try a different format or try again. ` +
+      `(${retryErr instanceof Error ? retryErr.message : String(retryErr)})`
+    );
   }
 }
 
