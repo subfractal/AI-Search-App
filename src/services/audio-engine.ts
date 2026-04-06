@@ -31,10 +31,22 @@ export async function loadAudioFile(file: File): Promise<AudioBuffer> {
     console.warn(`[DAW] Warning: File "${file.name}" is ${(file.size / 1024 / 1024).toFixed(1)}MB — very large files may take time to decode`);
   }
 
-  const arrayBuffer = await file.arrayBuffer();
-  if (arrayBuffer.byteLength === 0) {
+  const rawBuffer = await file.arrayBuffer();
+  if (rawBuffer.byteLength === 0) {
     throw new Error(`File "${file.name}" is empty`);
   }
+
+  // ── MP3 ID3 tag stripping ──
+  // MP3 files often have ID3v2 headers (metadata, album art) that can
+  // confuse some browser decoders. Strip the ID3v2 header if present.
+  const arrayBuffer = stripId3Header(rawBuffer);
+
+  // ── Adaptive timeout based on file size ──
+  // WAV decoding is fast (~1-2s). MP3/FLAC decoding is CPU-intensive
+  // and can take 15-25s for large files (16MB+). Scale timeout accordingly.
+  const fileSizeMB = file.size / (1024 * 1024);
+  const DECODE_TIMEOUT_MS = Math.max(15000, Math.min(60000, Math.round(fileSizeMB * 2000)));
+  console.log(`[DAW] Decoding "${file.name}" (${fileSizeMB.toFixed(1)}MB) — timeout ${DECODE_TIMEOUT_MS / 1000}s`);
 
   // ── KEY FIX: Decode on a FRESH AudioContext ──
   // The main Tone.js context may be suspended/closed on mobile and
@@ -43,8 +55,6 @@ export async function loadAudioFile(file: File): Promise<AudioBuffer> {
   // "suspended" on mobile, but decodeAudioData is purely CPU-side and
   // does NOT require the context to be running. This completely
   // sidesteps the resume() hang.
-  const DECODE_TIMEOUT_MS = 10000;
-
   async function decodeOnFreshContext(buf: ArrayBuffer): Promise<AudioBuffer> {
     const tempCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
     try {
@@ -52,34 +62,62 @@ export async function loadAudioFile(file: File): Promise<AudioBuffer> {
         tempCtx.decodeAudioData(buf),
         new Promise<AudioBuffer>((_, reject) =>
           setTimeout(() => reject(new Error(
-            `Could not load audio file — decoding timed out after ${DECODE_TIMEOUT_MS / 1000}s. Please try a different format or try again.`
+            `Decoding timed out after ${DECODE_TIMEOUT_MS / 1000}s — file may be too large or in an unsupported format`
           )), DECODE_TIMEOUT_MS)
         ),
       ]);
       return decoded;
     } finally {
-      // Discard the temporary context to free resources
       try { tempCtx.close(); } catch { /* ignore */ }
     }
   }
 
-  // First attempt
+  // First attempt — .slice(0) because decodeAudioData transfers buffer ownership
   try {
     return await decodeOnFreshContext(arrayBuffer.slice(0));
   } catch (err) {
     console.warn(`[DAW] First decode attempt failed for "${file.name}":`, err);
   }
 
-  // Retry once with a fresh ArrayBuffer copy
+  // Retry with a completely fresh ArrayBuffer from the File object
+  // (not a reference to the original — re-read from the File)
   try {
-    const copy = await file.arrayBuffer();
-    return await decodeOnFreshContext(copy);
+    const freshRead = await file.arrayBuffer();
+    const freshBuf = stripId3Header(freshRead);
+    return await decodeOnFreshContext(freshBuf.slice(0));
   } catch (retryErr) {
     throw new Error(
       `Could not load "${file.name}" — please try a different format or try again. ` +
       `(${retryErr instanceof Error ? retryErr.message : String(retryErr)})`
     );
   }
+}
+
+/**
+ * Strip ID3v2 header from MP3 data if present.
+ * ID3v2 tags at the start of an MP3 can confuse some browser decoders.
+ * Returns the buffer starting at the first audio frame.
+ */
+function stripId3Header(buffer: ArrayBuffer): ArrayBuffer {
+  const view = new Uint8Array(buffer);
+
+  // ID3v2 header: starts with "ID3" (0x49, 0x44, 0x33)
+  if (view.length > 10 && view[0] === 0x49 && view[1] === 0x44 && view[2] === 0x33) {
+    // ID3v2 size is stored in bytes 6-9 as syncsafe integers (7 bits per byte)
+    const size =
+      ((view[6]! & 0x7F) << 21) |
+      ((view[7]! & 0x7F) << 14) |
+      ((view[8]! & 0x7F) << 7) |
+      (view[9]! & 0x7F);
+    const headerSize = 10 + size; // 10-byte header + tag body
+
+    if (headerSize < buffer.byteLength) {
+      console.log(`[DAW] Stripped ${headerSize} byte ID3v2 header`);
+      return buffer.slice(headerSize);
+    }
+  }
+
+  return buffer;
 }
 
 export async function loadAudioFromUrl(url: string): Promise<AudioBuffer> {
