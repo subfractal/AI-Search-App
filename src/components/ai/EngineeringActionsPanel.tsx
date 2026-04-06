@@ -1,11 +1,21 @@
 /**
  * Engineering Actions Panel — displays and resolves audio engineering issues.
+ * Includes quick action buttons for common engineering tasks.
  */
 
 import { useState } from 'react';
 import { useSessionStore } from '@/stores/session-store';
-import { runEngineeringScan, autoFixIssues } from '@/services/ai/engineering-actions';
+import { useMixerStore } from '@/stores/mixer-store';
+import {
+  runEngineeringScan,
+  autoFixIssues,
+  detectLeadingSilence,
+  detectTrailingSilence,
+  detectClicks,
+} from '@/services/ai/engineering-actions';
 import type { EngineeringReport, EngineeringIssue } from '@/services/ai/engineering-actions';
+import { isAudioClip } from '@/types/audio';
+import type { AudioClip } from '@/types/audio';
 
 const SEVERITY_COLORS = {
   critical: 'text-red-400 bg-red-400/10',
@@ -22,10 +32,38 @@ const TYPE_LABELS: Record<EngineeringIssue['type'], string> = {
   'low-level': 'Low Level',
 };
 
+function ActionButton({
+  label,
+  onClick,
+  disabled,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="text-[8px] py-1 px-1.5 font-mono uppercase tracking-wider
+                 bg-daw-bg/60 text-daw-text-dim hover:bg-daw-panel hover:text-amber-400
+                 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+    >
+      {label}
+    </button>
+  );
+}
+
 export default function EngineeringActionsPanel() {
   const tracks = useSessionStore((s) => s.tracks);
   const [report, setReport] = useState<EngineeringReport | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+  const showStatus = (msg: string) => {
+    setStatusMessage(msg);
+    setTimeout(() => setStatusMessage(null), 4000);
+  };
 
   const handleScan = () => {
     if (tracks.length === 0) return;
@@ -40,19 +78,236 @@ export default function EngineeringActionsPanel() {
 
   const handleAutoFix = () => {
     if (!report) return;
-    autoFixIssues(report);
-    // Re-scan after fixing
+    const fixed = autoFixIssues(report);
     const newReport = runEngineeringScan();
     setReport(newReport);
+    showStatus(`Auto-fixed ${fixed} issue${fixed !== 1 ? 's' : ''}`);
   };
 
   const handleFixSingle = (issue: EngineeringIssue) => {
     if (issue.fixAction) {
       issue.fixAction();
-      // Re-scan
       const newReport = runEngineeringScan();
       setReport(newReport);
     }
+  };
+
+  const handleTrimSilence = () => {
+    const session = useSessionStore.getState();
+    let trimmedCount = 0;
+
+    for (const track of session.tracks) {
+      if (track.mute) continue;
+      const audioClip = track.clips.find(isAudioClip) as AudioClip | undefined;
+      if (!audioClip) continue;
+
+      const leadSilence = detectLeadingSilence(audioClip.buffer);
+      const tailSilence = detectTrailingSilence(audioClip.buffer);
+      let changed = false;
+
+      if (leadSilence > 0.5) {
+        // Shift the clip start time forward by the leading silence amount
+        // and adjust the duration accordingly
+        const newStartTime = audioClip.startTime + leadSilence;
+        const newDuration = audioClip.duration - leadSilence;
+        if (newDuration > 0.1) {
+          session.moveClipTime(track.id, audioClip.id, newStartTime);
+          session.resizeClipDuration(track.id, audioClip.id, newDuration);
+          changed = true;
+        }
+      }
+
+      if (tailSilence > 0.5) {
+        // Re-read the clip after potential leading trim
+        const updatedTrack = useSessionStore.getState().tracks.find(
+          (t) => t.id === track.id
+        );
+        const updatedClip = updatedTrack?.clips.find(
+          (c) => c.id === audioClip.id
+        );
+        if (updatedClip) {
+          const newDuration = updatedClip.duration - tailSilence;
+          if (newDuration > 0.1) {
+            session.resizeClipDuration(track.id, audioClip.id, newDuration);
+            changed = true;
+          }
+        }
+      }
+
+      if (changed) trimmedCount++;
+    }
+
+    const newReport = runEngineeringScan();
+    setReport(newReport);
+    showStatus(
+      trimmedCount > 0
+        ? `Trimmed silence from ${trimmedCount} track${trimmedCount !== 1 ? 's' : ''}`
+        : 'No significant silence found'
+    );
+  };
+
+  const handleFixClipping = () => {
+    const session = useSessionStore.getState();
+    const mixer = useMixerStore.getState();
+    let fixedCount = 0;
+
+    for (const track of session.tracks) {
+      if (track.mute) continue;
+      const audioClip = track.clips.find(isAudioClip) as AudioClip | undefined;
+      if (!audioClip) continue;
+
+      const data = audioClip.buffer.getChannelData(0);
+      const stride = Math.max(1, Math.floor(data.length / 20000));
+      let clipCount = 0;
+      for (let i = 0; i < data.length; i += stride) {
+        if (Math.abs(data[i]!) >= 0.999) clipCount++;
+      }
+
+      if (clipCount > 0) {
+        const newVol = track.volume - 3;
+        mixer.setVolume(track.id, newVol);
+        session.updateTrack(track.id, { volume: newVol });
+        fixedCount++;
+      }
+    }
+
+    const newReport = runEngineeringScan();
+    setReport(newReport);
+    showStatus(
+      fixedCount > 0
+        ? `Fixed clipping on ${fixedCount} track${fixedCount !== 1 ? 's' : ''}`
+        : 'No clipping detected'
+    );
+  };
+
+  const handleNormalize = () => {
+    const session = useSessionStore.getState();
+    const mixer = useMixerStore.getState();
+    const TARGET_DB = -6;
+    let normalizedCount = 0;
+
+    for (const track of session.tracks) {
+      if (track.mute) continue;
+      const audioClip = track.clips.find(isAudioClip) as AudioClip | undefined;
+      if (!audioClip) continue;
+
+      const data = audioClip.buffer.getChannelData(0);
+      const stride = Math.max(1, Math.floor(data.length / 20000));
+      let peak = 0;
+      for (let i = 0; i < data.length; i += stride) {
+        const abs = Math.abs(data[i]!);
+        if (abs > peak) peak = abs;
+      }
+
+      const peakDb = 20 * Math.log10(Math.max(peak, 1e-10));
+      const adjustment = TARGET_DB - peakDb;
+
+      // Only normalize if there is a meaningful difference (> 0.5 dB)
+      if (Math.abs(adjustment) > 0.5) {
+        const newVol = Math.round((track.volume + adjustment) * 10) / 10;
+        mixer.setVolume(track.id, newVol);
+        session.updateTrack(track.id, { volume: newVol });
+        normalizedCount++;
+      }
+    }
+
+    const newReport = runEngineeringScan();
+    setReport(newReport);
+    showStatus(
+      normalizedCount > 0
+        ? `Normalized ${normalizedCount} track${normalizedCount !== 1 ? 's' : ''} to ${TARGET_DB} dBFS`
+        : 'All tracks already near target level'
+    );
+  };
+
+  const handleDetectClicks = () => {
+    const session = useSessionStore.getState();
+    let totalClicks = 0;
+    let tracksWithClicks = 0;
+
+    for (const track of session.tracks) {
+      if (track.mute) continue;
+      const audioClip = track.clips.find(isAudioClip) as AudioClip | undefined;
+      if (!audioClip) continue;
+
+      const clicks = detectClicks(audioClip.buffer);
+      if (clicks.length > 0) {
+        totalClicks += clicks.length;
+        tracksWithClicks++;
+      }
+    }
+
+    // Run a full scan to update the report view
+    const newReport = runEngineeringScan();
+    setReport(newReport);
+    showStatus(
+      totalClicks > 0
+        ? `Found ${totalClicks} click${totalClicks !== 1 ? 's' : ''} across ${tracksWithClicks} track${tracksWithClicks !== 1 ? 's' : ''}`
+        : 'No clicks detected'
+    );
+  };
+
+  const handleFixAll = () => {
+    // Run scan first
+    const scanReport = runEngineeringScan();
+
+    // Auto-fix all fixable issues from the scan
+    const fixed = autoFixIssues(scanReport);
+
+    // Also trim silence (not covered by auto-fix)
+    const session = useSessionStore.getState();
+    let trimmedCount = 0;
+
+    for (const track of session.tracks) {
+      if (track.mute) continue;
+      const audioClip = track.clips.find(isAudioClip) as AudioClip | undefined;
+      if (!audioClip) continue;
+
+      const leadSilence = detectLeadingSilence(audioClip.buffer);
+      const tailSilence = detectTrailingSilence(audioClip.buffer);
+      let changed = false;
+
+      if (leadSilence > 0.5) {
+        const newStartTime = audioClip.startTime + leadSilence;
+        const newDuration = audioClip.duration - leadSilence;
+        if (newDuration > 0.1) {
+          session.moveClipTime(track.id, audioClip.id, newStartTime);
+          session.resizeClipDuration(track.id, audioClip.id, newDuration);
+          changed = true;
+        }
+      }
+
+      if (tailSilence > 0.5) {
+        const updatedTrack = useSessionStore.getState().tracks.find(
+          (t) => t.id === track.id
+        );
+        const updatedClip = updatedTrack?.clips.find(
+          (c) => c.id === audioClip.id
+        );
+        if (updatedClip) {
+          const newDuration = updatedClip.duration - tailSilence;
+          if (newDuration > 0.1) {
+            session.resizeClipDuration(track.id, audioClip.id, newDuration);
+            changed = true;
+          }
+        }
+      }
+
+      if (changed) trimmedCount++;
+    }
+
+    // Re-scan to show final state
+    const newReport = runEngineeringScan();
+    setReport(newReport);
+
+    const parts: string[] = [];
+    if (fixed > 0) parts.push(`${fixed} issue${fixed !== 1 ? 's' : ''} fixed`);
+    if (trimmedCount > 0) parts.push(`silence trimmed on ${trimmedCount} track${trimmedCount !== 1 ? 's' : ''}`);
+    showStatus(
+      parts.length > 0
+        ? `Fix All: ${parts.join(', ')}`
+        : 'No issues to fix'
+    );
   };
 
   const fixableCount = report?.issues.filter(i => i.fixable).length ?? 0;
@@ -68,6 +323,43 @@ export default function EngineeringActionsPanel() {
       >
         {scanning ? 'Scanning...' : 'Engineering Scan'}
       </button>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-2 gap-1">
+        <ActionButton
+          label="Trim Silence"
+          onClick={handleTrimSilence}
+          disabled={tracks.length === 0}
+        />
+        <ActionButton
+          label="Fix Clipping"
+          onClick={handleFixClipping}
+          disabled={tracks.length === 0}
+        />
+        <ActionButton
+          label="Normalize"
+          onClick={handleNormalize}
+          disabled={tracks.length === 0}
+        />
+        <ActionButton
+          label="Detect Clicks"
+          onClick={handleDetectClicks}
+          disabled={tracks.length === 0}
+        />
+      </div>
+      <ActionButton
+        label="Fix All"
+        onClick={handleFixAll}
+        disabled={tracks.length === 0}
+      />
+
+      {/* Status Message */}
+      {statusMessage && (
+        <div className="text-[9px] text-amber-400/80 text-center py-1 px-2
+                        bg-amber-500/10 font-mono">
+          {statusMessage}
+        </div>
+      )}
 
       {report && (
         <div className="space-y-2">

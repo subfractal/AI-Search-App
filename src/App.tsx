@@ -247,6 +247,13 @@ export default function App() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  // Listen for custom event from TransportBar help button
+  useEffect(() => {
+    const handler = () => setShowKeyboardShortcuts((v) => !v);
+    window.addEventListener('toggle-keyboard-shortcuts', handler);
+    return () => window.removeEventListener('toggle-keyboard-shortcuts', handler);
+  }, []);
+
   const togglePanel = (panel: BottomPanel) => {
     setLowerZonePanel(bottomPanel === panel ? null : panel);
   };

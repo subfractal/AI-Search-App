@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { useAIStore } from '@/stores/ai-store';
 import { useSessionStore } from '@/stores/session-store';
 import {
@@ -857,9 +857,11 @@ function SuggestionCard({
   onAccept: () => void;
   onReject: () => void;
 }) {
+  const [showExplanation, setShowExplanation] = useState(false);
   const actionLabel = describeAction(suggestion);
   const confPct = Math.round(suggestion.confidence * 100);
-  const confColor = confPct >= 90 ? '#D1D1D1' : confPct >= 70 ? '#F77F00' : '#E63946';
+  const confColor = confPct >= 90 ? '#22c55e' : confPct >= 70 ? '#F77F00' : '#E63946';
+  const confLabel = confPct >= 90 ? 'HIGH' : confPct >= 70 ? 'MED' : 'LOW';
   return (
     <div className="bg-daw-bg/40 p-2 border border-daw-border/15 hover:border-daw-ai-accent/20 transition-colors">
       <div className="flex items-start justify-between gap-2">
@@ -872,9 +874,14 @@ function SuggestionCard({
             </div>
           )}
         </div>
-        {/* Confidence meter */}
+        {/* Confidence badge + meter */}
         <div className="flex flex-col items-center gap-0.5 shrink-0">
-          <span className="text-[8px] font-mono font-medium" style={{ color: confColor }}>{confPct}%</span>
+          <span
+            className="text-[8px] font-mono font-bold px-1 py-px"
+            style={{ color: confColor, backgroundColor: `${confColor}20` }}
+          >
+            {confLabel} {confPct}%
+          </span>
           <div className="w-5 h-1 bg-daw-bg/80 overflow-hidden">
             <div className="h-full" style={{ width: `${confPct}%`, backgroundColor: confColor }} />
           </div>
@@ -909,6 +916,46 @@ function SuggestionCard({
 
       {actionLabel && (
         <div className="mt-1 text-[9px] text-daw-ai-accent/70 italic">{actionLabel}</div>
+      )}
+
+      {/* Expandable explanation section */}
+      {suggestion.explanation && (
+        <div className="mt-1">
+          <button
+            onClick={() => setShowExplanation(!showExplanation)}
+            className="text-[8px] font-mono font-medium text-daw-ai-accent/80 hover:text-daw-ai-accent px-1 py-px bg-daw-ai-accent/10 hover:bg-daw-ai-accent/20 transition-colors"
+          >
+            {showExplanation ? '▾ Why?' : '▸ Why?'}
+          </button>
+          {showExplanation && (
+            <div className="mt-1 p-1.5 bg-daw-bg/60 border border-daw-border/10 space-y-1">
+              <div className="text-[8px] font-mono text-daw-text-muted">
+                <span className="font-bold text-daw-text">WHAT:</span>{' '}
+                {suggestion.explanation.what}
+              </div>
+              <div className="text-[8px] font-mono text-daw-text-muted">
+                <span className="font-bold text-daw-text">WHY:</span>{' '}
+                {suggestion.explanation.why}
+              </div>
+              <div className="text-[8px] font-mono text-daw-text-muted">
+                <span className="font-bold text-daw-text">HOW:</span>{' '}
+                {suggestion.explanation.how}
+              </div>
+              {suggestion.explanation.alternatives.length > 0 && (
+                <div className="text-[8px] font-mono text-daw-text-muted">
+                  <span className="font-bold text-daw-text">ALTERNATIVES:</span>
+                  <ul className="ml-2 mt-0.5">
+                    {suggestion.explanation.alternatives.map((alt, i) => (
+                      <li key={i} className="text-[8px] text-daw-text-muted">
+                        - {alt}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       <div className="flex gap-1 mt-1.5">

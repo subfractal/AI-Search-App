@@ -4,6 +4,7 @@ import { useSessionStore } from '@/stores/session-store';
 import { useHistoryStore } from '@/stores/history-store';
 import { getPositionSeconds, seekTo } from '@/services/transport-service';
 import { formatBarsBeats } from '@/utils/format-time';
+import { loadProjectFile, downloadProject } from '@/utils/project-serialization';
 
 import type { BottomPanel } from '@/App';
 
@@ -541,6 +542,65 @@ export default function TransportBar({
         </button>
 
         <div className="flex-1" />
+
+        {/* ── Project / Help Buttons ── */}
+        <div className="flex items-center gap-0.5 shrink-0">
+          <button
+            onClick={() => {
+              const session = useSessionStore.getState();
+              session.tracks.forEach(track => session.removeTrack(track.id));
+              useTransportStore.getState().stop();
+              useTransportStore.getState().setPosition(0);
+            }}
+            title="New Project (Ctrl+N)"
+            aria-label="New Project"
+            className="text-[9px] font-mono uppercase font-medium px-1.5 py-0.5
+                       text-daw-text-muted hover:text-daw-text-dim
+                       bg-daw-surface hover:bg-daw-panel
+                       border border-transparent hover:border-daw-border/30
+                       transition-all duration-75 shrink-0"
+          >
+            New
+          </button>
+          <button
+            onClick={() => loadProjectFile()}
+            title="Open Project (Ctrl+O)"
+            aria-label="Open Project"
+            className="text-[9px] font-mono uppercase font-medium px-1.5 py-0.5
+                       text-daw-text-muted hover:text-daw-text-dim
+                       bg-daw-surface hover:bg-daw-panel
+                       border border-transparent hover:border-daw-border/30
+                       transition-all duration-75 shrink-0"
+          >
+            Open
+          </button>
+          <button
+            onClick={() => downloadProject()}
+            title="Save Project (Ctrl+S)"
+            aria-label="Save Project"
+            className="text-[9px] font-mono uppercase font-medium px-1.5 py-0.5
+                       text-daw-text-muted hover:text-daw-text-dim
+                       bg-daw-surface hover:bg-daw-panel
+                       border border-transparent hover:border-daw-border/30
+                       transition-all duration-75 shrink-0"
+          >
+            Save
+          </button>
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('toggle-keyboard-shortcuts'))}
+            title="Keyboard Shortcuts (?)"
+            aria-label="Keyboard Shortcuts"
+            className="text-[9px] font-mono font-medium px-1.5 py-0.5
+                       text-daw-text-muted hover:text-daw-text-dim
+                       bg-daw-surface hover:bg-daw-panel
+                       border border-transparent hover:border-daw-border/30
+                       transition-all duration-75 shrink-0"
+          >
+            ?
+          </button>
+        </div>
+
+        <div className="daw-divider mx-0.5 shrink-0" />
 
         {/* de-konstrukt sparkle logo */}
         <span className="text-[10px] text-daw-text-muted/30 font-mono mr-1 shrink-0 cursor-help" title="de-konstrukt v0.1">dkst</span>
