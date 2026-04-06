@@ -79,12 +79,14 @@ export type { BottomPanel };
 function useScreenSize() {
   const [size, setSize] = useState({
     isMobile: window.innerWidth < 768,
+    isSmall: window.innerWidth < 1200,
     height: window.innerHeight,
     width: window.innerWidth,
   });
   useEffect(() => {
     const handler = () => setSize({
       isMobile: window.innerWidth < 768,
+      isSmall: window.innerWidth < 1200,
       height: window.innerHeight,
       width: window.innerWidth,
     });
@@ -131,7 +133,7 @@ function useResizablePanel(defaultHeight: number, minH: number, maxH: number) {
 
 export default function App() {
   useKeyboardShortcuts();
-  const { isMobile, height: screenH } = useScreenSize();
+  const { isMobile, isSmall, height: screenH } = useScreenSize();
 
   // iOS WebKit requires AudioContext to be started during a direct user gesture.
   useEffect(() => {
@@ -403,9 +405,9 @@ export default function App() {
           {/* ── Right Zone: AI Coproducer + Inspector/Media Bay ── */}
           {showAI && (
             <>
-              <div className="daw-zone-border shrink-0" />
+              {!isSmall && <div className="daw-zone-border shrink-0" />}
               <div className={`shrink-0 flex flex-col
-                              ${isMobile
+                              ${isMobile || isSmall
               ? 'absolute right-0 top-[84px] bottom-0 w-72 z-30 bg-daw-ai-bg shadow-xl'
               : 'w-64 bg-daw-ai-bg'}`}
               >
