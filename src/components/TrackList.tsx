@@ -3,6 +3,8 @@ import { useSessionStore } from '@/stores/session-store';
 import { useMixerStore } from '@/stores/mixer-store';
 import { loadAudioFile, initAudioContext } from '@/services/audio-engine';
 import { generateId } from '@/utils/id';
+import { importProgress } from '@/stores/import-progress-store';
+import { toast } from '@/stores/toast-store';
 import type { AudioClip } from '@/types/audio';
 import TrackHeader from './TrackHeader';
 
@@ -58,29 +60,78 @@ export default function TrackList() {
     e.target.value = '';
 
     for (const file of fileList) {
+      let trackId: string | null = null;
+      const name = file.name.replace(/\.[^.]+$/, '');
+
       try {
-        const buffer = await loadAudioFile(file);
-        if (!buffer || buffer.length === 0) {
-          console.warn(`[DAW] Skipping "${file.name}" — decoded buffer is empty`);
+        importProgress.start(name);
+
+        // PHASE 1: Decode audio (with fake progress)
+        let fakeProgress = 0;
+        let buffer: AudioBuffer | null = null;
+        let decodeComplete = false;
+
+        // Simulate progress while decoding (decodeAudioData doesn't expose native progress)
+        const progressInterval = setInterval(() => {
+          if (!decodeComplete) {
+            fakeProgress = Math.min(fakeProgress + Math.random() * 15, 90);
+            importProgress.update('decoding', Math.round(fakeProgress));
+          }
+        }, 200);
+
+        try {
+          buffer = await loadAudioFile(file);
+          decodeComplete = true;
+          clearInterval(progressInterval);
+          importProgress.update('decoding', 100);
+        } catch (decodeErr) {
+          clearInterval(progressInterval);
+          decodeComplete = true;
+          console.error(`[DAW] Audio decode failed for "${name}":`, decodeErr);
+          toast.error(`Failed to decode "${name}"`);
+          importProgress.done();
           continue;
         }
-        const name = file.name.replace(/\.[^.]+$/, '');
-        const trackId = addAudioTrack(name);
-        initStrip(trackId);
 
-        const clip: AudioClip = {
-          id: generateId('clip'),
-          trackId,
-          name,
-          buffer,
-          startTime: 0,
-          duration: buffer.duration,
-          offset: 0,
-        };
+        // Safety check: buffer must be valid
+        if (!buffer || buffer.length === 0) {
+          console.warn(`[DAW] Skipping "${name}" — invalid or empty buffer`);
+          importProgress.done();
+          continue;
+        }
 
-        addClipToTrack(trackId, clip);
+        // PHASE 2: Create track and clip (fast, UI immediately visible)
+        try {
+          trackId = addAudioTrack(name);
+          initStrip(trackId);
+
+          const clip: AudioClip = {
+            id: generateId('clip'),
+            trackId,
+            name,
+            buffer,
+            startTime: 0,
+            duration: buffer.duration,
+            offset: 0,
+          };
+
+          addClipToTrack(trackId, clip);
+          toast.success(`Imported "${name}"`);
+          importProgress.update('decoding', 100);
+        } catch (clipErr) {
+          console.error(`[DAW] Failed to create clip for "${name}":`, clipErr);
+          toast.error(`Failed to create clip for "${name}"`);
+          importProgress.done();
+          continue;
+        }
+
+        // Close progress bar
+        setTimeout(() => importProgress.done(), 500);
       } catch (err) {
-        console.error(`[DAW] Failed to load "${file.name}":`, err);
+        console.error(`[DAW] Fatal error importing "${name}":`, err);
+        const msg = err instanceof Error ? err.message : String(err);
+        toast.error(`Failed to import: ${msg}`);
+        importProgress.done();
       }
     }
   };

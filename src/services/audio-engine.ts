@@ -39,7 +39,7 @@ export async function loadAudioFile(file: File): Promise<AudioBuffer> {
   const ctx = getAudioContext();
   if (ctx.state === 'suspended') {
     try {
-      await ctx.resume();
+      ctx.resume(); // fire-and-forget; decodeAudioData works on suspended context
     } catch (err) {
       console.warn('[DAW] Failed to resume audio context (user gesture may be required):', err);
       // Continue anyway — will fail at decode if truly blocked
