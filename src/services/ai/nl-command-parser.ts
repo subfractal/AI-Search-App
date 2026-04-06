@@ -218,6 +218,203 @@ const GRAMMAR_RULES: CommandGrammarRule[] = [
     intent: 'export',
     extract: () => ({ targets: [], params: {} }),
   },
+
+  // --- Arrangement commands ---
+
+  // "make the chorus hit harder" / "make the chorus louder" / "boost the chorus"
+  {
+    pattern: /(?:make\s+(?:the\s+)?(.+?)\s+(?:hit\s+harder|punch(?:ier)?|more\s+powerful|slam|bang)|boost\s+(?:the\s+)?(.+?)\s+(?:section|energy|volume|level))/i,
+    intent: 'boostSection',
+    extract: (m) => ({
+      targets: [],
+      params: { section: (m[1] ?? m[2] ?? 'chorus').toLowerCase() },
+    }),
+  },
+
+  // "thin out before the drop" / "strip back before the chorus"
+  {
+    pattern: /(?:thin\s+(?:out|it)\s+(?:before|leading\s+into)|strip\s+(?:back|down)\s+(?:before|leading\s+into)|reduce\s+(?:tracks?|instruments?|layers?)\s+(?:before|leading\s+into))\s+(?:the\s+)?(.+)/i,
+    intent: 'thinSection',
+    extract: (m) => ({
+      targets: [],
+      params: { section: (m[1] ?? 'drop').toLowerCase() },
+    }),
+  },
+
+  // "add a breakdown after the verse" / "insert breakdown before chorus"
+  {
+    pattern: /(?:add|insert|put)\s+(?:a\s+)?breakdown\s+(?:after|before|between)\s+(?:the\s+)?(.+)/i,
+    intent: 'addBreakdown',
+    extract: (m) => ({
+      targets: [],
+      params: { section: (m[1] ?? 'verse').toLowerCase() },
+    }),
+  },
+
+  // "extend the intro by 4 bars" / "make the intro longer by 8 bars"
+  {
+    pattern: /(?:extend|lengthen|stretch|make\s+(?:the\s+)?(.+?)\s+longer)\s+(?:the\s+)?(.+?)?\s*(?:by\s+)?(\d+)\s*bars?/i,
+    intent: 'extendSection',
+    extract: (m) => ({
+      targets: [],
+      params: {
+        section: (m[1] ?? m[2] ?? 'intro').toLowerCase().trim(),
+        bars: parseInt(m[3]!, 10),
+      },
+    }),
+  },
+
+  // "make the outro fade out" / "fade out the ending" / "add fadeout to outro"
+  {
+    pattern: /(?:(?:make|have)\s+(?:the\s+)?(?:outro|ending|end)\s+fade\s*out|fade\s*out\s+(?:the\s+)?(?:outro|ending|end)|add\s+(?:a\s+)?fade\s*out\s+(?:to|on)\s+(?:the\s+)?(?:outro|ending|end))/i,
+    intent: 'fadeOutro',
+    extract: () => ({
+      targets: [],
+      params: { section: 'outro' },
+    }),
+  },
+
+  // "double the chorus" / "duplicate the chorus" / "repeat the chorus"
+  {
+    pattern: /(?:double|duplicate|repeat|copy)\s+(?:the\s+)?(.+?)(?:\s+section)?$/i,
+    intent: 'duplicateSection',
+    extract: (m) => ({
+      targets: [],
+      params: { section: (m[1] ?? 'chorus').toLowerCase() },
+    }),
+  },
+
+  // "add energy buildup" / "build energy before the drop" / "add a riser"
+  {
+    pattern: /(?:add\s+(?:an?\s+)?(?:energy\s+)?(?:build\s*up|riser|sweep)|build\s+(?:up\s+)?energy(?:\s+before\s+(?:the\s+)?(.+))?|add\s+(?:a\s+)?(?:rising|build)\s+(?:filter|tension|energy))/i,
+    intent: 'energyBuildup',
+    extract: (m) => ({
+      targets: [],
+      params: { section: (m[1] ?? 'drop').toLowerCase() },
+    }),
+  },
+
+  // --- Mix commands ---
+
+  // "make the vocals brighter" / "brighten the vocals" / "add brightness to vocals"
+  {
+    pattern: /(?:make\s+(?:the\s+)?(.+?)\s+(?:brighter|crisper|airier|more\s+airy)|brighten\s+(?:the\s+)?(.+)|add\s+(?:more\s+)?(?:brightness|air|sparkle|shimmer)\s+(?:to|on)\s+(?:the\s+)?(.+))/i,
+    intent: 'eqBoost',
+    extract: (m) => ({
+      targets: [parseTarget(m[1] ?? m[2] ?? m[3] ?? 'vocals')],
+      params: { band: 'high', freqLow: 3000, freqHigh: 16000, gain: 3 },
+    }),
+  },
+
+  // "add more bass" / "boost the bass" / "more low end" / "more bottom"
+  {
+    pattern: /(?:add\s+(?:more\s+)?bass|boost\s+(?:the\s+)?(?:bass|low\s*end|bottom|sub)|more\s+(?:bass|low\s*end|bottom|sub))/i,
+    intent: 'eqBoost',
+    extract: () => ({
+      targets: [parseTarget('bass')],
+      params: { band: 'low', freqLow: 40, freqHigh: 250, gain: 3 },
+    }),
+  },
+
+  // "widen the stereo" / "spread it out" / "make it wider" / "more stereo width"
+  {
+    pattern: /(?:widen\s+(?:the\s+)?(?:stereo|mix|sound)|(?:more|add)\s+(?:stereo\s+)?(?:width|spread)|make\s+(?:it|the\s+mix)\s+wider|spread\s+(?:it|the\s+mix)\s+out)/i,
+    intent: 'widenStereo',
+    extract: () => ({
+      targets: [parseTarget('all')],
+      params: {},
+    }),
+  },
+
+  // "reduce muddiness" / "clean up the mud" / "less muddy"
+  {
+    pattern: /(?:reduce\s+(?:the\s+)?(?:muddiness|mud)|clean\s+(?:up\s+)?(?:the\s+)?(?:mud|muddiness|low\s*mids)|(?:less|cut\s+the)\s+(?:mud|muddiness)|(?:it(?:'s)?|sounds?)\s+(?:too\s+)?muddy)/i,
+    intent: 'reduceMuddiness',
+    extract: () => ({
+      targets: [parseTarget('all')],
+      params: { freqLow: 200, freqHigh: 500, cut: -3 },
+    }),
+  },
+
+  // "tighten the low end" / "clean up the bass" / "tighter bass"
+  {
+    pattern: /(?:tighten\s+(?:the\s+)?(?:low\s*end|bass|bottom)|(?:tighter|cleaner)\s+(?:low\s*end|bass|bottom)|clean\s+up\s+(?:the\s+)?(?:low\s*end|bass|bottom))/i,
+    intent: 'tightenLowEnd',
+    extract: () => ({
+      targets: [parseTarget('all')],
+      params: { highPassFreq: 80 },
+    }),
+  },
+
+  // "make it louder" / "it's too quiet" / "turn it up" / "louder"
+  {
+    pattern: /(?:make\s+(?:it|everything|the\s+mix)\s+louder|(?:it(?:'s)?|sounds?)\s+too\s+quiet|turn\s+(?:it|everything)\s+up|^louder$|needs?\s+(?:to\s+be\s+)?(?:more\s+)?(?:louder|loud|volume))/i,
+    intent: 'gainStaging',
+    extract: () => ({
+      targets: [],
+      params: { mode: 'boost' },
+    }),
+  },
+
+  // "add warmth" / "make it warmer" / "more warmth"
+  {
+    pattern: /(?:add\s+(?:more\s+)?warmth|make\s+(?:it|the\s+mix)\s+warmer|more\s+warmth|warmer\s+(?:sound|tone|mix))/i,
+    intent: 'addWarmth',
+    extract: () => ({
+      targets: [parseTarget('all')],
+      params: { band: 'lowMid', freqLow: 200, freqHigh: 500, gain: 2 },
+    }),
+  },
+
+  // "reduce harshness" / "less harsh" / "too harsh" / "it's harsh"
+  {
+    pattern: /(?:reduce\s+(?:the\s+)?harshness|(?:less|cut\s+the)\s+harshness|(?:it(?:'s)?|sounds?)\s+(?:too\s+)?harsh|tame\s+(?:the\s+)?(?:highs?|harshness)|de-?harsh)/i,
+    intent: 'reduceHarshness',
+    extract: () => ({
+      targets: [parseTarget('all')],
+      params: { freqLow: 2000, freqHigh: 5000, cut: -3 },
+    }),
+  },
+
+  // "compress the drums" / "add compression to drums" / "squash the drums"
+  {
+    pattern: /(?:compress\s+(?:the\s+)?(.+)|add\s+(?:more\s+)?compression\s+(?:to|on)\s+(?:the\s+)?(.+)|squash\s+(?:the\s+)?(.+))/i,
+    intent: 'compressTracks',
+    extract: (m) => ({
+      targets: [parseTarget(m[1] ?? m[2] ?? m[3] ?? 'drums')],
+      params: { threshold: -18, ratio: 4, attack: 0.01, release: 0.15 },
+    }),
+  },
+
+  // --- Session commands ---
+
+  // "balance the levels" / "level the tracks" / "balance the mix"
+  {
+    pattern: /(?:balance\s+(?:the\s+)?(?:levels?|tracks?|mix|volumes?)|level\s+(?:the\s+)?(?:tracks?|mix)|auto\s*(?:-?\s*)?(?:gain|level))/i,
+    intent: 'balanceLevels',
+    extract: () => ({ targets: [], params: {} }),
+  },
+
+  // "check for problems" / "find issues" / "any problems?"
+  {
+    pattern: /(?:check\s+(?:for\s+)?(?:problems?|issues?|errors?)|find\s+(?:any\s+)?(?:problems?|issues?|errors?)|(?:any|are\s+there)\s+(?:problems?|issues?))/i,
+    intent: 'engineeringScan',
+    extract: () => ({ targets: [], params: {} }),
+  },
+
+  // "scan the session" / "scan the project" / "run a scan"
+  {
+    pattern: /(?:scan\s+(?:the\s+)?(?:session|project|mix|tracks?)|run\s+(?:a\s+)?(?:session\s+)?scan)/i,
+    intent: 'sessionScan',
+    extract: () => ({ targets: [], params: {} }),
+  },
+
+  // "compare to reference" / "match the reference" / "reference match"
+  {
+    pattern: /(?:compare\s+(?:to|with|against)\s+(?:the\s+)?reference|match\s+(?:the\s+)?reference|reference\s+match(?:ing)?|use\s+(?:a\s+)?reference)/i,
+    intent: 'referenceMatch',
+    extract: () => ({ targets: [], params: {} }),
+  },
 ];
 
 /**

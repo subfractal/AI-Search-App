@@ -23,6 +23,29 @@ export type CommandIntent =
   | 'record'
   | 'play'
   | 'stop'
+  // Arrangement commands
+  | 'boostSection'
+  | 'thinSection'
+  | 'addBreakdown'
+  | 'extendSection'
+  | 'fadeOutro'
+  | 'duplicateSection'
+  | 'energyBuildup'
+  // Mix commands
+  | 'eqBoost'
+  | 'eqCut'
+  | 'widenStereo'
+  | 'reduceMuddiness'
+  | 'tightenLowEnd'
+  | 'gainStaging'
+  | 'addWarmth'
+  | 'reduceHarshness'
+  | 'compressTracks'
+  // Session commands
+  | 'balanceLevels'
+  | 'engineeringScan'
+  | 'sessionScan'
+  | 'referenceMatch'
   | 'unknown';
 
 export interface CommandTarget {

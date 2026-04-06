@@ -34,14 +34,24 @@ export async function loadAudioFile(file: File): Promise<AudioBuffer> {
   // Ensure audio context is started before decoding
   await initAudioContext();
 
-  // Resume context if it was suspended (mobile browsers, backgrounded tabs)
-  const ctx = getAudioContext();
+  // Ensure we have a usable AudioContext
+  let ctx = getAudioContext();
+
+  // If context is closed (mobile Safari/Chrome after inactivity), create a new one
+  if (ctx.state === 'closed') {
+    console.warn('[DAW] AudioContext was closed — creating a new one');
+    const newCtx = new AudioContext();
+    Tone.setContext(new Tone.Context(newCtx));
+    audioContextStarted = true;
+    ctx = newCtx;
+  }
+
+  // Resume if suspended (mobile browsers, backgrounded tabs)
   if (ctx.state === 'suspended') {
     try {
       ctx.resume(); // fire-and-forget; decodeAudioData works on suspended context
     } catch (err) {
-      console.warn('[DAW] Failed to resume audio context (user gesture may be required):', err);
-      // Continue anyway — will fail at decode if truly blocked
+      console.warn('[DAW] Failed to resume audio context:', err);
     }
   }
 
@@ -50,18 +60,42 @@ export async function loadAudioFile(file: File): Promise<AudioBuffer> {
     throw new Error(`File "${file.name}" is empty`);
   }
 
+  // Hard timeout wrapper — never let decodeAudioData hang forever
+  const DECODE_TIMEOUT_MS = 15000;
+  function decodeWithTimeout(buf: ArrayBuffer): Promise<AudioBuffer> {
+    return new Promise<AudioBuffer>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(
+          `Decoding "${file.name}" timed out after ${DECODE_TIMEOUT_MS / 1000}s — please try again`
+        ));
+      }, DECODE_TIMEOUT_MS);
+
+      ctx.decodeAudioData(buf).then(
+        (decoded) => { clearTimeout(timer); resolve(decoded); },
+        (err) => { clearTimeout(timer); reject(err); },
+      );
+    });
+  }
+
   // decodeAudioData can throw or return null on some browsers — wrap defensively
   try {
-    const buffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
-    return buffer;
+    return await decodeWithTimeout(arrayBuffer.slice(0));
   } catch (err) {
     // Retry once with a fresh copy (some browsers corrupt the buffer on first decode failure)
     console.warn(`[DAW] Retrying decode for "${file.name}":`, err);
+
+    // On retry, also try resuming context again (user gesture may now be available)
+    if (ctx.state === 'suspended') {
+      try { await ctx.resume(); } catch { /* ignore */ }
+    }
+
     const copy = await file.arrayBuffer();
     try {
-      return await ctx.decodeAudioData(copy);
+      return await decodeWithTimeout(copy);
     } catch (retryErr) {
-      throw new Error(`Failed to decode "${file.name}" — file may be corrupted or in an unsupported format. Error: ${retryErr instanceof Error ? retryErr.message : String(retryErr)}`);
+      throw new Error(
+        `Failed to decode "${file.name}" — ${retryErr instanceof Error ? retryErr.message : String(retryErr)}`
+      );
     }
   }
 }

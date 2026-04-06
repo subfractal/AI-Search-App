@@ -23,6 +23,7 @@ const CoComposerPanel = lazy(() => import('@/components/ai/CoComposerPanel'));
 const PredictiveBar = lazy(() => import('@/components/ai/PredictiveBar'));
 const VoiceIndicator = lazy(() => import('@/components/ai/VoiceIndicator'));
 const SpectralVisualizer = lazy(() => import('@/components/visualizers/SpectralVisualizer'));
+const AnalysisLanesPanel = lazy(() => import('@/components/ai/AnalysisLanesPanel'));
 const SessionScanPanel = lazy(() => import('@/components/ai/SessionScanPanel'));
 const ArrangementMapPanel = lazy(() => import('@/components/ai/ArrangementMapPanel'));
 const TemplateGeneratorPanel = lazy(() => import('@/components/ai/TemplateGeneratorPanel'));
@@ -33,6 +34,10 @@ const ReferenceMatchPanel = lazy(() => import('@/components/ai/ReferenceMatchPan
 const RoutingBuilderPanel = lazy(() => import('@/components/ai/RoutingBuilderPanel'));
 const CollabIndicator = lazy(() => import('@/components/ai/CollabIndicator'));
 const EngineeringActionsPanel = lazy(() => import('@/components/ai/EngineeringActionsPanel'));
+const DeviceControlPanel = lazy(() => import('@/components/ai/DeviceControlPanel'));
+const PhaseAlignPanel = lazy(() => import('@/components/ai/PhaseAlignPanel'));
+const PreferenceLearningPanel = lazy(() => import('@/components/ai/PreferenceLearningPanel'));
+const SampleSynthesisPanel = lazy(() => import('@/components/ai/SampleSynthesisPanel'));
 import { FACTORY_TEMPLATES, loadTemplate } from '@/services/templates/template-loader';
 import { useUIContextStore } from '@/stores/ui-context-store';
 import type { AISuggestion, MixGenre, GeneratorModel, SuggestionApplyMode } from '@/types/ai';
@@ -716,9 +721,24 @@ export default function AISidebar() {
             <SessionScanPanel />
           </Section>
 
+          {/* Analysis Lanes — timeline overlay controls */}
+          <Section title="ANALYSIS LANES">
+            <AnalysisLanesPanel />
+          </Section>
+
           {/* Engineering Actions */}
           <Section title="ENGINEERING ACTIONS">
             <EngineeringActionsPanel />
+          </Section>
+
+          {/* AI Device Control */}
+          <Section title="AI DEVICE CONTROL">
+            <DeviceControlPanel />
+          </Section>
+
+          {/* Phase Alignment */}
+          <Section title="PHASE ALIGN">
+            <PhaseAlignPanel />
           </Section>
 
           {/* Arrangement Map */}
@@ -741,6 +761,11 @@ export default function AISidebar() {
             <StemSplitPanel />
           </Section>
 
+          {/* AI Sample Synthesis */}
+          <Section title="SAMPLE SYNTHESIS">
+            <SampleSynthesisPanel />
+          </Section>
+
           {/* Reference Matching */}
           <Section title="REFERENCE MATCH">
             <ReferenceMatchPanel />
@@ -759,6 +784,11 @@ export default function AISidebar() {
           {/* Collaboration */}
           <Section title="COLLABORATION">
             <CollabIndicator />
+          </Section>
+
+          {/* Preference Learning */}
+          <Section title="PREFERENCES">
+            <PreferenceLearningPanel />
           </Section>
 
           {/* Skill Level */}

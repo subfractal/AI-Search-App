@@ -44,6 +44,12 @@ interface AIStore {
   savedComposerPresets: ComposerPreset[];
   offlineTasks: OfflineTask[];
 
+  // Analysis Lanes
+  analysisLanesEnabled: boolean;
+  analysisLaneType: 'energy' | 'density' | 'low-end' | 'masking';
+  setAnalysisLanesEnabled: (enabled: boolean) => void;
+  setAnalysisLaneType: (type: 'energy' | 'density' | 'low-end' | 'masking') => void;
+
   // Phase 1: Autonomous Agentic Studio Manager
   commandBarOpen: boolean;
   autoOrganizeEnabled: boolean;
@@ -129,6 +135,12 @@ export const useAIStore = create<AIStore>((set, get) => ({
   preferredVariationIntensity: 0.5,
   savedComposerPresets: [],
   offlineTasks: [],
+
+  // Analysis Lanes
+  analysisLanesEnabled: false,
+  analysisLaneType: 'energy' as const,
+  setAnalysisLanesEnabled: (enabled) => set({ analysisLanesEnabled: enabled }),
+  setAnalysisLaneType: (type) => set({ analysisLaneType: type }),
 
   // Phase 1: Autonomous Agentic Studio Manager
   commandBarOpen: false,

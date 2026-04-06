@@ -343,6 +343,64 @@ export default function Timeline() {
     const position = getPositionSeconds();
     drawPlayhead(ctx, position, pps, scrollX, height);
 
+    // Analysis lanes overlay
+    const analysisLanesEnabled = useAIStore.getState().analysisLanesEnabled;
+    if (analysisLanesEnabled) {
+      const laneType = useAIStore.getState().analysisLaneType;
+      const analysis = useAIStore.getState().lastAnalysis;
+
+      if (analysis) {
+        const laneHeight = 20;
+        const laneY = height - laneHeight - 2;
+
+        ctx.save();
+        ctx.globalAlpha = 0.4;
+
+        // Draw lane background
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.fillRect(0, laneY, width, laneHeight);
+
+        // Compute data points based on lane type
+        const segmentCount = 50;
+        const segmentWidth = width / segmentCount;
+
+        for (let i = 0; i < segmentCount; i++) {
+          let value = 0;
+
+          if (laneType === 'energy') {
+            value = analysis.tracks.length > 0
+              ? Math.max(0, (analysis.overallLevel.rms + 60) / 60)
+              : 0;
+          } else if (laneType === 'low-end') {
+            value = Math.max(0, (analysis.frequencyBalance.low + 60) / 60);
+          } else if (laneType === 'density') {
+            value = analysis.tracks.length / 10;
+          } else if (laneType === 'masking') {
+            value = analysis.maskingPairs.length > 0
+              ? analysis.maskingPairs.reduce((s, m) => s + m.severity, 0) / analysis.maskingPairs.length
+              : 0;
+          }
+
+          const barH = Math.min(laneHeight, value * laneHeight);
+          const color = laneType === 'energy' ? '#22c55e'
+            : laneType === 'low-end' ? '#f97316'
+            : laneType === 'density' ? '#3b82f6'
+            : '#ef4444';
+
+          ctx.fillStyle = color;
+          ctx.fillRect(i * segmentWidth, laneY + laneHeight - barH, segmentWidth - 1, barH);
+        }
+
+        // Label
+        ctx.globalAlpha = 0.7;
+        ctx.fillStyle = '#999';
+        ctx.font = '9px monospace';
+        ctx.fillText(laneType.toUpperCase(), 4, laneY + 10);
+
+        ctx.restore();
+      }
+    }
+
     // Only loop RAF when transport is playing (playhead moving)
     if (transportState === 'playing' || transportState === 'recording') {
       rafRef.current = requestAnimationFrame(draw);
