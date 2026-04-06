@@ -387,6 +387,12 @@ export default function Timeline() {
 
       const onMove = (ev: MouseEvent) => {
         if (!dragRef.current) return;
+        // Verify clip still exists in store before updating
+        const currentTracks = useSessionStore.getState().tracks;
+        const track = currentTracks.find((t) => t.id === dragRef.current!.trackId);
+        const clip = track?.clips.find((c) => c.id === dragRef.current!.clipId);
+        if (!clip) return; // Clip was deleted, bail out
+
         const dx = ev.clientX - dragRef.current.startX;
         const dtSecs = dx / pps;
         if (Math.abs(dx) > 3) dragRef.current.moved = true;
@@ -405,6 +411,16 @@ export default function Timeline() {
         }
       };
       const onUp = () => {
+        // BUG-11 FIX: Verify clip still exists after drag ends and is properly committed
+        if (dragRef.current) {
+          const currentTracks = useSessionStore.getState().tracks;
+          const track = currentTracks.find((t) => t.id === dragRef.current!.trackId);
+          const clip = track?.clips.find((c) => c.id === dragRef.current!.clipId);
+          if (!clip) {
+            // Clip was somehow lost - this shouldn't happen but log if it does
+            console.warn('BUG-11: Clip disappeared during drag', dragRef.current.clipId);
+          }
+        }
         dragRef.current = null;
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup', onUp);
@@ -605,13 +621,23 @@ export default function Timeline() {
     const container = containerRef.current;
     if (!container || tracks.length === 0) return;
     const { width } = container.getBoundingClientRect();
-    let maxEnd = 10;
+    let maxEndSeconds = 10;
     for (const track of tracks) {
       for (const clip of track.clips) {
-        maxEnd = Math.max(maxEnd, clip.startTime + clip.duration);
+        maxEndSeconds = Math.max(maxEndSeconds, clip.startTime + clip.duration);
       }
     }
-    setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, width / (maxEnd * PIXELS_PER_SECOND))));
+    // Calculate pixels per bar at base zoom (zoom = 1)
+    // At base zoom: pps = PIXELS_PER_SECOND
+    // barDurationSeconds = (60 / bpm) * beatsPerBar
+    // pixelsPerBarAtBaseZoom = PIXELS_PER_SECOND * barDurationSeconds
+    const barDurationSeconds = (60 / bpm) * beatsPerBar;
+    const pixelsPerBarAtBaseZoom = PIXELS_PER_SECOND * barDurationSeconds;
+    const projectDurationBars = maxEndSeconds / barDurationSeconds;
+
+    // zoom = viewportWidth / (projectDurationInBars × pixelsPerBarAtBaseZoom)
+    const newZoom = width / (projectDurationBars * pixelsPerBarAtBaseZoom);
+    setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom)));
     setScrollX(0);
   };
 
