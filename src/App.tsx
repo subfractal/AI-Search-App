@@ -10,6 +10,7 @@ import ExportDialog from '@/components/ExportDialog';
 import HistoryPanel from '@/components/HistoryPanel';
 import ToastContainer from '@/components/ui/ToastContainer';
 import ImportProgressBar from '@/components/ui/ImportProgressBar';
+import KeyboardShortcutsOverlay from '@/components/ui/KeyboardShortcutsOverlay';
 import CommandBar from '@/components/ai/CommandBar';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { initAudioContext } from '@/services/audio-engine';
@@ -178,6 +179,7 @@ export default function App() {
 
   const [showExport, setShowExport] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [pianoRollClip, setPianoRollClip] = useState<{
     trackId: string;
     clip: MidiClip;
@@ -194,6 +196,24 @@ export default function App() {
     };
     window.addEventListener('daw:open-panel', handler);
     return () => window.removeEventListener('daw:open-panel', handler);
+  }, []);
+
+  // Listen for ? key to show keyboard shortcuts overlay
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+      if (e.key === '?') {
+        e.preventDefault();
+        setShowKeyboardShortcuts((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, []);
 
   const togglePanel = (panel: BottomPanel) => {
@@ -423,6 +443,10 @@ export default function App() {
 
         <ExportDialog open={showExport} onClose={() => setShowExport(false)} />
         <HistoryPanel open={showHistory} onClose={() => setShowHistory(false)} />
+        <KeyboardShortcutsOverlay
+          isOpen={showKeyboardShortcuts}
+          onClose={() => setShowKeyboardShortcuts(false)}
+        />
         <CommandBar />
         <ImportProgressBar />
         <ToastContainer />
