@@ -44,6 +44,20 @@ export interface AISuggestion {
   applyMode?: SuggestionApplyMode;
   realtimeSafe?: boolean;
   reversible?: boolean;
+  sectionContext?: string;         // e.g. "Applies to Chorus (0:45-1:20)"
+  affectedDeviceChain?: string[];  // e.g. ["EQ", "Compressor"] — which effects are relevant
+  alternativeActions?: Array<{
+    label: string;
+    action: SuggestionAction | null;
+  }>;
+  explanation?: AIExplanation;
+}
+
+export interface AIExplanation {
+  what: string;
+  why: string;
+  how: string;
+  alternatives: string[];
 }
 
 export interface SuggestionAction {
@@ -269,6 +283,7 @@ export interface MasteringDecision {
   description: string;
   enabled: boolean;
   section?: string;
+  explanation?: AIExplanation;
 }
 
 // Section detected in audio

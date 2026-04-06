@@ -10,13 +10,21 @@ import { analyzeMix } from './mix-analyzer';
 import { detectSections } from './section-detector';
 import { classifyTrack } from './track-classifier';
 import { analyzeHarmonicTopography } from './harmonic-analyzer';
+import { analyzeGainStaging } from './gain-staging';
+import { analyzeTrackRegions } from './analysis-engine';
 import { isAudioClip, isMidiClip } from '@/types/audio';
 import type { Track, AudioClip } from '@/types/audio';
 import type {
-  SessionScanResult,
   TempoEstimate,
   KeyEstimate,
   TrackRoleGuess,
+  EnrichedScanResult,
+  ClippingIssue,
+  PhaseIssue,
+  StereoBalanceInfo,
+  MaskingHotspot,
+  DynamicProfile,
+  GainStagingIssue,
 } from '@/types/session-scan';
 
 /**
@@ -226,7 +234,7 @@ function computeEnergyCurve(tracks: Track[], sampleRate: number): number[] {
 /**
  * Run a full session intelligence scan.
  */
-export function runSessionScan(): SessionScanResult {
+export function runSessionScan(): EnrichedScanResult {
   const { tracks, config } = useSessionStore.getState();
   const aiState = useAIStore.getState();
 
@@ -249,6 +257,136 @@ export function runSessionScan(): SessionScanResult {
 
     aiState.setAnalysis(mixAnalysis);
 
+    // ─── Enriched Analysis ───
+
+    // Clipping detection with region localization
+    const clippingIssues: ClippingIssue[] = [];
+    for (const ta of mixAnalysis.tracks) {
+      if (ta.level.clipping) {
+        const track = tracks.find(t => t.id === ta.trackId);
+        const audioClip = track?.clips.find(isAudioClip) as AudioClip | undefined;
+        if (audioClip) {
+          const regions = analyzeTrackRegions(
+            ta.trackId, audioClip.buffer, config.sampleRate, 5
+          );
+          for (const r of regions) {
+            if (r.level.clipping) {
+              const data = audioClip.buffer.getChannelData(0);
+              const startSample = Math.floor(r.region.start * config.sampleRate);
+              const endSample = Math.min(
+                Math.floor(r.region.end * config.sampleRate), data.length
+              );
+              let clipCount = 0;
+              for (let i = startSample; i < endSample; i += 4) {
+                if (Math.abs(data[i]!) >= 0.999) clipCount++;
+              }
+              clippingIssues.push({
+                trackId: ta.trackId,
+                peakDb: r.level.peak,
+                clippingSamples: clipCount * 4,
+                regionStart: r.region.start,
+                regionEnd: r.region.end,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Phase issues
+    const phaseIssues: PhaseIssue[] = mixAnalysis.phaseCorrelations
+      .map(pc => ({
+        trackId: pc.trackId,
+        correlation: pc.correlation,
+        monoCompatible: pc.monoCompatible,
+        severity: pc.correlation < 0
+          ? 'high' as const
+          : pc.correlation < 0.3
+            ? 'medium' as const
+            : 'low' as const,
+      }))
+      .filter(p => p.severity !== 'low');
+
+    // Stereo balance
+    const stereoBalance: StereoBalanceInfo[] = tracks.map(track => {
+      const audioClip = track.clips.find(isAudioClip) as AudioClip | undefined;
+      let stereoWidth = 0;
+      let imbalance = Math.abs(track.pan);
+      if (audioClip && audioClip.buffer.numberOfChannels >= 2) {
+        const left = audioClip.buffer.getChannelData(0);
+        const right = audioClip.buffer.getChannelData(1);
+        let sumLR = 0, sumL2 = 0, sumR2 = 0;
+        const stride = Math.max(1, Math.floor(left.length / 5000));
+        for (let i = 0; i < left.length; i += stride) {
+          sumLR += left[i]! * right[i]!;
+          sumL2 += left[i]! * left[i]!;
+          sumR2 += right[i]! * right[i]!;
+        }
+        const corr = sumLR / Math.sqrt((sumL2 * sumR2) || 1);
+        stereoWidth = 1 - corr;
+        // Channel imbalance
+        const leftRms = Math.sqrt(sumL2 / (left.length / stride));
+        const rightRms = Math.sqrt(sumR2 / (left.length / stride));
+        const totalRms = leftRms + rightRms;
+        imbalance = totalRms > 0
+          ? Math.abs(leftRms - rightRms) / totalRms
+          : 0;
+      }
+      return { trackId: track.id, pan: track.pan, stereoWidth, imbalance };
+    });
+
+    // Masking hotspots
+    const maskingHotspots: MaskingHotspot[] = mixAnalysis.maskingPairs.map(mp => ({
+      trackAId: mp.trackAId,
+      trackBId: mp.trackBId,
+      bands: mp.maskedBands,
+      severity: mp.severity,
+      suggestedAction: mp.suggestedAction,
+    }));
+
+    // Dynamic profiles
+    const dynamicProfiles: DynamicProfile[] = mixAnalysis.tracks.map(ta => ({
+      trackId: ta.trackId,
+      rms: ta.level.rms,
+      peak: ta.level.peak,
+      dynamicRange: ta.level.dynamicRange,
+      crestFactor: ta.level.peak - ta.level.rms,
+      loudnessLufs: ta.loudness?.integrated ?? null,
+    }));
+
+    // Gain staging issues
+    const gainResult = analyzeGainStaging(mixAnalysis.tracks);
+    const gainStagingIssues: GainStagingIssue[] = gainResult.tracks
+      .filter(t => Math.abs(t.adjustment) > 2)
+      .map(t => ({
+        trackId: t.trackId,
+        currentPeak: t.currentPeak,
+        suggestedAdjustment: t.adjustment,
+        headroomDb: -6 - t.currentPeak,
+      }));
+
+    // Overall health score (0-100)
+    let health = 100;
+    if (clippingIssues.length > 0) {
+      health -= Math.min(20, clippingIssues.length * 5);
+    }
+    if (phaseIssues.length > 0) {
+      health -= Math.min(15, phaseIssues.length * 5);
+    }
+    const avgImbalance = stereoBalance.reduce((s, b) => s + b.imbalance, 0)
+      / Math.max(1, stereoBalance.length);
+    health -= Math.round(avgImbalance * 15);
+    if (maskingHotspots.length > 0) {
+      health -= Math.min(20, maskingHotspots.length * 4);
+    }
+    const avgDR = dynamicProfiles.reduce((s, d) => s + d.dynamicRange, 0)
+      / Math.max(1, dynamicProfiles.length);
+    if (avgDR > 35 || avgDR < 5) health -= 10;
+    if (gainStagingIssues.length > 0) {
+      health -= Math.min(15, gainStagingIssues.length * 3);
+    }
+    const overallHealth = Math.max(0, Math.min(100, health));
+
     return {
       tempo,
       key,
@@ -259,6 +397,13 @@ export function runSessionScan(): SessionScanResult {
       mixAnalysis,
       harmony,
       scannedAt: Date.now(),
+      clippingIssues,
+      phaseIssues,
+      stereoBalance,
+      maskingHotspots,
+      dynamicProfiles,
+      gainStagingIssues,
+      overallHealth,
     };
   } finally {
     aiState.setAnalyzing(false);

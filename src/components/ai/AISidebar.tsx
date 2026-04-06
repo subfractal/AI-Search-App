@@ -32,6 +32,7 @@ const StemSplitPanel = lazy(() => import('@/components/ai/StemSplitPanel'));
 const ReferenceMatchPanel = lazy(() => import('@/components/ai/ReferenceMatchPanel'));
 const RoutingBuilderPanel = lazy(() => import('@/components/ai/RoutingBuilderPanel'));
 const CollabIndicator = lazy(() => import('@/components/ai/CollabIndicator'));
+const EngineeringActionsPanel = lazy(() => import('@/components/ai/EngineeringActionsPanel'));
 import { FACTORY_TEMPLATES, loadTemplate } from '@/services/templates/template-loader';
 import { useUIContextStore } from '@/stores/ui-context-store';
 import type { AISuggestion, MixGenre, GeneratorModel, SuggestionApplyMode } from '@/types/ai';
@@ -713,6 +714,11 @@ export default function AISidebar() {
           {/* Session Intelligence */}
           <Section title="SESSION SCAN">
             <SessionScanPanel />
+          </Section>
+
+          {/* Engineering Actions */}
+          <Section title="ENGINEERING ACTIONS">
+            <EngineeringActionsPanel />
           </Section>
 
           {/* Arrangement Map */}

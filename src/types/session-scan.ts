@@ -38,6 +38,64 @@ export interface SessionScanResult {
   scannedAt: number;
 }
 
+// ─── Enriched Session Scan ───
+
+export interface ClippingIssue {
+  trackId: string;
+  peakDb: number;
+  clippingSamples: number;
+  regionStart: number;
+  regionEnd: number;
+}
+
+export interface PhaseIssue {
+  trackId: string;
+  correlation: number;
+  monoCompatible: boolean;
+  severity: 'low' | 'medium' | 'high';
+}
+
+export interface StereoBalanceInfo {
+  trackId: string;
+  pan: number;
+  stereoWidth: number;
+  imbalance: number; // 0 = balanced, 1 = fully one-sided
+}
+
+export interface MaskingHotspot {
+  trackAId: string;
+  trackBId: string;
+  bands: string[];
+  severity: number;
+  suggestedAction: string;
+}
+
+export interface DynamicProfile {
+  trackId: string;
+  rms: number;
+  peak: number;
+  dynamicRange: number;
+  crestFactor: number;
+  loudnessLufs: number | null;
+}
+
+export interface GainStagingIssue {
+  trackId: string;
+  currentPeak: number;
+  suggestedAdjustment: number;
+  headroomDb: number;
+}
+
+export interface EnrichedScanResult extends SessionScanResult {
+  clippingIssues: ClippingIssue[];
+  phaseIssues: PhaseIssue[];
+  stereoBalance: StereoBalanceInfo[];
+  maskingHotspots: MaskingHotspot[];
+  dynamicProfiles: DynamicProfile[];
+  gainStagingIssues: GainStagingIssue[];
+  overallHealth: number; // 0-100 score
+}
+
 // ─── Arrangement Map ───
 
 export type ArrangementSectionType =
@@ -158,6 +216,25 @@ export interface ReferenceMatchResult {
   overallSimilarity: number;
   referenceAnalysis: { rms: number; peak: number; spectral: number[] };
   mixAnalysis: { rms: number; peak: number; spectral: number[] };
+}
+
+export interface SectionReferenceDelta extends ReferenceDelta {
+  sectionLabel: string;
+  sectionStart: number;
+  sectionEnd: number;
+}
+
+export interface SectionReferenceComparison {
+  sectionLabel: string;
+  sectionStart: number;
+  sectionEnd: number;
+  deltas: ReferenceDelta[];
+  similarity: number;
+}
+
+export interface EnrichedReferenceResult extends ReferenceMatchResult {
+  sections: SectionReferenceComparison[];
+  perSectionSimilarity: number[];
 }
 
 // ─── Routing Builder ───

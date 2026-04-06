@@ -6,13 +6,13 @@
 import { useState } from 'react';
 import { useSessionStore } from '@/stores/session-store';
 import { runSessionScan } from '@/services/ai/session-scanner';
-import type { SessionScanResult, TrackRoleGuess } from '@/types/session-scan';
+import type { EnrichedScanResult, TrackRoleGuess } from '@/types/session-scan';
 
 export default function SessionScanPanel() {
   const tracks = useSessionStore((s) => s.tracks);
   const updateTrack = useSessionStore((s) => s.updateTrack);
   const setConfig = useSessionStore((s) => s.setConfig);
-  const [scanResult, setScanResult] = useState<SessionScanResult | null>(null);
+  const [scanResult, setScanResult] = useState<EnrichedScanResult | null>(null);
   const [scanning, setScanning] = useState(false);
 
   const handleScan = () => {
@@ -133,6 +133,110 @@ export default function SessionScanPanel() {
                   </span>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Overall Health Score */}
+          <div className="bg-daw-bg/60 p-1.5">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[8px] text-daw-text-muted uppercase">Mix Health</span>
+              <span className={`text-xs font-mono font-bold ${
+                scanResult.overallHealth >= 80 ? 'text-green-400' :
+                scanResult.overallHealth >= 50 ? 'text-yellow-400' : 'text-red-400'
+              }`}>
+                {scanResult.overallHealth}/100
+              </span>
+            </div>
+            <div className="w-full h-1 bg-daw-bg rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-all ${
+                  scanResult.overallHealth >= 80 ? 'bg-green-400' :
+                  scanResult.overallHealth >= 50 ? 'bg-yellow-400' : 'bg-red-400'
+                }`}
+                style={{ width: `${scanResult.overallHealth}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Clipping Issues */}
+          {scanResult.clippingIssues.length > 0 && (
+            <div className="bg-daw-bg/60 p-1.5">
+              <div className="text-[8px] text-red-400 uppercase mb-1">
+                Clipping ({scanResult.clippingIssues.length})
+              </div>
+              {scanResult.clippingIssues.slice(0, 5).map((ci, i) => {
+                const t = tracks.find(tr => tr.id === ci.trackId);
+                return (
+                  <div key={i} className="text-[8px] text-daw-text-dim py-0.5">
+                    <span className="text-red-400">{t?.name ?? 'Track'}</span>
+                    {' '}{ci.peakDb.toFixed(1)} dB at {ci.regionStart.toFixed(1)}s–{ci.regionEnd.toFixed(1)}s
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Phase Issues */}
+          {scanResult.phaseIssues.length > 0 && (
+            <div className="bg-daw-bg/60 p-1.5">
+              <div className="text-[8px] text-yellow-400 uppercase mb-1">
+                Phase Issues ({scanResult.phaseIssues.length})
+              </div>
+              {scanResult.phaseIssues.map((pi, i) => {
+                const t = tracks.find(tr => tr.id === pi.trackId);
+                return (
+                  <div key={i} className="flex items-center justify-between py-0.5">
+                    <span className="text-[8px] text-daw-text-dim">{t?.name ?? 'Track'}</span>
+                    <span className={`text-[7px] px-1 py-0.5 font-mono ${
+                      pi.severity === 'high' ? 'text-red-400 bg-red-400/10' :
+                      'text-yellow-400 bg-yellow-400/10'
+                    }`}>
+                      r={pi.correlation.toFixed(2)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Masking Hotspots */}
+          {scanResult.maskingHotspots.length > 0 && (
+            <div className="bg-daw-bg/60 p-1.5">
+              <div className="text-[8px] text-orange-400 uppercase mb-1">
+                Masking ({scanResult.maskingHotspots.length})
+              </div>
+              {scanResult.maskingHotspots.slice(0, 4).map((mh, i) => {
+                const tA = tracks.find(tr => tr.id === mh.trackAId);
+                const tB = tracks.find(tr => tr.id === mh.trackBId);
+                return (
+                  <div key={i} className="text-[8px] text-daw-text-dim py-0.5">
+                    {tA?.name} vs {tB?.name}
+                    <span className="text-orange-400 ml-1">
+                      {Math.round(mh.severity * 100)}%
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Gain Staging Issues */}
+          {scanResult.gainStagingIssues.length > 0 && (
+            <div className="bg-daw-bg/60 p-1.5">
+              <div className="text-[8px] text-amber-400 uppercase mb-1">
+                Gain Staging ({scanResult.gainStagingIssues.length})
+              </div>
+              {scanResult.gainStagingIssues.map((gs, i) => {
+                const t = tracks.find(tr => tr.id === gs.trackId);
+                return (
+                  <div key={i} className="flex items-center justify-between py-0.5">
+                    <span className="text-[8px] text-daw-text-dim truncate flex-1">{t?.name}</span>
+                    <span className="text-[8px] font-mono text-amber-400">
+                      {gs.suggestedAdjustment > 0 ? '+' : ''}{gs.suggestedAdjustment.toFixed(1)} dB
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

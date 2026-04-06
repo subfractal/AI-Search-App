@@ -178,6 +178,12 @@ export function generateSuggestions(
           trackId: ta.trackId,
           value: (track?.volume ?? 0) - 3,
         },
+        explanation: {
+          what: `Track "${track?.name}" has peaks reaching ${ta.level.peak.toFixed(1)} dB, exceeding 0 dBFS.`,
+          why: 'Digital clipping causes harsh distortion and irreversible audio damage.',
+          how: 'Reducing volume by 3 dB brings peaks below 0 dBFS while preserving relative balance.',
+          alternatives: ['Add a limiter instead of reducing volume', 'Apply clip gain to only the loudest regions'],
+        },
         timestamp: Date.now(),
       });
     }
@@ -217,6 +223,12 @@ export function generateSuggestions(
           type: 'setVolume',
           trackId: loudest.trackId,
           value: (loudTrack?.volume ?? 0) - diff / 2,
+        },
+        explanation: {
+          what: `"${loudTrack?.name}" is ${diff.toFixed(0)} dB louder than "${quietTrack?.name}".`,
+          why: 'Large level differences make quieter elements inaudible and distort the mix balance.',
+          how: `Reducing "${loudTrack?.name}" by ${(diff / 2).toFixed(0)} dB brings it closer to the average.`,
+          alternatives: ['Boost the quiet track instead', 'Use automation for section-specific balance'],
         },
         timestamp: Date.now(),
       });
@@ -505,6 +517,12 @@ export function generateSuggestions(
           effectType: 'eq',
           effectParams: eqParams,
         },
+        explanation: {
+          what: `"${trackA?.name}" and "${trackB?.name}" compete in the ${pair.maskedBands.join(', ')} range.`,
+          why: 'When two instruments occupy the same frequency space, both lose clarity and definition.',
+          how: `EQ cut on "${nonDominantTrack?.name}" creates space for "${(pair.dominantTrackId === pair.trackAId ? trackA : trackB)?.name}".`,
+          alternatives: ['Pan the tracks apart instead', 'Use sidechain compression for dynamic ducking', 'Adjust arrangement to avoid simultaneous notes'],
+        },
         timestamp: Date.now(),
       });
     }
@@ -542,6 +560,12 @@ export function generateSuggestions(
         confidence: 0.8,
         status: 'pending',
         action: null,
+        explanation: {
+          what: `Integrated loudness is ${lufs.toFixed(1)} LUFS, above the ${targetLufs} LUFS target.`,
+          why: 'Exceeding platform targets causes automatic gain reduction and pumping artifacts.',
+          how: 'Reduce master level or ease limiting to bring LUFS within target range.',
+          alternatives: ['Adjust per-track levels instead of master', 'Use a different limiter algorithm'],
+        },
         timestamp: Date.now(),
       });
     } else if (lufs < targetLufs - 6 && lufs > -Infinity) {
@@ -564,6 +588,12 @@ export function generateSuggestions(
         confidence: 0.7,
         status: 'pending',
         action: null,
+        explanation: {
+          what: `Integrated loudness is ${lufs.toFixed(1)} LUFS, below the ${targetLufs} LUFS target.`,
+          why: 'A mix below genre targets will sound weak compared to other releases.',
+          how: 'Increase overall gain or reduce dynamic range to raise perceived loudness.',
+          alternatives: ['Adjust per-track levels instead of master', 'Use a different limiter algorithm'],
+        },
         timestamp: Date.now(),
       });
     }
@@ -810,6 +840,12 @@ export function generateSuggestions(
           type: 'batch',
           trackId: '',
           actions: batchActions,
+        },
+        explanation: {
+          what: `${tracksNeedingAdjustment.length} track(s) have peaks far from the -6 dBFS target.`,
+          why: 'Proper gain staging ensures headroom for mixing and prevents distortion in effects chains.',
+          how: 'Adjusting fader levels to target -6 dBFS peak per track, then compensating master.',
+          alternatives: ['Use clip gain instead of fader', 'Add a gain plugin at the start of each chain'],
         },
         timestamp: Date.now(),
       });

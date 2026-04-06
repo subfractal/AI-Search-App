@@ -3,7 +3,14 @@
  * generates explainable deltas with specific suggestions.
  */
 
-import type { ReferenceMatchResult, ReferenceDelta } from '@/types/session-scan';
+import type { AudioSection } from '@/types/ai';
+import type {
+  ReferenceMatchResult,
+  ReferenceDelta,
+  EnrichedReferenceResult,
+  SectionReferenceComparison,
+} from '@/types/session-scan';
+import { sliceBuffer } from './analysis-engine';
 
 interface SpectralSnapshot {
   rms: number;
@@ -232,5 +239,139 @@ export function matchReference(
     overallSimilarity: Math.round(overallSimilarity),
     referenceAnalysis: { rms: ref.rms, peak: ref.peak, spectral: ref.spectral },
     mixAnalysis: { rms: mix.rms, peak: mix.peak, spectral: mix.spectral },
+  };
+}
+
+/**
+ * Compare mix buffer to reference buffer on a per-section basis.
+ * Sections are mapped proportionally when durations differ.
+ */
+export function matchReferencePerSection(
+  mixBuffer: AudioBuffer,
+  referenceBuffer: AudioBuffer,
+  sections: AudioSection[],
+): EnrichedReferenceResult {
+  // Full-song comparison first
+  const fullResult = matchReference(mixBuffer, referenceBuffer);
+
+  if (sections.length === 0) {
+    return { ...fullResult, sections: [], perSectionSimilarity: [] };
+  }
+
+  const mixDuration = mixBuffer.length / mixBuffer.sampleRate;
+  const refDuration = referenceBuffer.length / referenceBuffer.sampleRate;
+  const timeRatio = refDuration / mixDuration;
+
+  const sectionComparisons: SectionReferenceComparison[] = [];
+  const perSectionSimilarity: number[] = [];
+
+  for (const section of sections) {
+    const mixSlice = sliceBuffer(mixBuffer, section.start, section.end);
+
+    // Map section times proportionally to reference
+    const refStart = section.start * timeRatio;
+    const refEnd = Math.min(section.end * timeRatio, refDuration);
+    const refSlice = sliceBuffer(referenceBuffer, refStart, refEnd);
+
+    const mixSnap = analyzeBuffer(mixSlice);
+    const refSnap = analyzeBuffer(refSlice);
+
+    // Build section-level deltas
+    const deltas: ReferenceDelta[] = [];
+
+    // RMS
+    const rmsDelta = mixSnap.rms - refSnap.rms;
+    deltas.push({
+      parameter: 'Loudness (RMS)',
+      category: 'loudness',
+      current: Math.round(mixSnap.rms * 10) / 10,
+      reference: Math.round(refSnap.rms * 10) / 10,
+      delta: Math.round(rmsDelta * 10) / 10,
+      unit: 'dB',
+      severity: severity(rmsDelta, [2, 4]),
+      suggestion: rmsDelta > 2
+        ? 'Section is louder than reference'
+        : rmsDelta < -2
+          ? 'Section is quieter than reference'
+          : 'Loudness matched',
+    });
+
+    // Dynamic range
+    const drDelta = mixSnap.dynamicRange - refSnap.dynamicRange;
+    deltas.push({
+      parameter: 'Dynamic Range',
+      category: 'dynamics',
+      current: Math.round(mixSnap.dynamicRange * 10) / 10,
+      reference: Math.round(refSnap.dynamicRange * 10) / 10,
+      delta: Math.round(drDelta * 10) / 10,
+      unit: 'dB',
+      severity: severity(drDelta, [3, 6]),
+      suggestion: drDelta > 3
+        ? 'More dynamic — consider compression'
+        : drDelta < -3
+          ? 'More compressed — ease compression'
+          : 'Dynamics comparable',
+    });
+
+    // Stereo width
+    const swDelta = mixSnap.stereoWidth - refSnap.stereoWidth;
+    deltas.push({
+      parameter: 'Stereo Width',
+      category: 'stereo',
+      current: Math.round(mixSnap.stereoWidth * 100),
+      reference: Math.round(refSnap.stereoWidth * 100),
+      delta: Math.round(swDelta * 100),
+      unit: '%',
+      severity: severity(swDelta, [0.1, 0.25]),
+      suggestion: swDelta > 0.15
+        ? 'Wider than reference'
+        : swDelta < -0.15
+          ? 'Narrower than reference'
+          : 'Similar width',
+    });
+
+    // Spectral bands
+    const bandNames = ['Sub', 'Low', 'Mid', 'Hi-Mid', 'High'];
+    for (let i = 0; i < 5; i++) {
+      const mixBand = mixSnap.spectral[i] ?? 0;
+      const refBand = refSnap.spectral[i] ?? 0;
+      const ratio = mixBand / (refBand > 0 ? refBand : 1);
+      const bandDelta = 20 * Math.log10(Math.max(ratio, 1e-10));
+      deltas.push({
+        parameter: bandNames[i]!,
+        category: 'spectral',
+        current: Math.round(bandDelta * 10) / 10,
+        reference: 0,
+        delta: Math.round(bandDelta * 10) / 10,
+        unit: 'dB',
+        severity: severity(bandDelta, [2, 5]),
+        suggestion: bandDelta > 3
+          ? `${bandNames[i]} boosted`
+          : bandDelta < -3
+            ? `${bandNames[i]} lacking`
+            : `${bandNames[i]} matched`,
+      });
+    }
+
+    const totalDelta = deltas.reduce(
+      (s, d) => s + Math.abs(d.delta) * (d.category === 'loudness' ? 2 : 1),
+      0,
+    );
+    const sim = Math.max(0, Math.min(100, Math.round(100 - totalDelta * 2)));
+
+    sectionComparisons.push({
+      sectionLabel: section.label,
+      sectionStart: section.start,
+      sectionEnd: section.end,
+      deltas,
+      similarity: sim,
+    });
+    perSectionSimilarity.push(sim);
+  }
+
+  return {
+    ...fullResult,
+    sections: sectionComparisons,
+    perSectionSimilarity,
   };
 }
