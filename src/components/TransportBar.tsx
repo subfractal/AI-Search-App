@@ -287,9 +287,14 @@ export default function TransportBar({
           </button>
           {/* Forward */}
           <button
+            onClick={() => {
+              const currentPos = getPositionSeconds();
+              const barDurationSecs = (60 / bpm) * beatsPerBar;
+              seekTo(Math.max(0, currentPos + barDurationSecs));
+            }}
             className="daw-hw-btn w-9 h-9 flex items-center justify-center
                        text-daw-text-muted/60 hover:text-daw-text-dim"
-            title="Forward"
+            title="Forward (>> advance by one bar)"
           >
             <IconForward />
           </button>
