@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import TransportBar from '@/components/TransportBar';
 import TrackList from '@/components/TrackList';
 import Timeline from '@/components/Timeline';
@@ -41,6 +41,37 @@ function PanelSpinner() {
       </div>
     </div>
   );
+}
+
+// Error boundary for PianoRoll and other components
+class PianoRollErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error('PianoRoll crashed:', error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '20px', color: '#aaa', textAlign: 'center' }}>
+          <div className="text-sm">Piano Roll encountered an error.</div>
+          <div className="text-xs text-daw-text-muted mt-2">Select a MIDI clip and try again.</div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 export type { BottomPanel };
@@ -169,6 +200,7 @@ export default function App() {
 
   const openPianoRoll = () => {
     // BUG-07 FIX: Try to find a selected MIDI clip, then fall back to any MIDI clip in selected track
+    const selectedClips = useSessionStore.getState().selectedClips;
     let targetClip = null;
     let targetTrackId = null;
 
@@ -268,17 +300,26 @@ export default function App() {
         content = <BrowserPanel />;
         break;
       case 'piano-roll':
-        if (!pianoRollClip) return null;
-        content = (
-          <PianoRoll
-            trackId={pianoRollClip.trackId}
-            clip={pianoRollClip.clip}
-            onClose={() => {
-              setPianoRollClip(null);
-              setLowerZonePanel('mixer');
-            }}
-          />
-        );
+        if (!pianoRollClip) {
+          content = (
+            <div className="h-full flex items-center justify-center text-xxs text-daw-text-muted">
+              Select a MIDI clip to open the Piano Roll
+            </div>
+          );
+        } else {
+          content = (
+            <PianoRollErrorBoundary>
+              <PianoRoll
+                trackId={pianoRollClip.trackId}
+                clip={pianoRollClip.clip}
+                onClose={() => {
+                  setPianoRollClip(null);
+                  setLowerZonePanel('mixer');
+                }}
+              />
+            </PianoRollErrorBoundary>
+          );
+        }
         break;
       case 'clip-view':
         content = (
