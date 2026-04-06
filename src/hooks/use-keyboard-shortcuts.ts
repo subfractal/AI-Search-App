@@ -151,6 +151,13 @@ export function useKeyboardShortcuts(): void {
         return;
       }
 
+      // --- ? key: toggle keyboard shortcuts overlay ---
+      if (e.key === '?') {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('toggle-keyboard-shortcuts'));
+        return;
+      }
+
       // --- BPM adjustment ---
       if (e.key === '+' || e.key === '=') {
         e.preventDefault();

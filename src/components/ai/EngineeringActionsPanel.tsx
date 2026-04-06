@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { useSessionStore } from '@/stores/session-store';
 import { useMixerStore } from '@/stores/mixer-store';
+import { useHistoryStore } from '@/stores/history-store';
 import {
   runEngineeringScan,
   autoFixIssues,
@@ -16,6 +17,36 @@ import {
 import type { EngineeringReport, EngineeringIssue } from '@/services/ai/engineering-actions';
 import { isAudioClip } from '@/types/audio';
 import type { AudioClip } from '@/types/audio';
+
+/** Capture volume and timing state for undo */
+function captureTrackState() {
+  const session = useSessionStore.getState();
+  const mixer = useMixerStore.getState();
+  return session.tracks.map((t) => ({
+    id: t.id,
+    volume: t.volume,
+    clips: t.clips.map((c) => ({
+      id: c.id,
+      startTime: c.startTime,
+      duration: c.duration,
+    })),
+    stripVolume: mixer.strips[t.id]?.volume ?? 0,
+  }));
+}
+
+/** Restore track state from a snapshot */
+function restoreTrackState(snapshot: ReturnType<typeof captureTrackState>) {
+  const session = useSessionStore.getState();
+  const mixer = useMixerStore.getState();
+  for (const saved of snapshot) {
+    session.updateTrack(saved.id, { volume: saved.volume });
+    mixer.setVolume(saved.id, saved.stripVolume);
+    for (const clip of saved.clips) {
+      session.moveClipTime(saved.id, clip.id, clip.startTime);
+      session.resizeClipDuration(saved.id, clip.id, clip.duration);
+    }
+  }
+}
 
 const SEVERITY_COLORS = {
   critical: 'text-red-400 bg-red-400/10',
@@ -78,7 +109,16 @@ export default function EngineeringActionsPanel() {
 
   const handleAutoFix = () => {
     if (!report) return;
+    const before = captureTrackState();
     const fixed = autoFixIssues(report);
+    if (fixed > 0) {
+      const after = captureTrackState();
+      useHistoryStore.getState().pushAction(
+        `Auto-fix ${fixed} engineering issue(s)`,
+        () => restoreTrackState(before),
+        () => restoreTrackState(after),
+      );
+    }
     const newReport = runEngineeringScan();
     setReport(newReport);
     showStatus(`Auto-fixed ${fixed} issue${fixed !== 1 ? 's' : ''}`);
@@ -86,13 +126,21 @@ export default function EngineeringActionsPanel() {
 
   const handleFixSingle = (issue: EngineeringIssue) => {
     if (issue.fixAction) {
+      const before = captureTrackState();
       issue.fixAction();
+      const after = captureTrackState();
+      useHistoryStore.getState().pushAction(
+        `Fix ${issue.type} on "${issue.trackName}"`,
+        () => restoreTrackState(before),
+        () => restoreTrackState(after),
+      );
       const newReport = runEngineeringScan();
       setReport(newReport);
     }
   };
 
   const handleTrimSilence = () => {
+    const before = captureTrackState();
     const session = useSessionStore.getState();
     let trimmedCount = 0;
 
@@ -137,6 +185,15 @@ export default function EngineeringActionsPanel() {
       if (changed) trimmedCount++;
     }
 
+    if (trimmedCount > 0) {
+      const after = captureTrackState();
+      useHistoryStore.getState().pushAction(
+        `Trim silence from ${trimmedCount} track(s)`,
+        () => restoreTrackState(before),
+        () => restoreTrackState(after),
+      );
+    }
+
     const newReport = runEngineeringScan();
     setReport(newReport);
     showStatus(
@@ -147,6 +204,7 @@ export default function EngineeringActionsPanel() {
   };
 
   const handleFixClipping = () => {
+    const before = captureTrackState();
     const session = useSessionStore.getState();
     const mixer = useMixerStore.getState();
     let fixedCount = 0;
@@ -171,6 +229,15 @@ export default function EngineeringActionsPanel() {
       }
     }
 
+    if (fixedCount > 0) {
+      const after = captureTrackState();
+      useHistoryStore.getState().pushAction(
+        `Fix clipping on ${fixedCount} track(s)`,
+        () => restoreTrackState(before),
+        () => restoreTrackState(after),
+      );
+    }
+
     const newReport = runEngineeringScan();
     setReport(newReport);
     showStatus(
@@ -181,6 +248,7 @@ export default function EngineeringActionsPanel() {
   };
 
   const handleNormalize = () => {
+    const before = captureTrackState();
     const session = useSessionStore.getState();
     const mixer = useMixerStore.getState();
     const TARGET_DB = -6;
@@ -209,6 +277,15 @@ export default function EngineeringActionsPanel() {
         session.updateTrack(track.id, { volume: newVol });
         normalizedCount++;
       }
+    }
+
+    if (normalizedCount > 0) {
+      const after = captureTrackState();
+      useHistoryStore.getState().pushAction(
+        `Normalize ${normalizedCount} track(s) to ${TARGET_DB} dBFS`,
+        () => restoreTrackState(before),
+        () => restoreTrackState(after),
+      );
     }
 
     const newReport = runEngineeringScan();
@@ -248,6 +325,8 @@ export default function EngineeringActionsPanel() {
   };
 
   const handleFixAll = () => {
+    const before = captureTrackState();
+
     // Run scan first
     const scanReport = runEngineeringScan();
 
@@ -294,6 +373,15 @@ export default function EngineeringActionsPanel() {
       }
 
       if (changed) trimmedCount++;
+    }
+
+    if (fixed > 0 || trimmedCount > 0) {
+      const after = captureTrackState();
+      useHistoryStore.getState().pushAction(
+        `Fix All: ${fixed} issue(s), ${trimmedCount} trim(s)`,
+        () => restoreTrackState(before),
+        () => restoreTrackState(after),
+      );
     }
 
     // Re-scan to show final state

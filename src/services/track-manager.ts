@@ -1,5 +1,5 @@
 import * as Tone from 'tone';
-import { createChannel, createPlayer, disposeNode } from './audio-engine';
+import { createChannel, createPlayer, disposeNode, isAudioReady, onAudioReady } from './audio-engine';
 import { reconnectTrackEffects } from './effects-service';
 import { createWarpedBuffer } from './warp-service';
 import { useWarpStore } from '@/stores/warp-store';
@@ -13,6 +13,10 @@ interface TrackAudioNode {
 }
 
 const trackNodes = new Map<string, TrackAudioNode>();
+
+// Queue of clips waiting for audio context to start before creating players
+const pendingClips: AudioClip[] = [];
+let flushRegistered = false;
 
 export function createTrackNodes(trackId: string): TrackAudioNode {
   const channel = createChannel();
@@ -63,6 +67,23 @@ export function setTrackSolo(trackId: string, solo: boolean): void {
 }
 
 export function addClipPlayer(clip: AudioClip): void {
+  // Guard: if Tone.js AudioContext isn't started yet, queue this clip.
+  // Creating Tone.Player on a suspended context can hang (resume() blocks
+  // when called outside a user gesture). The queue is flushed when the user
+  // clicks Play/Record and initAudioContext() resolves.
+  if (!isAudioReady()) {
+    pendingClips.push(clip);
+    console.log(`[DAW] Queued clip "${clip.name}" — audio context not started yet`);
+    if (!flushRegistered) {
+      flushRegistered = true;
+      onAudioReady(() => {
+        console.log(`[DAW] Audio ready — flushing ${pendingClips.length} queued clip(s)`);
+        flushPendingClips();
+      });
+    }
+    return;
+  }
+
   const node = trackNodes.get(clip.trackId);
   if (!node) return;
 
@@ -85,6 +106,15 @@ export function addClipPlayer(clip: AudioClip): void {
 
   // Re-route through effects chain if effects exist on this track
   reconnectTrackEffects(clip.trackId);
+}
+
+/** Flush any clips that were queued before the audio context started. */
+export function flushPendingClips(): void {
+  while (pendingClips.length > 0) {
+    const clip = pendingClips.shift()!;
+    console.log(`[DAW] Flushing queued clip "${clip.name}"`);
+    addClipPlayer(clip);
+  }
 }
 
 export function removeClipPlayer(trackId: string, clipId: string): void {

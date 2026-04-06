@@ -1,12 +1,27 @@
 import * as Tone from 'tone';
 
 let audioContextStarted = false;
+const onReadyCallbacks: Array<() => void> = [];
 
 export async function initAudioContext(): Promise<void> {
   if (audioContextStarted) return;
   await Tone.start();
   audioContextStarted = true;
   console.log('[DAW] Audio context started:', Tone.getContext().state);
+  // Flush any callbacks waiting for audio to be ready
+  while (onReadyCallbacks.length > 0) {
+    const cb = onReadyCallbacks.shift()!;
+    try { cb(); } catch (e) { console.warn('[DAW] onReady callback error:', e); }
+  }
+}
+
+/** Register a callback to run once when audio context is ready. */
+export function onAudioReady(cb: () => void): void {
+  if (audioContextStarted) {
+    cb();
+  } else {
+    onReadyCallbacks.push(cb);
+  }
 }
 
 export function isAudioReady(): boolean {
@@ -121,11 +136,15 @@ function stripId3Header(buffer: ArrayBuffer): ArrayBuffer {
 }
 
 export async function loadAudioFromUrl(url: string): Promise<AudioBuffer> {
-  await initAudioContext();
   const response = await fetch(url);
   const arrayBuffer = await response.arrayBuffer();
-  const ctx = getAudioContext();
-  return ctx.decodeAudioData(arrayBuffer);
+  // Use a fresh AudioContext for decoding — same approach as loadAudioFile
+  const tempCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+  try {
+    return await tempCtx.decodeAudioData(arrayBuffer);
+  } finally {
+    try { tempCtx.close(); } catch { /* ignore */ }
+  }
 }
 
 export function createPlayer(buffer: AudioBuffer): Tone.Player {

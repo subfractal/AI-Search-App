@@ -960,20 +960,32 @@ function SuggestionCard({
           {showExplanation && (
             <div className="mt-1 p-1.5 bg-daw-bg/60 border border-daw-border/10 space-y-1">
               <div className="text-[8px] font-mono text-daw-text-muted">
-                <span className="font-bold text-daw-text">WHAT:</span>{' '}
+                <span className="font-bold text-cyan-400">Detected:</span>{' '}
                 {suggestion.explanation.what}
               </div>
               <div className="text-[8px] font-mono text-daw-text-muted">
-                <span className="font-bold text-daw-text">WHY:</span>{' '}
+                <span className="font-bold text-amber-400">Why it matters:</span>{' '}
                 {suggestion.explanation.why}
               </div>
               <div className="text-[8px] font-mono text-daw-text-muted">
-                <span className="font-bold text-daw-text">HOW:</span>{' '}
+                <span className="font-bold text-green-400">Action:</span>{' '}
                 {suggestion.explanation.how}
               </div>
+              {suggestion.explanation.expectedResult && (
+                <div className="text-[8px] font-mono text-daw-text-muted">
+                  <span className="font-bold text-blue-400">Expected result:</span>{' '}
+                  {suggestion.explanation.expectedResult}
+                </div>
+              )}
+              {suggestion.explanation.tradeoff && (
+                <div className="text-[8px] font-mono text-daw-text-muted">
+                  <span className="font-bold text-rose-400">Tradeoff:</span>{' '}
+                  {suggestion.explanation.tradeoff}
+                </div>
+              )}
               {suggestion.explanation.alternatives.length > 0 && (
                 <div className="text-[8px] font-mono text-daw-text-muted">
-                  <span className="font-bold text-daw-text">ALTERNATIVES:</span>
+                  <span className="font-bold text-daw-text">Alternatives:</span>
                   <ul className="ml-2 mt-0.5">
                     {suggestion.explanation.alternatives.map((alt, i) => (
                       <li key={i} className="text-[8px] text-daw-text-muted">

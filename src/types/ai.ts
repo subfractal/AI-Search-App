@@ -57,6 +57,8 @@ export interface AIExplanation {
   what: string;
   why: string;
   how: string;
+  expectedResult?: string;
+  tradeoff?: string;
   alternatives: string[];
 }
 
