@@ -1,0 +1,236 @@
+import * as Tone from 'tone';
+import type { Track } from '@/types/audio';
+import { isAudioClip } from '@/types/audio';
+import { useEffectsStore } from '@/stores/effects-store';
+import { createEffectNode } from '@/services/effects-service';
+
+/**
+ * Bounce (offline-render) the entire session to an AudioBuffer.
+ * Includes the full effects chain for each track.
+ */
+export async function bounceSession(
+  tracks: Track[],
+  duration: number,
+  sampleRate: number = 44100,
+): Promise<AudioBuffer> {
+  // Snapshot effect chains before entering offline context
+  const effectChains = useEffectsStore.getState().trackEffects;
+
+  const toneBuffer = await Tone.Offline(({ transport }) => {
+    transport.bpm.value = Tone.getTransport().bpm.value;
+
+    for (const track of tracks) {
+      if (track.mute) continue;
+
+      const channel = new Tone.Channel(track.volume, track.pan).toDestination();
+
+      // Build offline effects chain for this track
+      const trackFx = effectChains[track.id] ?? [];
+      const enabledFx = trackFx.filter((fx) => fx.enabled);
+      const fxNodes: Tone.ToneAudioNode[] = [];
+
+      for (const fx of enabledFx) {
+        try {
+          const node = createEffectNode(fx.type, fx.params);
+          fxNodes.push(node);
+        } catch {
+          // Skip effects that fail to create in offline context
+        }
+      }
+
+      // Chain: players → fx[0] → fx[1] → ... → channel → destination
+      if (fxNodes.length > 0) {
+        for (let i = 0; i < fxNodes.length - 1; i++) {
+          fxNodes[i]!.connect(fxNodes[i + 1]!);
+        }
+        fxNodes[fxNodes.length - 1]!.connect(channel);
+      }
+
+      const connectTarget = fxNodes.length > 0 ? fxNodes[0]! : channel;
+
+      for (const clip of track.clips) {
+        if (!isAudioClip(clip)) continue;
+
+        const buf = new Tone.ToneAudioBuffer(clip.buffer);
+        const player = new Tone.Player(buf);
+        player.connect(connectTarget);
+        player.sync().start(clip.startTime, clip.offset, clip.duration);
+      }
+    }
+
+    transport.start(0);
+  }, duration, 2, sampleRate);
+  return toneBuffer.get() as AudioBuffer;
+}
+
+/**
+ * Convert an AudioBuffer to a 16-bit PCM WAV Blob.
+ */
+export function audioBufferToWav(buffer: AudioBuffer): Blob {
+  const numChannels = buffer.numberOfChannels;
+  const sampleRate = buffer.sampleRate;
+  const bitsPerSample = 16;
+  const bytesPerSample = bitsPerSample / 8;
+  const blockAlign = numChannels * bytesPerSample;
+  const numFrames = buffer.length;
+  const dataSize = numFrames * blockAlign;
+  const headerSize = 44;
+  const totalSize = headerSize + dataSize;
+
+  const arrayBuffer = new ArrayBuffer(totalSize);
+  const view = new DataView(arrayBuffer);
+
+  // RIFF header
+  writeString(view, 0, 'RIFF');
+  view.setUint32(4, totalSize - 8, true);
+  writeString(view, 8, 'WAVE');
+
+  // fmt chunk
+  writeString(view, 12, 'fmt ');
+  view.setUint32(16, 16, true); // chunk size
+  view.setUint16(20, 1, true);  // PCM format
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * blockAlign, true); // byte rate
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitsPerSample, true);
+
+  // data chunk
+  writeString(view, 36, 'data');
+  view.setUint32(40, dataSize, true);
+
+  // Gather channel data
+  const channels: Float32Array[] = [];
+  for (let ch = 0; ch < numChannels; ch++) {
+    channels.push(buffer.getChannelData(ch));
+  }
+
+  // Interleave and write 16-bit PCM samples
+  let offset = headerSize;
+  for (let i = 0; i < numFrames; i++) {
+    for (let ch = 0; ch < numChannels; ch++) {
+      const sample = channels[ch]![i]!;
+      // Clamp to [-1, 1] and convert to 16-bit integer
+      const clamped = Math.max(-1, Math.min(1, sample));
+      const int16 = clamped < 0
+        ? Math.max(-32768, Math.round(clamped * 32768))
+        : Math.min(32767, Math.round(clamped * 32767));
+      view.setInt16(offset, int16, true);
+      offset += bytesPerSample;
+    }
+  }
+
+  return new Blob([arrayBuffer], { type: 'audio/wav' });
+}
+
+function writeString(view: DataView, offset: number, str: string): void {
+  for (let i = 0; i < str.length; i++) {
+    view.setUint8(offset + i, str.charCodeAt(i));
+  }
+}
+
+/**
+ * Trigger a browser download of a Blob.
+ */
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Bounce the full session to WAV and download.
+ */
+export async function exportSession(
+  tracks: Track[],
+  duration: number,
+  filename?: string,
+): Promise<void> {
+  const buffer = await bounceSession(tracks, duration);
+  const wav = audioBufferToWav(buffer);
+  const name = filename ?? `mix-export-${Date.now()}.wav`;
+  downloadBlob(wav, name);
+}
+
+/**
+ * Export a single track as a stem (WAV download).
+ */
+export async function exportStem(
+  track: Track,
+  duration: number,
+  filename?: string,
+): Promise<void> {
+  const buffer = await bounceSession([track], duration);
+  const wav = audioBufferToWav(buffer);
+  const name = filename ?? `${track.name}-stem-${Date.now()}.wav`;
+  downloadBlob(wav, name);
+}
+
+/**
+ * Export readiness check result.
+ */
+export interface ExportReadiness {
+  ready: boolean;
+  warnings: string[];
+  suggestions: string[];
+}
+
+/**
+ * Check if the session is ready for export.
+ */
+export function prepareForExport(tracks: Track[]): ExportReadiness {
+  const warnings: string[] = [];
+  const suggestions: string[] = [];
+
+  if (tracks.length === 0) {
+    warnings.push('No tracks in session');
+    return { ready: false, warnings, suggestions };
+  }
+
+  const hasClips = tracks.some((t) => t.clips.length > 0);
+  if (!hasClips) {
+    warnings.push('No clips on any track');
+    return { ready: false, warnings, suggestions };
+  }
+
+  const allMuted = tracks.every((t) => t.mute);
+  if (allMuted) {
+    warnings.push('All tracks are muted — export will be silent');
+  }
+
+  // Check for hot tracks (volume > 3 dB)
+  const hotTracks = tracks.filter((t) => !t.mute && t.volume > 3);
+  if (hotTracks.length > 0) {
+    warnings.push(
+      `${hotTracks.length} track(s) above +3 dB: ${hotTracks.map((t) => t.name).join(', ')}`,
+    );
+    suggestions.push('Consider reducing levels to avoid clipping');
+  }
+
+  // Check for tracks with no clips
+  const emptyTracks = tracks.filter((t) => !t.mute && t.clips.length === 0);
+  if (emptyTracks.length > 0) {
+    suggestions.push(
+      `${emptyTracks.length} active track(s) have no clips`,
+    );
+  }
+
+  // Check for very short clips
+  const shortClips = tracks
+    .flatMap((t) => t.clips)
+    .filter((c) => c.duration < 0.1);
+  if (shortClips.length > 0) {
+    suggestions.push(`${shortClips.length} very short clip(s) detected (<0.1s)`);
+  }
+
+  return {
+    ready: warnings.length === 0,
+    warnings,
+    suggestions,
+  };
+}
