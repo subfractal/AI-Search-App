@@ -4,8 +4,8 @@ import { useSessionStore } from '@/stores/session-store';
 import { useMixerStore } from '@/stores/mixer-store';
 import { useAIStore } from '@/stores/ai-store';
 import { generateId } from '@/utils/id';
-import { autoAnalyzeClip } from '@/services/ai/auto-analyze';
 import { classifyTrackAsync } from '@/services/ai/track-classifier';
+import { autoAnalyzeClip } from '@/services/ai/auto-analyze';
 import { importProgress } from '@/stores/import-progress-store';
 import { toast } from '@/stores/toast-store';
 import type { AudioClip } from '@/types/audio';
@@ -43,6 +43,7 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
         const name = file.name.replace(/\.[^.]+$/, '');
 
         try {
+          // Show progress via the Zustand import-progress store.
           importProgress.start(name);
 
           // PHASE 1: Decode audio (with fake progress)
@@ -81,7 +82,7 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
             const audioCtx = new ctx();
             buffer = audioCtx.createBuffer(1, audioCtx.sampleRate, audioCtx.sampleRate);
             console.warn(`[DAW] Importing "${file.name}" without audio (decode failed) — clip created as silent placeholder`);
-            toast.warn(`Could not decode "${file.name}" — imported as silent clip`);
+            toast.error(`Could not decode "${file.name}" — imported as silent clip`);
           }
 
           // Safety check: buffer must be valid
@@ -116,36 +117,12 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
             continue;
           }
 
-          // Yield to let the UI render the new track before starting analysis
-          await new Promise<void>((r) => setTimeout(r, 16));
+          // Yield to let the UI render the new track + waveform and let the
+          // deferred Tone.js player creation run (setTimeout(0) in addClipToTrack)
+          await new Promise<void>((r) => setTimeout(r, 100));
+          importProgress.update('classifying', 30);
 
-          // PHASE 3: Classification (async, with error isolation)
-          importProgress.update('classifying', 25);
-          if (useAIStore.getState().autoOrganizeEnabled) {
-            try {
-              const classification = await classifyTrackAsync(trackId, buffer, file.name);
-              if (classification.confidence > 0.4) {
-                const session = useSessionStore.getState();
-                session.updateTrack(trackId, {
-                  name: classification.suggestedName,
-                  color: classification.suggestedColor,
-                  role: classification.suggestedRole,
-                });
-                useAIStore.getState().logActivity({
-                  id: `log-${Date.now()}`,
-                  description: `Auto-classified "${name}" as ${classification.suggestedRole} (${Math.round(classification.confidence * 100)}%)`,
-                  trackId,
-                  timestamp: Date.now(),
-                  undoable: false,
-                });
-              }
-            } catch (err) {
-              console.warn(`[DAW] Classification failed for "${name}":`, err);
-              // Continue — classification is optional
-            }
-          }
-
-          // PHASE 4: Auto gain staging (fast, isolated error handling)
+          // PHASE 3: Auto gain staging on import (fast — strided peak scan, main thread OK)
           try {
             if (useAIStore.getState().autoGainStagingOnImport) {
               const data = buffer.getChannelData(0);
@@ -173,33 +150,50 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
             // Continue — gain staging is optional
           }
 
-          // PHASE 5: BPM + Key analysis (fully async, isolated error handling)
-          autoAnalyzeClip(buffer)
-            .then((analysis) => {
-              importProgress.update('analyzing-key', 95);
-              setTimeout(() => {
-                importProgress.update('done', 100);
-                setTimeout(() => importProgress.done(), 500);
-              }, 100);
+          // PHASE 4: Classification + analysis on the main thread (async-yielding)
+          (async () => {
+            try {
+              // Classify track type
+              const classification = await classifyTrackAsync(trackId!, buffer, file.name);
 
-              const parts: string[] = [];
-              if (analysis.bpm) parts.push(`BPM: ${Math.round(analysis.bpm.bpm)}`);
-              if (analysis.key) parts.push(`Key: ${analysis.key.key}`);
-              if (parts.length > 0) {
+              if (classification.confidence > 0.4
+                  && useAIStore.getState().autoOrganizeEnabled) {
+                const session = useSessionStore.getState();
+                session.updateTrack(trackId!, {
+                  name: classification.suggestedName,
+                  color: classification.suggestedColor,
+                  role: classification.suggestedRole as string,
+                });
                 useAIStore.getState().logActivity({
                   id: `log-${Date.now()}`,
-                  description: `Auto-analyzed "${name}" — ${parts.join(', ')}`,
-                  trackId,
+                  description: `Auto-classified "${name}" as ${classification.suggestedRole} (${Math.round(classification.confidence * 100)}%)`,
+                  trackId: trackId!,
                   timestamp: Date.now(),
                   undoable: false,
                 });
               }
-            })
-            .catch((err) => {
+
+              // BPM + Key analysis
+              const analysisResult = await autoAnalyzeClip(buffer);
+              const parts: string[] = [];
+              if (analysisResult.bpm) parts.push(`BPM: ${Math.round(analysisResult.bpm.bpm)}`);
+              if (analysisResult.key) parts.push(`Key: ${analysisResult.key.key}`);
+              if (parts.length > 0) {
+                useAIStore.getState().logActivity({
+                  id: `log-${Date.now()}`,
+                  description: `Auto-analyzed "${name}" — ${parts.join(', ')}`,
+                  trackId: trackId!,
+                  timestamp: Date.now(),
+                  undoable: false,
+                });
+              }
+
+              importProgress.done();
+            } catch (err: unknown) {
               console.warn(`[DAW] Analysis failed for "${name}":`, err);
-              // Clear progress bar cleanly on error
-              setTimeout(() => importProgress.done(), 100);
-            });
+              importProgress.done();
+            }
+          })();
         } catch (err) {
           console.error(`[DAW] Fatal error importing "${file.name}":`, err);
           const msg = err instanceof Error ? err.message : String(err);

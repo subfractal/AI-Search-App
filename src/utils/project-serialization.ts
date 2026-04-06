@@ -38,7 +38,6 @@ export function serializeProject(projectName: string = 'Untitled Project'): Proj
  * Uses Zustand's internal state mutation for immediate restore
  */
 export function deserializeProject(data: ProjectData): void {
-  const sessionStore = useSessionStore.getState();
   const transportStore = useTransportStore.getState();
 
   // Directly set the state by bypassing the individual actions

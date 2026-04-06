@@ -18,7 +18,6 @@ export function getAudioContext(): AudioContext {
 }
 
 const SUPPORTED_FORMATS = ['audio/wav', 'audio/mp3', 'audio/mpeg', 'audio/ogg', 'audio/flac', 'audio/aac', 'audio/x-m4a'];
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB for waveform generation, 200MB overall warning
 const WARN_FILE_SIZE = 200 * 1024 * 1024;
 
 export async function loadAudioFile(file: File): Promise<AudioBuffer> {

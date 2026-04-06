@@ -3,6 +3,7 @@ import { useSessionStore } from '@/stores/session-store';
 import { useTransportStore } from '@/stores/transport-store';
 import { useAutomationStore } from '@/stores/automation-store';
 import { useAIStore } from '@/stores/ai-store';
+import { useHistoryStore } from '@/stores/history-store';
 import { getPositionSeconds, seekTo } from '@/services/transport-service';
 import { isAudioClip } from '@/types/audio';
 import type { Clip } from '@/types/audio';
@@ -411,14 +412,35 @@ export default function Timeline() {
         }
       };
       const onUp = () => {
-        // BUG-11 FIX: Verify clip still exists after drag ends and is properly committed
-        if (dragRef.current) {
+        const drag = dragRef.current;
+        if (drag && drag.moved) {
+          // BUG-11 FIX: Verify clip still exists after drag ends
           const currentTracks = useSessionStore.getState().tracks;
-          const track = currentTracks.find((t) => t.id === dragRef.current!.trackId);
-          const clip = track?.clips.find((c) => c.id === dragRef.current!.clipId);
-          if (!clip) {
-            // Clip was somehow lost - this shouldn't happen but log if it does
-            console.warn('BUG-11: Clip disappeared during drag', dragRef.current.clipId);
+          const track2 = currentTracks.find((t) => t.id === drag.trackId);
+          const clip2 = track2?.clips.find((c) => c.id === drag.clipId);
+          if (!clip2) {
+            console.warn('BUG-11: Clip disappeared during drag', drag.clipId);
+          } else {
+            const { type: dragType2, trackId: dTrackId, clipId: dClipId,
+              startTime: origStart, startDuration: origDur } = drag;
+            const finalStart = clip2.startTime;
+            const finalDur = clip2.duration;
+            const label = dragType2 === 'move' ? 'Move clip' : 'Resize clip';
+            useHistoryStore.getState().pushAction(
+              label,
+              () => {
+                useSessionStore.getState().moveClipTime(dTrackId, dClipId, origStart);
+                if (dragType2 !== 'move') {
+                  useSessionStore.getState().resizeClipDuration(dTrackId, dClipId, origDur);
+                }
+              },
+              () => {
+                useSessionStore.getState().moveClipTime(dTrackId, dClipId, finalStart);
+                if (dragType2 !== 'move') {
+                  useSessionStore.getState().resizeClipDuration(dTrackId, dClipId, finalDur);
+                }
+              },
+            );
           }
         }
         dragRef.current = null;

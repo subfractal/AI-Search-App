@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTransportStore } from '@/stores/transport-store';
 import { useSessionStore } from '@/stores/session-store';
 import { useHistoryStore } from '@/stores/history-store';
-import { getPositionSeconds } from '@/services/transport-service';
+import { getPositionSeconds, seekTo } from '@/services/transport-service';
 import { formatBarsBeats } from '@/utils/format-time';
 
 import type { BottomPanel } from '@/App';

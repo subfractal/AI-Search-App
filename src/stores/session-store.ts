@@ -376,6 +376,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const clip = track?.clips.find((c) => c.id === clipId);
     if (!clip || splitTime <= 0 || splitTime >= clip.duration) return;
 
+    const originalClip = { ...clip };
     const leftClip = { ...clip, id: generateId('clip'), duration: splitTime };
     const rightClip = {
       ...clip,
@@ -405,58 +406,61 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       ),
     }));
 
+    const leftId = leftClip.id;
+    const rightId = rightClip.id;
     useHistoryStore.getState().pushAction(
       'Split clip',
       () => {
+        // Undo: remove left+right, restore original
         set((state) => ({
           tracks: state.tracks.map((t) =>
             t.id === trackId
-              ? { ...t, clips: t.clips.filter((c) => c.id !== leftClip.id && c.id !== rightClip.id && c.id === clipId ? true : c.id !== clipId) }
-              : t,
-          ),
-        }));
-        // Restore original clip
-        set((state) => ({
-          tracks: state.tracks.map((t) =>
-            t.id === trackId
-              ? { ...t, clips: [...t.clips.filter((c) => c.id !== leftClip.id && c.id !== rightClip.id), clip] }
+              ? { ...t, clips: [...t.clips.filter((c) => c.id !== leftId && c.id !== rightId), originalClip] }
               : t,
           ),
         }));
       },
       () => {
+        // Redo: remove original, add left+right
         set((state) => ({
           tracks: state.tracks.map((t) =>
             t.id === trackId
-              ? { ...t, clips: [...t.clips.filter((c) => c.id !== clipId), leftClip, rightClip] }
+              ? { ...t, clips: [...t.clips.filter((c) => c.id !== originalClip.id), leftClip, rightClip] }
               : t,
           ),
         }));
-      }
+      },
     );
   },
 
   setViewMode: (mode) => set({ viewMode: mode }),
 
   addClipToTrack: (trackId, clip) => {
+    // Update state first so the clip renders in the Timeline immediately
     set((state) => ({
       tracks: state.tracks.map((t) =>
         t.id === trackId ? { ...t, clips: [...t.clips, clip] } : t,
       ),
     }));
+
+    // Defer Tone.js player creation — Tone.ToneAudioBuffer copies the entire
+    // AudioBuffer (~50-100MB for a 16MB MP3) synchronously. Deferring lets
+    // the UI render the track/waveform first.
     if ('buffer' in clip) {
-      addClipPlayer(clip as AudioClip);
+      setTimeout(() => addClipPlayer(clip as AudioClip), 0);
     }
 
     useHistoryStore.getState().pushAction(
-      'Add clip',
+      `Add clip "${clip.name}"`,
       () => {
+        removeClipPlayer(trackId, clip.id);
         set((state) => ({
           tracks: state.tracks.map((t) =>
-            t.id === trackId ? { ...t, clips: t.clips.filter((c) => c.id !== clip.id) } : t,
+            t.id === trackId
+              ? { ...t, clips: t.clips.filter((c) => c.id !== clip.id) }
+              : t,
           ),
         }));
-        removeClipPlayer(trackId, clip.id);
       },
       () => {
         set((state) => ({
@@ -467,13 +471,12 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         if ('buffer' in clip) {
           addClipPlayer(clip as AudioClip);
         }
-      }
+      },
     );
   },
 
   removeClip: (trackId, clipId) => {
-    const { tracks } = get();
-    const track = tracks.find((t) => t.id === trackId);
+    const track = get().tracks.find((t) => t.id === trackId);
     const clip = track?.clips.find((c) => c.id === clipId);
 
     removeClipPlayer(trackId, clipId);
@@ -487,7 +490,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
     if (clip) {
       useHistoryStore.getState().pushAction(
-        'Remove clip',
+        `Remove clip "${clip.name}"`,
         () => {
           set((state) => ({
             tracks: state.tracks.map((t) =>
@@ -499,6 +502,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
           }
         },
         () => {
+          removeClipPlayer(trackId, clipId);
           set((state) => ({
             tracks: state.tracks.map((t) =>
               t.id === trackId
@@ -506,8 +510,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
                 : t,
             ),
           }));
-          removeClipPlayer(trackId, clipId);
-        }
+        },
       );
     }
   },

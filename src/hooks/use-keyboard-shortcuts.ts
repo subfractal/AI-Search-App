@@ -4,7 +4,7 @@ import { useHistoryStore } from '@/stores/history-store';
 import { useSessionStore } from '@/stores/session-store';
 import { useMixerStore } from '@/stores/mixer-store';
 import { useAIStore } from '@/stores/ai-store';
-import { downloadProject, loadProjectFile, loadProjectFromLocalStorage } from '@/utils/project-serialization';
+import { downloadProject, loadProjectFile } from '@/utils/project-serialization';
 
 export function useKeyboardShortcuts(): void {
   const play = useTransportStore((s) => s.play);
