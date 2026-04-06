@@ -39,40 +39,87 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
       for (const file of Array.from(files)) {
         if (!isAudioFile(file)) continue;
 
+        let trackId: string | null = null;
+        const name = file.name.replace(/\.[^.]+$/, '');
+
         try {
-          const name = file.name.replace(/\.[^.]+$/, '');
           importProgress.start(name);
 
-          // Decode audio (async, browser-native)
-          const buffer = await loadAudioFile(file);
+          // PHASE 1: Decode audio (with fake progress)
+          let fakeProgress = 0;
+          let buffer: AudioBuffer | null = null;
+          let decodeComplete = false;
+
+          // Simulate progress while decoding (decodeAudioData doesn't expose native progress)
+          const progressInterval = setInterval(() => {
+            if (!decodeComplete) {
+              fakeProgress = Math.min(fakeProgress + Math.random() * 15, 90);
+              importProgress.update('decoding', Math.round(fakeProgress));
+            }
+          }, 200);
+
+          try {
+            buffer = await loadAudioFile(file);
+            decodeComplete = true;
+            clearInterval(progressInterval);
+            importProgress.update('decoding', 100);
+          } catch (decodeErr) {
+            clearInterval(progressInterval);
+            decodeComplete = true;
+            // GRACEFUL FALLBACK: Import without waveform on decode failure
+            console.error(`[DAW] Audio decode failed for "${file.name}":`, decodeErr);
+
+            // Create a silent buffer as placeholder (waveform will render as empty)
+            const ctx = (window.AudioContext || (window as any).webkitAudioContext);
+            if (!ctx) {
+              toast.error(`Failed to decode "${file.name}" — audio context unavailable`);
+              importProgress.done();
+              continue;
+            }
+
+            // Create a 1-second silent buffer to allow clip to be imported
+            const audioCtx = new ctx();
+            buffer = audioCtx.createBuffer(1, audioCtx.sampleRate, audioCtx.sampleRate);
+            console.warn(`[DAW] Importing "${file.name}" without audio (decode failed) — clip created as silent placeholder`);
+            toast.warn(`Could not decode "${file.name}" — imported as silent clip`);
+          }
+
+          // Safety check: buffer must be valid
           if (!buffer || buffer.length === 0) {
-            console.warn(`[DAW] Skipping "${file.name}" — empty buffer`);
+            console.warn(`[DAW] Skipping "${file.name}" — invalid or empty buffer`);
             importProgress.done();
             continue;
           }
 
-          importProgress.update('decoding', 15);
+          // PHASE 2: Create track and clip (fast, UI immediately visible)
+          try {
+            trackId = addAudioTrack(name);
+            initStrip(trackId);
 
-          const trackId = addAudioTrack(name);
-          initStrip(trackId);
+            const clip: AudioClip = {
+              id: generateId('clip'),
+              trackId,
+              name,
+              buffer,
+              startTime: 0,
+              duration: buffer.duration,
+              offset: 0,
+            };
 
-          const clip: AudioClip = {
-            id: generateId('clip'),
-            trackId,
-            name,
-            buffer,
-            startTime: 0,
-            duration: buffer.duration,
-            offset: 0,
-          };
-
-          addClipToTrack(trackId, clip);
-          toast.success(`Imported "${name}"`);
+            addClipToTrack(trackId, clip);
+            toast.success(`Imported "${name}"`);
+            importProgress.update('decoding', 100);
+          } catch (clipErr) {
+            console.error(`[DAW] Failed to create clip for "${file.name}":`, clipErr);
+            toast.error(`Failed to create clip for "${file.name}"`);
+            importProgress.done();
+            continue;
+          }
 
           // Yield to let the UI render the new track before starting analysis
           await new Promise<void>((r) => setTimeout(r, 16));
 
-          // Classify track (async — yields to main thread)
+          // PHASE 3: Classification (async, with error isolation)
           importProgress.update('classifying', 25);
           if (useAIStore.getState().autoOrganizeEnabled) {
             try {
@@ -92,12 +139,15 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
                   undoable: false,
                 });
               }
-            } catch { /* classification failed silently */ }
+            } catch (err) {
+              console.warn(`[DAW] Classification failed for "${name}":`, err);
+              // Continue — classification is optional
+            }
           }
 
-          // Auto gain staging on import (fast — strided peak scan)
-          if (useAIStore.getState().autoGainStagingOnImport) {
-            try {
+          // PHASE 4: Auto gain staging (fast, isolated error handling)
+          try {
+            if (useAIStore.getState().autoGainStagingOnImport) {
               const data = buffer.getChannelData(0);
               let peak = 0;
               const stride = Math.max(1, Math.floor(data.length / 10000));
@@ -117,30 +167,43 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
                   session.updateTrack(trackId, { volume: newVol });
                 }
               }
-            } catch { /* gain staging failed silently */ }
+            }
+          } catch (err) {
+            console.warn(`[DAW] Auto gain staging failed for "${name}":`, err);
+            // Continue — gain staging is optional
           }
 
-          // BPM + Key analysis (fully async with chunked yields + progress updates)
-          autoAnalyzeClip(buffer).then((analysis) => {
-            importProgress.done();
-            const parts: string[] = [];
-            if (analysis.bpm) parts.push(`BPM: ${Math.round(analysis.bpm.bpm)}`);
-            if (analysis.key) parts.push(`Key: ${analysis.key.key}`);
-            if (parts.length > 0) {
-              useAIStore.getState().logActivity({
-                id: `log-${Date.now()}`,
-                description: `Auto-analyzed "${name}" — ${parts.join(', ')}`,
-                trackId,
-                timestamp: Date.now(),
-                undoable: false,
-              });
-            }
-          }).catch(() => {
-            importProgress.done();
-          });
+          // PHASE 5: BPM + Key analysis (fully async, isolated error handling)
+          autoAnalyzeClip(buffer)
+            .then((analysis) => {
+              importProgress.update('analyzing-key', 95);
+              setTimeout(() => {
+                importProgress.update('done', 100);
+                setTimeout(() => importProgress.done(), 500);
+              }, 100);
+
+              const parts: string[] = [];
+              if (analysis.bpm) parts.push(`BPM: ${Math.round(analysis.bpm.bpm)}`);
+              if (analysis.key) parts.push(`Key: ${analysis.key.key}`);
+              if (parts.length > 0) {
+                useAIStore.getState().logActivity({
+                  id: `log-${Date.now()}`,
+                  description: `Auto-analyzed "${name}" — ${parts.join(', ')}`,
+                  trackId,
+                  timestamp: Date.now(),
+                  undoable: false,
+                });
+              }
+            })
+            .catch((err) => {
+              console.warn(`[DAW] Analysis failed for "${name}":`, err);
+              // Clear progress bar cleanly on error
+              setTimeout(() => importProgress.done(), 100);
+            });
         } catch (err) {
-          console.error(`[DAW] Failed to load "${file.name}":`, err);
-          toast.error(`Failed to load "${file.name}"`);
+          console.error(`[DAW] Fatal error importing "${file.name}":`, err);
+          const msg = err instanceof Error ? err.message : String(err);
+          toast.error(`Failed to import: ${msg}`);
           importProgress.done();
         }
       }

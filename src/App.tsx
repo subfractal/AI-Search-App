@@ -44,6 +44,37 @@ function PanelSpinner() {
   );
 }
 
+// Generic error boundary for rendering failures
+class GenericErrorBoundary extends React.Component<
+  { children: React.ReactNode; name: string },
+  { hasError: boolean; error?: Error }
+> {
+  constructor(props: { children: React.ReactNode; name: string }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error(`${this.props.name} crashed:`, error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '20px', color: '#aaa', textAlign: 'center' }}>
+          <div className="text-sm">{this.props.name} encountered an error.</div>
+          <div className="text-xs text-daw-text-muted mt-2">Try reloading or check the console for details.</div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // Error boundary for PianoRoll and other components
 class PianoRollErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -419,7 +450,9 @@ export default function App() {
 
           {/* ── Center Zone: Timeline ── */}
           <div className="flex-1 min-w-0">
-            <Timeline />
+            <GenericErrorBoundary name="Timeline">
+              <Timeline />
+            </GenericErrorBoundary>
           </div>
 
           {/* ── Right Zone: AI Coproducer + Inspector/Media Bay ── */}
